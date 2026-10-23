@@ -69,11 +69,16 @@ async def verify_face(
 
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
-            reference_path = Path(temp_dir) / "reference.jpg"
-            selfie_path = Path(temp_dir) / "selfie.jpg"
+          CONTENT_TYPE_EXTENSIONS = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
+reference_ext = CONTENT_TYPE_EXTENSIONS[reference_photo.content_type]
+selfie_ext = CONTENT_TYPE_EXTENSIONS[selfie_photo.content_type]
 
-            reference_path.write_bytes(reference_bytes)
-            selfie_path.write_bytes(selfie_bytes)
+reference_path = Path(temp_dir) / f"reference{reference_ext}"
+selfie_path = Path(temp_dir) / f"selfie{selfie_ext}"
 
             # 3. Anti-spoofing pada selfie
             faces = DeepFace.extract_faces(
@@ -83,15 +88,12 @@ async def verify_face(
                 anti_spoofing=True
             )
 
-            print("\n===== ANTI SPOOFING RESULT =====")
-
             for index, face in enumerate(faces):
                 print(f"Face {index + 1}")
                 print("Is Real:", face.get("is_real"))
                 print("Anti Spoof Score:", face.get("antispoof_score"))
                 print("Face Confidence:", face.get("confidence"))
 
-            print("================================\n")
 
             # Wajib tepat satu wajah
             if len(faces) != 1:
