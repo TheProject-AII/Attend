@@ -1,41 +1,25 @@
+const {
+    downloadFromStorage,
+} = require("./storageService");
 
-const path = require("path");
-const fs = require("fs/promises");
-
-async function getEmployeePhotoPath(photo) {
+async function getEmployeePhotoBuffer(photo) {
     if (!photo) {
         throw new Error("Pas foto karyawan belum terdaftar.");
     }
 
-    // Hanya terima path dari folder foto HR
-    const prefix = "/uploads/photos/";
-
-    if (!photo.startsWith(prefix)) {
-        throw new Error("Path pas foto karyawan tidak valid.");
+    if (photo.startsWith("/uploads/")) {
+        throw new Error(
+            "Pas foto masih menggunakan penyimpanan lama. Silakan upload ulang melalui HR."
+        );
     }
 
-    const filename = photo.slice(prefix.length);
-
-    // Cegah akses file di luar folder foto
-    if (
-        !filename ||
-        filename === "." ||
-        filename === ".." ||
-        filename.includes("/") ||
-        filename.includes("\\")
-    ) {
-        throw new Error("Nama file foto tidak valid.");
+    if (!/^photos\/[a-zA-Z0-9._-]+\.(jpg|jpeg|png|webp)$/i.test(photo)) {
+        throw new Error("Storage key pas foto tidak valid.");
     }
 
-    const photoPath = path.join(
-        __dirname,
-        "../uploads/photos",
-        filename
-    );
-
-    await fs.access(photoPath);
-
-    return photoPath;
+    return downloadFromStorage(photo);
 }
 
-module.exports = { getEmployeePhotoPath };
+module.exports = {
+    getEmployeePhotoBuffer,
+};

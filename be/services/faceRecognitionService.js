@@ -1,10 +1,12 @@
-
 const fs = require("fs/promises");
 const path = require("path");
+const pool = require("../config/db");
 
-const FACE_API_URL =
-    process.env.FACE_API_URL ||
-    "http://127.0.0.1:8001";
+const {
+    getEmployeePhotoBuffer,
+} = require("./employeePhotoService");
+
+const FACE_API_URL = process.env.FACE_API_URL;
 
 function getMimeType(filePath) {
     const ext = path.extname(filePath).toLowerCase();
@@ -16,23 +18,24 @@ function getMimeType(filePath) {
 }
 
 async function verifyEmployeeFace(
-    referencePath,
+    referenceBuffer,
+    referenceKey,
     selfiePath
 ) {
-    const [referenceBuffer, selfieBuffer] =
-        await Promise.all([
-            fs.readFile(referencePath),
-            fs.readFile(selfiePath),
-        ]);
+    if (!FACE_API_URL) {
+        throw new Error("FACE_API_URL belum dikonfigurasi.");
+    }
+
+    const selfieBuffer = await fs.readFile(selfiePath);
 
     const form = new FormData();
 
     form.append(
         "reference_photo",
         new Blob([referenceBuffer], {
-            type: getMimeType(referencePath),
+            type: getMimeType(referenceKey),
         }),
-        path.basename(referencePath)
+        path.basename(referenceKey)
     );
 
     form.append(
@@ -44,7 +47,7 @@ async function verifyEmployeeFace(
     );
 
     const response = await fetch(
-        `${FACE_API_URL}/verify-face`,
+        `${FACE_API_URL.replace(/\/$/, "")}/verify-face`,
         {
             method: "POST",
             body: form,
@@ -52,14 +55,16 @@ async function verifyEmployeeFace(
         }
     );
 
+    if (!response.ok) {
+        throw new Error(
+            `Face Recognition Service gagal: HTTP ${response.status}`
+        );
+    }
+
     const result = await response.json();
 
-    if (!response.ok || result.success !== true) {
-        throw new Error(
-            typeof result.detail === "string"
-                ? result.detail
-                : "Verifikasi wajah gagal"
-        );
+    if (result.success !== true) {
+        throw new Error("Verifikasi wajah gagal.");
     }
 
     return {
@@ -68,12 +73,6 @@ async function verifyEmployeeFace(
         threshold: result.threshold,
     };
 }
-
-
-const pool = require("./../config/db");
-const {
-    getEmployeePhotoPath,
-} = require("./employeePhotoService");
 
 async function verifyAttendanceFace(userId, selfiePath) {
     const result = await pool.query(
@@ -85,13 +84,18 @@ async function verifyAttendanceFace(userId, selfiePath) {
         throw new Error("Karyawan tidak ditemukan.");
     }
 
-    const referencePath = await getEmployeePhotoPath(
-        result.rows[0].photo
+    const referenceKey = result.rows[0].photo;
+
+    const referenceBuffer = await getEmployeePhotoBuffer(
+        referenceKey
     );
 
-    return verifyEmployeeFace(referencePath, selfiePath);
+    return verifyEmployeeFace(
+        referenceBuffer,
+        referenceKey,
+        selfiePath
+    );
 }
-
 
 module.exports = {
     verifyEmployeeFace,
