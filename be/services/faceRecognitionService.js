@@ -62,17 +62,29 @@ async function verifyEmployeeFace(
             signal: AbortSignal.timeout(60000),
         }
     );
+    const result = await response.json();
 
     if (!response.ok) {
+        console.error("Face API HTTP Status:", response.status);
+        console.error("Face API Error:", result);
+
         throw new Error(
+            result?.detail ||
+            result?.message ||
             `Face Recognition Service gagal: HTTP ${response.status}`
         );
     }
 
-    const result = await response.json();
+    console.log("FACE API RESULT:", JSON.stringify(result));
 
-    if (result?.success !== true) {
-        throw new Error("Respons Face Recognition Service tidak valid.");
+    if (!result || typeof result !== "object") {
+        throw new Error("Face Recognition Service mengembalikan JSON null/tidak valid.");
+    }
+
+    if (result.success !== true) {
+        throw new Error(
+            result.message || result.detail || "Verifikasi wajah gagal."
+        );
     }
 
     return {
