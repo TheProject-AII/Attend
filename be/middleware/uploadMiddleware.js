@@ -1,19 +1,21 @@
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
+
+// Vercel hanya mengizinkan penulisan sementara di /tmp
+const baseUploadDir = process.env.VERCEL
+  ? path.join(os.tmpdir(), "hris-uploads")
+  : path.join(__dirname, "../uploads");
 
 // Folder upload
-const photoDir = path.join(__dirname, "../uploads/photos");
-const ktpDir = path.join(__dirname, "../uploads/ktp");
-const npwpDir = path.join(__dirname, "../uploads/npwp");
-const bpjsKesehatanDir = path.join(
-  __dirname,
-  "../uploads/bpjs_kesehatan"
-);
-const bpjsTkDir = path.join(__dirname, "../uploads/bpjs_tk");
-const kkDir = path.join(__dirname, "../uploads/kk");
-
-const announcementDir = path.join(__dirname, "../uploads/announcements");
+const photoDir = path.join(baseUploadDir, "photos");
+const ktpDir = path.join(baseUploadDir, "ktp");
+const npwpDir = path.join(baseUploadDir, "npwp");
+const bpjsKesehatanDir = path.join(baseUploadDir, "bpjs_kesehatan");
+const bpjsTkDir = path.join(baseUploadDir, "bpjs_tk");
+const kkDir = path.join(baseUploadDir, "kk");
+const announcementDir = path.join(baseUploadDir, "announcements");
 
 const employeeStorage = multer.diskStorage({
   destination: (req, file, cb) => {
