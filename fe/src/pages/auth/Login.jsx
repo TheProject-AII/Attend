@@ -154,7 +154,7 @@ export default function Login() {
                         }}
                         fontWeight={700}
                     >
-                        KJI Attendance
+                        Human Resource Information System
                     </Typography>
 
                     <Typography
