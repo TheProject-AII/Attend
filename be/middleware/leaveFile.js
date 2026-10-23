@@ -1,18 +1,20 @@
+
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 
-const uploadPath = "uploads/leave";
+// Lokasi penyimpanan sementara
+const uploadDir = process.env.VERCEL
+  ? path.join(os.tmpdir(), "hris-uploads", "leave")
+  : path.join(__dirname, "../uploads", "leave");
 
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, {
-    recursive: true,
-  });
-}
+// Buat folder jika belum tersedia
+fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination(req, file, cb) {
-    cb(null, uploadPath);
+    cb(null, uploadDir);
   },
 
   filename(req, file, cb) {
@@ -28,7 +30,11 @@ module.exports = multer({
   },
 
   fileFilter(req, file, cb) {
-    const allowed = ["image/jpeg", "image/png", "application/pdf"];
+    const allowed = [
+      "image/jpeg",
+      "image/png",
+      "application/pdf",
+    ];
 
     if (!allowed.includes(file.mimetype)) {
       return cb(new Error("Format file tidak didukung."));
