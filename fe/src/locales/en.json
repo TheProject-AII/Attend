@@ -1,0 +1,42 @@
+{
+    "app": {
+        "name": "HR Information System"
+    },
+    "section": {
+        "overview": "Overview",
+        "management": "Management",
+        "reports": "Reports",
+        "system": "System"
+    },
+    "menu": {
+        "dashboard": "Dashboard",
+        "orientasi": "Orientation",
+        "attendance": "Attendance",
+        "employees": "Employees",
+        "overtime": "Overtime",
+        "reports": "Reports",
+        "announcements": "Announcements",
+        "settings": "Settings"
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "welcome": "Welcome, {{name}} 👋",
+        "totalEmployees": "Total Employees",
+        "presentToday": "Present Today",
+        "leave": "Leave and Permissions",
+        "late": "Late Arrivals",
+        "attendance": "Attendance",
+        "todaySummary": "Today's Summary",
+        "employeeOfMonth": "Employee of the Month"
+    },
+    "common": {
+        "save": "Save",
+        "cancel": "Cancel",
+        "edit": "Edit",
+        "delete": "Delete",
+        "search": "Search",
+        "loading": "Loading...",
+        "logout": "Logout",
+        "language": "Language"
+    }
+}

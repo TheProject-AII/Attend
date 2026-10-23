@@ -1,0 +1,117 @@
+const pool = require("../config/db");
+
+exports.getDashboard = async (req, res) => {
+  try {
+    const allowedPeriods = [7, 14, 30];
+
+    const period = allowedPeriods.includes(Number(req.query.period))
+      ? Number(req.query.period)
+      : 7;
+
+    const totalEmployee = await pool.query(`
+            SELECT COUNT(*) AS total
+            FROM users
+            WHERE role_id = 3
+              AND status = true
+        `);
+
+    const presentToday = await pool.query(`
+    SELECT COUNT(*) AS total
+    FROM attendance
+    WHERE attendance_date = CURRENT_DATE
+`);
+
+    const leaveToday = await pool.query(`
+SELECT COUNT(*) AS total
+FROM leave_requests
+WHERE
+    status = 'APPROVED'
+    AND CURRENT_DATE BETWEEN start_date AND end_date
+`);
+
+    const lateToday = await pool.query(`
+SELECT COUNT(*) AS total
+FROM attendance
+WHERE
+    attendance_date = CURRENT_DATE
+    AND check_in IS NOT NULL
+    AND check_in::time > '09:00:00'
+`);
+
+    const attendanceToday = await pool.query(`
+    SELECT
+    a.id,
+    u.name,
+    u.department,
+
+    TO_CHAR(a.check_in, 'HH24:MI') AS check_in,
+
+    CASE
+        WHEN a.check_out IS NULL THEN NULL
+        ELSE TO_CHAR(a.check_out, 'HH24:MI')
+    END AS check_out,
+
+    CASE
+        WHEN a.check_out IS NOT NULL THEN 'Pulang'
+        WHEN a.check_in::time > '09:00:00' THEN 'Terlambat'
+        ELSE 'Hadir'
+    END AS status
+
+FROM attendance a
+JOIN users u
+    ON u.id = a.user_id
+WHERE a.attendance_date = CURRENT_DATE
+ORDER BY a.check_in ASC;
+`);
+
+    const attendanceChart = await pool.query(
+      `
+    WITH days AS (
+        SELECT generate_series(
+            CURRENT_DATE - ($1 - 1) * INTERVAL '1 day',
+            CURRENT_DATE,
+            INTERVAL '1 day'
+        )::date AS attendance_date
+    )
+
+    SELECT
+        d.attendance_date,
+        COALESCE(COUNT(a.id), 0) AS total
+    FROM days d
+    LEFT JOIN attendance a
+        ON a.attendance_date = d.attendance_date
+    GROUP BY d.attendance_date
+    ORDER BY d.attendance_date;
+    `,
+      [period],
+    );
+    const chart = attendanceChart.rows.map((item) => ({
+      day: new Date(item.attendance_date).toLocaleDateString("id-ID", {
+        weekday: "short",
+      }),
+      total: Number(item.total),
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        totalEmployee: Number(totalEmployee.rows[0].total),
+        present: Number(presentToday.rows[0].total),
+        leave: Number(leaveToday.rows[0].total),
+        late: Number(lateToday.rows[0].total),
+        notCheckIn:
+          Number(totalEmployee.rows[0].total) -
+          Number(presentToday.rows[0].total),
+        chart,
+        attendance: attendanceToday.rows,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};

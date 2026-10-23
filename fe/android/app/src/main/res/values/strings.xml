@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Att-MUI</string>
+    <string name="title_activity_main">Att-MUI</string>
+    <string name="package_name">com.hris.mui</string>
+    <string name="custom_url_scheme">com.hris.mui</string>
+</resources>

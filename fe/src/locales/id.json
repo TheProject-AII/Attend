@@ -1,0 +1,42 @@
+{
+    "app": {
+        "name": "HR Information System"
+    },
+    "section": {
+        "overview": "Ringkasan",
+        "management": "Manajemen",
+        "reports": "Laporan",
+        "system": "Sistem"
+    },
+    "menu": {
+        "dashboard": "Dashboard",
+        "orientasi": "Orientasi",
+        "attendance": "Absensi",
+        "employees": "Karyawan",
+        "overtime": "Lemburan",
+        "reports": "Laporan",
+        "announcements": "Pengumuman",
+        "settings": "Pengaturan"
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "welcome": "Selamat Datang, {{name}} 👋",
+        "totalEmployees": "Total Karyawan",
+        "presentToday": "Hadir Hari Ini",
+        "leave": "Cuti dan Izin",
+        "late": "Terlambat",
+        "attendance": "Kehadiran",
+        "todaySummary": "Ringkasan Hari Ini",
+        "employeeOfMonth": "Karyawan Terbaik Bulan Ini"
+    },
+    "common": {
+        "save": "Simpan",
+        "cancel": "Batal",
+        "edit": "Ubah",
+        "delete": "Hapus",
+        "search": "Cari",
+        "loading": "Memuat...",
+        "logout": "Keluar",
+        "language": "Bahasa"
+    }
+}

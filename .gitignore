@@ -26,3 +26,22 @@ face_embeddings/
 
 # Logs
 *.log
+
+# HRIS sensitive employee data
+be/hris_karyawan_import.json
+be/import_karyawan.js
+
+# Local test files
+be/test-storage.js
+be/controllers/Untitled-1.jsx
+
+# Mobile build artifacts
+fe/android/.gradle/
+fe/android/build/
+fe/android/app/build/
+fe/android/local.properties
+
+# Local credentials
+*.keystore
+*.jks
+google-services.json
