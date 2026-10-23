@@ -54,7 +54,7 @@ export default function Sidebar() {
             >
                 <Box
                     component="img"
-                    src="/logo_hris.png"
+                    src="/icon/logo_hris.png"
                     alt="HRIS Logo"
                     sx={{
                         width: "100%",

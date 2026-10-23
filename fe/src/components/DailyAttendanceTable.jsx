@@ -1,555 +1,237 @@
+import { useEffect, useState } from "react";
 import {
-    Card,
-    CardContent,
-    Table,
-    TableHead,
-    TableRow,
-    TableCell,
-    TableBody,
-    Stack,
-    Avatar,
-    Box,
-    Chip,
-    IconButton, Skeleton,
-    Button,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    Typography,
-    Divider
+    Avatar, Box, Button, Card, CardContent, Chip, Dialog,
+    DialogActions, DialogContent, DialogTitle, Divider,
+    IconButton, Skeleton, Stack, Table, TableBody, TableCell,
+    TableHead, TableRow, Typography, CircularProgress, Alert,
 } from "@mui/material";
-import { useState } from 'react';
-
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
 import AttendanceLocationMap from "./attendance/AttendanceLocationMap";
 
-const API_BASE_URL = "http://localhost:3000"; // Sesuaikan port backend Node.js
+// Set VITE_API_URL to the backend origin (or origin + /api) in Vercel.
+const configuredApi = (import.meta.env.VITE_API_URL || "https://attend-hmy2.vercel.app")
+    .replace(/\/+$/, "");
+const API_ROOT = configuredApi.endsWith("/api") ? configuredApi : `${configuredApi}/api`;
 
-const getAttendancePhotoUrl = (photoPath) => {
-    if (!photoPath) return "";
+function formatTimeWIB(value) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).format(date);
+}
 
-    const normalized = String(photoPath).replace(/\\/g, "/");
-    const index = normalized.indexOf("/uploads/");
+function PhotoPanel({ label, url, available, loading, error, color }) {
+    return (
+        <Box sx={{ minWidth: 0 }}>
+            <Typography variant="subtitle2" fontWeight={600} mb={1} color={color}>
+                {label}
+            </Typography>
+            <Box sx={{ height: 220, borderRadius: 2, border: "1px solid #E5E7EB", bgcolor: "#F3F4F6", overflow: "hidden", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                {loading && available ? (
+                    <CircularProgress size={26} />
+                ) : url ? (
+                    <Box component="img" src={url} alt={`Foto ${label}`} sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                    <Typography variant="body2" color="text.secondary" textAlign="center" px={2}>
+                        {available && error ? "Foto gagal dimuat" : `Foto ${label} tidak tersedia`}
+                    </Typography>
+                )}
+            </Box>
+        </Box>
+    );
+}
 
-    if (index === -1) return "";
-
-    return `${API_BASE_URL}${normalized.slice(index)}`;
-};
-
-export default function DailyAttendanceTable({
-
-    data = [], loading = false
-
-
-}) {
+export default function DailyAttendanceTable({ data = [], loading = false }) {
     const [selectedAttendance, setSelectedAttendance] = useState(null);
     const [openAttendanceDetail, setOpenAttendanceDetail] = useState(false);
-    const formatTimeWIB = (dateString) => {
-        if (!dateString) return "-";
+    const [photos, setPhotos] = useState({ checkIn: "", checkOut: "" });
+    const [photoLoading, setPhotoLoading] = useState(false);
+    const [photoError, setPhotoError] = useState("");
 
-        const date = new Date(dateString);
-
-        if (Number.isNaN(date.getTime())) return "-";
-
-        return new Intl.DateTimeFormat("id-ID", {
-            timeZone: "Asia/Jakarta",
-            hour: "2-digit",
-            minute: "2-digit",
-            hourCycle: "h23"
-        }).format(date);
+    const closeDetail = () => {
+        setOpenAttendanceDetail(false);
+        setSelectedAttendance(null);
     };
+
+    useEffect(() => {
+        if (!openAttendanceDetail || !selectedAttendance) return;
+        const controller = new AbortController();
+        let active = true;
+        const attendance = selectedAttendance;
+
+        const load = async () => {
+            setPhotos({ checkIn: "", checkOut: "" });
+            setPhotoError("");
+            if (!attendance.photo_path && !attendance.check_out_photo_path) return;
+            if (!attendance.attendance_id) {
+                setPhotoError("ID absensi tidak tersedia. Periksa query /daily pada backend.");
+                return;
+            }
+            const token = localStorage.getItem("token");
+            if (!token) {
+                setPhotoError("Sesi login tidak ditemukan. Silakan login kembali.");
+                return;
+            }
+
+            setPhotoLoading(true);
+            const fetchPhoto = async (type) => {
+                const response = await fetch(
+                    `${API_ROOT}/attendance/${encodeURIComponent(attendance.attendance_id)}/photo/${type}`,
+                    { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
+                );
+                const result = await response.json();
+                if (!response.ok || !result.success || !result.data?.url) {
+                    throw new Error(result.message || `Gagal mengambil foto ${type}`);
+                }
+                return result.data.url;
+            };
+
+            try {
+                const [checkIn, checkOut] = await Promise.allSettled([
+                    attendance.photo_path ? fetchPhoto("check-in") : Promise.resolve(""),
+                    attendance.check_out_photo_path ? fetchPhoto("check-out") : Promise.resolve(""),
+                ]);
+                if (!active) return;
+                setPhotos({
+                    checkIn: checkIn.status === "fulfilled" ? checkIn.value : "",
+                    checkOut: checkOut.status === "fulfilled" ? checkOut.value : "",
+                });
+                const errors = [checkIn, checkOut]
+                    .filter((result) => result.status === "rejected")
+                    .map((result) => result.reason?.message || "Foto gagal dimuat");
+                if (errors.length) setPhotoError(errors.join("; "));
+            } finally {
+                if (active) setPhotoLoading(false);
+            }
+        };
+
+        load();
+        return () => {
+            active = false;
+            controller.abort();
+        };
+    }, [openAttendanceDetail, selectedAttendance]);
 
     return (
         <>
-            <Card
-                elevation={0}
-                sx={{
-                    mt: 2,
-                    borderRadius: 3,
-                    border: "1px solid #E5E7EB"
-                }}
-            >
-
+            <Card elevation={0} sx={{ mt: 2, borderRadius: 3, border: "1px solid #E5E7EB" }}>
                 <CardContent>
-
-                    <Typography
-                        variant="h6"
-                        fontWeight={700}
-                        mb={2}
-                    >
-                        Data Absensi Hari Ini
-                    </Typography>
-
-                    <Table >
-
-                        <TableHead>
-
-                            <TableRow hover
-                                sx={{
-                                    "& td": {
-                                        py: 1
-                                    }
-                                }}>
-                                <TableCell>No.</TableCell>
-
-                                <TableCell>Karyawan</TableCell>
-
-                                <TableCell>Check In</TableCell>
-
-                                <TableCell>Check Out</TableCell>
-
-                                <TableCell>Status</TableCell>
-
-                                <TableCell>Telat</TableCell>
-
-
-                                <TableCell align="center">
-                                    Detail
-                                </TableCell>
-
-                            </TableRow>
-
-                        </TableHead>
-
-                        <TableBody>
-
-                            {loading ? (
-
-                                [...Array(6)].map((_, index) => (
-
-                                    <TableRow key={index}>
-                                        <TableCell>
-                                            <Skeleton width={20} />
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Skeleton variant="circular" width={38} height={38} />
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Skeleton width={70} />
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Skeleton width={70} />
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Skeleton width={100} />
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Skeleton width={50} />
-                                        </TableCell>
-
-
-                                        <TableCell align="center">
-                                            <Skeleton width={30} />
-                                        </TableCell>
-
-                                    </TableRow>
-
-                                ))
-
-                            ) : data.length === 0 ? (
-
-                                <TableRow hover
-                                    sx={{
-                                        "& td": {
-                                            py: 1
-                                        }
-                                    }}>
-
-                                    <TableCell
-                                        colSpan={8}
-                                        align="center"
-                                    >
-                                        Belum ada data absensi.
-                                    </TableCell>
-
+                    <Typography variant="h6" fontWeight={700} mb={2}>Data Absensi Hari Ini</Typography>
+                    <Box sx={{ overflowX: "auto" }}>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>No.</TableCell>
+                                    <TableCell>Karyawan</TableCell>
+                                    <TableCell>Check In</TableCell>
+                                    <TableCell>Check Out</TableCell>
+                                    <TableCell>Status</TableCell>
+                                    <TableCell>Telat</TableCell>
+                                    <TableCell align="center">Detail</TableCell>
                                 </TableRow>
-
-                            ) : (
-
-                                data.map((item, index) => (
-
-                                    <TableRow
-                                        key={item.id}
-                                        hover
-                                        sx={{
-                                            "& td": {
-                                                py: 1
-                                            }
-                                        }}
-                                    >
-
-                                        {/* Karyawan */}
+                            </TableHead>
+                            <TableBody>
+                                {loading ? Array.from({ length: 6 }, (_, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell><Skeleton width={20} /></TableCell>
+                                        <TableCell><Skeleton width={130} /></TableCell>
+                                        <TableCell><Skeleton width={70} /></TableCell>
+                                        <TableCell><Skeleton width={70} /></TableCell>
+                                        <TableCell><Skeleton width={90} /></TableCell>
+                                        <TableCell><Skeleton width={50} /></TableCell>
+                                        <TableCell><Skeleton width={30} /></TableCell>
+                                    </TableRow>
+                                )) : data.length === 0 ? (
+                                    <TableRow><TableCell colSpan={7} align="center">Belum ada data absensi.</TableCell></TableRow>
+                                ) : data.map((item, index) => (
+                                    <TableRow key={item.id ?? index} hover sx={{ "& td": { py: 1 } }}>
+                                        <TableCell>{index + 1}</TableCell>
                                         <TableCell>
-                                            {index + 1}
-                                        </TableCell>
-
-                                        <TableCell>
-
-                                            <Box
-                                                sx={{
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: 1.5
-                                                }}
-                                            >
-
-                                                <Avatar
-                                                    sx={{
-                                                        width: 38,
-                                                        height: 38,
-                                                        fontSize: 16,
-                                                        bgcolor: "#D1D5DB",
-                                                        color: "#374151"
-                                                    }}
-                                                >
-                                                    {item.name.charAt(0)}
+                                            <Stack direction="row" spacing={1.5} alignItems="center">
+                                                <Avatar sx={{ width: 38, height: 38, fontSize: 16, bgcolor: "#D1D5DB", color: "#374151" }}>
+                                                    {item.name?.charAt(0) || "?"}
                                                 </Avatar>
-
-                                                <Box
-                                                    sx={{
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        gap: 1
-                                                    }}
-                                                >
-
-                                                    <Typography
-                                                        fontWeight={600}
-                                                        fontSize={14}
-                                                    >
-                                                        {item.name}
-                                                    </Typography>
-
-                                                    <Typography
-                                                        variant="caption"
-                                                        color="text.secondary"
-                                                        sx={{
-                                                            bgcolor: "#F3F4F6",
-                                                            px: 1,
-                                                            py: .2,
-                                                            borderRadius: 10
-                                                        }}
-                                                    >
-                                                        {item.department}
-                                                    </Typography>
-
+                                                <Box>
+                                                    <Typography fontWeight={600} fontSize={14}>{item.name || "-"}</Typography>
+                                                    <Typography variant="caption" color="text.secondary">{item.department || "-"}</Typography>
                                                 </Box>
-
-                                            </Box>
-
+                                            </Stack>
                                         </TableCell>
-
-                                        {/* Check In */}
-
+                                        <TableCell>{formatTimeWIB(item.check_in)}</TableCell>
+                                        <TableCell>{formatTimeWIB(item.check_out)}</TableCell>
                                         <TableCell>
-
-                                            {item.check_in
-                                                ? formatTimeWIB(item.check_in)
-                                                : "-"}
-
+                                            <Chip label={item.status || "-"} size="small" color={item.status === "Belum Check In" ? "default" : "success"} />
                                         </TableCell>
-
-                                        {/* Check Out */}
-
-                                        <TableCell>
-
-                                            {item.check_out
-                                                ? formatTimeWIB(item.check_out)
-                                                : "-"}
-
-                                        </TableCell>
-
-                                        {/* Status */}
-
-                                        <TableCell>
-
-                                            <Chip
-                                                label={item.status}
-                                                size="small"
-                                                color={
-                                                    item.status === "Belum Check In"
-                                                        ? "default"
-                                                        : "success"
-                                                }
-                                            />
-
-                                        </TableCell>
-
-                                        {/* Telat */}
-
-                                        <TableCell>
-
-                                            {item.late_minutes} menit
-
-                                        </TableCell>
-
-
-
-                                        {/* Detail */}
-
+                                        <TableCell>{item.late_minutes ?? 0} menit</TableCell>
                                         <TableCell align="center">
-
-                                            <IconButton
-                                                size="small"
-                                                color="primary"
-                                                onClick={() => {
-                                                    console.log("ATTENDANCE DETAIL:", item);
-                                                    setSelectedAttendance(item);
-                                                    setOpenAttendanceDetail(true);
-                                                }}
-                                            >
+                                            <IconButton size="small" color="primary" aria-label={`Detail absensi ${item.name}`} onClick={() => {
+                                                setSelectedAttendance(item);
+                                                setOpenAttendanceDetail(true);
+                                            }}>
                                                 <VisibilityIcon />
                                             </IconButton>
-
                                         </TableCell>
-
                                     </TableRow>
-
-                                ))
-
-                            )}
-
-                        </TableBody>
-
-                    </Table>
-
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </Box>
                 </CardContent>
-
             </Card>
-            <Dialog
-                open={openAttendanceDetail}
-                onClose={() => {
-                    setOpenAttendanceDetail(false);
-                    setSelectedAttendance(null);
-                }}
-                maxWidth="sm"
-                fullWidth
-            >
-                <DialogTitle>
-                    Detail Absensi
-                </DialogTitle>
 
+            <Dialog open={openAttendanceDetail} onClose={closeDetail} maxWidth="sm" fullWidth>
+                <DialogTitle>Detail Absensi</DialogTitle>
                 <DialogContent dividers>
                     <Stack spacing={2}>
-
-                        {/* Karyawan */}
                         <Box>
-                            <Typography
-                                variant="body2"
-                                color="text.secondary"
-                            >
-                                Karyawan
-                            </Typography>
-
-                            <Typography fontWeight={600}>
-                                {selectedAttendance?.name || "-"}
-                            </Typography>
+                            <Typography variant="body2" color="text.secondary">Karyawan</Typography>
+                            <Typography fontWeight={600}>{selectedAttendance?.name || "-"}</Typography>
                         </Box>
-
-
-                        {/* Informasi Absensi */}
-                        <Box
-                            sx={{
-                                display: "grid",
-                                gridTemplateColumns: {
-                                    xs: "repeat(2, minmax(0, 1fr))",
-                                    sm: "repeat(4, minmax(0, 1fr))"
-                                },
-                                gap: 2,
-                                py: 1
-                            }}
-                        >
-                            {/* Department */}
+                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(4, minmax(0, 1fr))" }, gap: 2, py: 1 }}>
                             <Box>
-                                <Typography variant="body2" color="text.secondary" mb={0.5}>
-                                    Department
-                                </Typography>
-                                <Typography fontWeight={600}>
-                                    {selectedAttendance?.department || "-"}
-                                </Typography>
+                                <Typography variant="body2" color="text.secondary" mb={0.5}>Department</Typography>
+                                <Typography fontWeight={600}>{selectedAttendance?.department || "-"}</Typography>
                             </Box>
-
-                            {/* Check In */}
                             <Box>
-                                <Typography variant="body2" color="text.secondary" mb={0.5}>
-                                    Check In
-                                </Typography>
-                                <Typography fontWeight={600}>
-                                    {selectedAttendance?.check_in
-                                        ? selectedAttendance.check_in.substring(11, 16)
-                                        : "-"}
-                                </Typography>
+                                <Typography variant="body2" color="text.secondary" mb={0.5}>Check In</Typography>
+                                <Typography fontWeight={600}>{formatTimeWIB(selectedAttendance?.check_in)}</Typography>
                             </Box>
-
-                            {/* Check Out */}
                             <Box>
-                                <Typography variant="body2" color="text.secondary" mb={0.5}>
-                                    Check Out
-                                </Typography>
-                                <Typography fontWeight={600}>
-                                    {selectedAttendance?.check_out
-                                        ? selectedAttendance.check_out.substring(11, 16)
-                                        : "-"}
-                                </Typography>
+                                <Typography variant="body2" color="text.secondary" mb={0.5}>Check Out</Typography>
+                                <Typography fontWeight={600}>{formatTimeWIB(selectedAttendance?.check_out)}</Typography>
                             </Box>
-
-                            {/* Status */}
                             <Box>
-                                <Typography variant="body2" color="text.secondary" mb={0.5}>
-                                    Status
-                                </Typography>
-                                <Chip
-                                    label={selectedAttendance?.status || "-"}
-                                    size="small"
-                                    color={
-                                        selectedAttendance?.status === "Pulang"
-                                            ? "success"
-                                            : "default"
-                                    }
-                                />
+                                <Typography variant="body2" color="text.secondary" mb={0.5}>Status</Typography>
+                                <Chip label={selectedAttendance?.status || "-"} size="small" color={selectedAttendance?.status === "Pulang" ? "success" : "default"} />
                             </Box>
                         </Box>
-
                         <Divider />
-
                         <Box>
-                            <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                mb={1}
-                            >
-                                Lokasi Absensi
-                            </Typography>
-
-                            <AttendanceLocationMap
-                                checkInLat={selectedAttendance?.check_in_lat}
-                                checkInLng={selectedAttendance?.check_in_lng}
-                                checkOutLat={selectedAttendance?.check_out_lat}
-                                checkOutLng={selectedAttendance?.check_out_lng}
-                            />
+                            <Typography variant="body2" color="text.secondary" mb={1}>Lokasi Absensi</Typography>
+                            {selectedAttendance && (
+                                <AttendanceLocationMap
+                                    checkInLat={selectedAttendance.check_in_lat}
+                                    checkInLng={selectedAttendance.check_in_lng}
+                                    checkOutLat={selectedAttendance.check_out_lat}
+                                    checkOutLng={selectedAttendance.check_out_lng}
+                                />
+                            )}
                         </Box>
-                        {/* Foto */}
-                        {/* Foto Absensi */}
+                        <Divider />
                         <Box>
-                            <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                mb={2}
-                            >
-                                Foto Absensi
-                            </Typography>
-
-                            <Box
-                                sx={{
-                                    display: "grid",
-                                    gridTemplateColumns: {
-                                        xs: "1fr",
-                                        sm: "1fr 1fr"
-                                    },
-                                    gap: 2
-                                }}
-                            >
-                                {/* FOTO CHECK IN */}
-                                <Box>
-                                    <Typography
-                                        variant="subtitle2"
-                                        fontWeight={600}
-                                        mb={1}
-                                        color="success.main"
-                                    >
-                                        Check In
-                                    </Typography>
-
-                                    {selectedAttendance?.photo_path ? (
-                                        <Box
-                                            component="img"
-                                            src={getAttendancePhotoUrl(
-                                                selectedAttendance.photo_path
-                                            )}
-                                            alt="Foto Check In"
-                                            sx={{
-                                                width: "100%",
-                                                height: 220,
-                                                objectFit: "cover",
-                                                borderRadius: 2,
-                                                border: "1px solid #E5E7EB"
-                                            }}
-                                        />
-                                    ) : (
-                                        <Box
-                                            sx={{
-                                                height: 220,
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                bgcolor: "#F3F4F6",
-                                                borderRadius: 2
-                                            }}
-                                        >
-                                            <Typography
-                                                variant="body2"
-                                                color="text.secondary"
-                                            >
-                                                Foto Check In tidak tersedia
-                                            </Typography>
-                                        </Box>
-                                    )}
-                                </Box>
-
-                                {/* FOTO CHECK OUT */}
-                                <Box>
-                                    <Typography
-                                        variant="subtitle2"
-                                        fontWeight={600}
-                                        mb={1}
-                                        color="error.main"
-                                    >
-                                        Check Out
-                                    </Typography>
-
-                                    {selectedAttendance?.check_out_photo_path ? (
-                                        <Box
-                                            component="img"
-                                            src={getAttendancePhotoUrl(selectedAttendance.check_out_photo_path)}
-                                            alt="Foto Check Out"
-                                            sx={{
-                                                width: "100%",
-                                                height: 220,
-                                                objectFit: "cover",
-                                                borderRadius: 2
-                                            }}
-                                        />
-                                    ) : (
-                                        <Typography color="text.secondary">
-                                            Foto Check Out tidak tersedia
-                                        </Typography>
-                                    )}
-                                </Box>
+                            <Typography variant="body2" color="text.secondary" mb={2}>Foto Absensi</Typography>
+                            {photoError && <Alert severity="warning" sx={{ mb: 2 }}>{photoError}</Alert>}
+                            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
+                                <PhotoPanel label="Check In" color="success.main" url={photos.checkIn} available={!!selectedAttendance?.photo_path} loading={photoLoading} error={photoError} />
+                                <PhotoPanel label="Check Out" color="error.main" url={photos.checkOut} available={!!selectedAttendance?.check_out_photo_path} loading={photoLoading} error={photoError} />
                             </Box>
                         </Box>
-
                     </Stack>
                 </DialogContent>
-
-                <DialogActions>
-                    <Button
-                        onClick={() => {
-                            setOpenAttendanceDetail(false);
-                            setSelectedAttendance(null);
-                        }}
-                    >
-                        Tutup
-                    </Button>
-                </DialogActions>
+                <DialogActions><Button onClick={closeDetail}>Tutup</Button></DialogActions>
             </Dialog>
         </>
     );
-
 }
