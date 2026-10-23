@@ -71,8 +71,8 @@ async function verifyEmployeeFace(
 
     const result = await response.json();
 
-    if (result.success !== true) {
-        throw new Error("Verifikasi wajah gagal.");
+    if (result?.success !== true) {
+        throw new Error("Respons Face Recognition Service tidak valid.");
     }
 
     return {
