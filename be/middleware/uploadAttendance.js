@@ -2,7 +2,11 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-const uploadDir = path.join(process.cwd(), "uploads", "attendance");
+const os = require("os");
+
+const uploadDir = process.env.VERCEL
+    ? path.join(os.tmpdir(), "hris-uploads", "attendance")
+    : path.join(__dirname, "../uploads", "attendance");
 
 // Buat folder jika belum ada
 if (!fs.existsSync(uploadDir)) {
