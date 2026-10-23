@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+dist/
+build/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Environment & credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Employee documents & biometric data
+uploads/
+dataset/
+face_data/
+face_embeddings/
+
+# Database backups
+*.dump
+*.backup
+
+# Logs
+*.log
