@@ -7,6 +7,7 @@ const {
 } = require("./employeePhotoService");
 
 const FACE_API_URL = process.env.FACE_API_URL;
+const FACE_API_KEY = process.env.FACE_API_KEY;
 
 function getMimeType(filePath) {
     const ext = path.extname(filePath).toLowerCase();
@@ -46,10 +47,17 @@ async function verifyEmployeeFace(
         path.basename(selfiePath)
     );
 
+    if (!FACE_API_KEY) {
+        throw new Error("FACE_API_KEY belum dikonfigurasi.");
+    }
+
     const response = await fetch(
         `${FACE_API_URL.replace(/\/$/, "")}/verify-face`,
         {
             method: "POST",
+            headers: {
+                "X-Face-API-Key": FACE_API_KEY,
+            },
             body: form,
             signal: AbortSignal.timeout(60000),
         }
