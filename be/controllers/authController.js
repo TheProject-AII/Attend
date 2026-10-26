@@ -139,7 +139,6 @@ WHERE u.id=$1
   }
 };
 
-
 // Import lainnya tetap ada di bagian atas file.
 
 const employeeDocumentFields = [
@@ -174,20 +173,15 @@ async function uploadEmployeeDocuments(files) {
 
     return { paths, uploadedKeys };
   } catch (error) {
-    await Promise.allSettled(
-      uploadedKeys.map((key) => deleteFromStorage(key))
-    );
+    await Promise.allSettled(uploadedKeys.map((key) => deleteFromStorage(key)));
 
     throw error;
   }
 }
 
 async function cleanupUploadedDocuments(keys) {
-  await Promise.allSettled(
-    keys.map((key) => deleteFromStorage(key))
-  );
+  await Promise.allSettled(keys.map((key) => deleteFromStorage(key)));
 }
-
 
 exports.createEmployee = async (req, res) => {
   const client = await pool.connect();
@@ -260,7 +254,7 @@ exports.createEmployee = async (req, res) => {
     WHERE id = $1
     LIMIT 1
   `,
-      [role_id]
+      [role_id],
     );
 
     if (roleCheck.rows.length === 0) {
@@ -340,7 +334,7 @@ exports.createEmployee = async (req, res) => {
         contract_end_date || null,
         office_location_id || null,
         supervisor_id || null,
-      ]
+      ],
     );
     await client.query("COMMIT");
     committed = true;
@@ -470,6 +464,7 @@ exports.getEmployees = async (req, res) => {
                 u.nik,
                 u.name,
                 u.email,
+                u.company_email,
                 u.phone,
                 u.department,
                 u.nip,
@@ -514,7 +509,6 @@ exports.getEmployees = async (req, res) => {
 
 exports.getRoles = async (req, res) => {
   try {
-
     const result = await pool.query(`
       SELECT
         id,
@@ -527,16 +521,13 @@ exports.getRoles = async (req, res) => {
       success: true,
       data: result.rows,
     });
-
   } catch (err) {
-
     console.error("GET ROLES ERROR:", err);
 
     return res.status(500).json({
       success: false,
       message: "Gagal mengambil data jabatan",
     });
-
   }
 };
 
@@ -626,7 +617,7 @@ exports.updateEmployee = async (req, res) => {
         paths.bpjs_tk,
         paths.kk,
         id,
-      ]
+      ],
     );
     if (result.rows.length === 0) {
       await cleanupUploadedDocuments(uploadedKeys);
