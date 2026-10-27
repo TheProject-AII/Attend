@@ -27,10 +27,10 @@ rsync -a "$PROD/fe/" "$BACKUP/fe/" \
   --exclude='.env*'
 
 echo "===== BACKUP DOCKER IMAGES ====="
-docker image inspect "${PROJECT}-hris-backend:latest" \
+docker image inspect "${PROJECT}_hris-backend:latest" \
   --format '{{.Id}}' > "$BACKUP/backend-image-id" 2>/dev/null || true
 
-docker image inspect "${PROJECT}-hris-frontend:latest" \
+docker image inspect "${PROJECT}_hris-frontend:latest" \
   --format '{{.Id}}' > "$BACKUP/frontend-image-id" 2>/dev/null || true
 
 echo "===== SYNC SOURCE ====="
@@ -69,11 +69,11 @@ if ! docker compose -p "$PROJECT" up -d --no-deps hris-backend hris-frontend; th
 
   echo "===== ROLLBACK IMAGES ====="
   if [[ -s "$BACKUP/backend-image-id" ]]; then
-    docker tag "$(cat "$BACKUP/backend-image-id")" "${PROJECT}-hris-backend:latest"
+    docker tag "$(cat "$BACKUP/backend-image-id")" "${PROJECT}_hris-backend:latest"
   fi
 
   if [[ -s "$BACKUP/frontend-image-id" ]]; then
-    docker tag "$(cat "$BACKUP/frontend-image-id")" "${PROJECT}-hris-frontend:latest"
+    docker tag "$(cat "$BACKUP/frontend-image-id")" "${PROJECT}_hris-frontend:latest"
   fi
 
   docker compose -p "$PROJECT" up -d --no-deps hris-backend hris-frontend || true
