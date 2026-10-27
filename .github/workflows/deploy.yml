@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: hris-production
   cancel-in-progress: false
@@ -13,16 +16,17 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy HRIS to VPS
+      - name: Deploy HRIS
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script_stop: true
+          command_timeout: 30m
           script: |
             set -e
             cd /home/ganbaru/hris-github
             git fetch origin main
             git reset --hard origin/main
-            ./scripts/deploy.sh
+            bash scripts/deploy.sh
