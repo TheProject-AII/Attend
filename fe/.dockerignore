@@ -1,0 +1,20 @@
+node_modules/
+dist/
+build/
+.git/
+.env
+.env.*
+!.env.example
+
+# Mobile build files
+android/
+
+# Credentials and backups
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+*.zip
+*.tar.gz

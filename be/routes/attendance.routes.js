@@ -78,4 +78,10 @@ router.get(
   authMiddleware,
   employeeFileController.getEmployeeFile
 );
+
+router.get(
+  "/:id/photo/:type",
+  authMiddleware,
+  attendanceController.getAttendancePhoto
+);
 module.exports = router;

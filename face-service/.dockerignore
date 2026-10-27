@@ -2,5 +2,24 @@ __pycache__/
 *.pyc
 .venv/
 venv/
-.env
 .git/
+
+# Environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Face recognition data and models
+dataset/
+face_data/
+face_embeddings/
+weights/
+
+# Backups and logs
+*.log
+*.zip
+*.tar.gz

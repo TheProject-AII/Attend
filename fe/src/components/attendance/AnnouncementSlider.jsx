@@ -14,7 +14,9 @@ import {
     IconButton
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-const API_URL = "http://localhost:3000"; // Ganti dengan URL API Anda
+const API_URL = (
+    import.meta.env.VITE_API_URL || "/api"
+).replace(/\/api\/?$/, "");
 export default function AnnouncementSlider({ announcements }) {
 
     const [active, setActive] = useState(0);

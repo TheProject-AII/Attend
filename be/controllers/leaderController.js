@@ -722,48 +722,42 @@ exports.attendanceEditDetail = async (req, res) => {
   }
 };
 
+
 exports.approveAttendanceEdit = async (req, res) => {
   const client = await pool.connect();
+  let transactionStarted = false;
 
   try {
     await client.query("BEGIN");
+    transactionStarted = true;
 
     const { id } = req.params;
     const { note } = req.body;
+    const supervisorId = Number(req.user.id);
 
-    const supervisorId = req.user.id;
-
-    // =========================
-    // AMBIL REQUEST
-    // =========================
-
-    const result = await client.query(
+    const requestResult = await client.query(
       `
-            SELECT
-                aer.*,
-                a.attendance_date,
-                a.check_in,
-                a.check_out,
-                u.supervisor_id,
-                u.name
-
-            FROM attendance_edit_requests aer
-
-            JOIN attendance a
-                ON a.id = aer.attendance_id
-
-            JOIN users u
-                ON u.id = aer.user_id
-
-            WHERE aer.id = $1
-
-            FOR UPDATE
-            `,
-      [id],
+      SELECT
+        aer.*,
+        a.attendance_date,
+        a.check_in,
+        a.check_out,
+        u.supervisor_id,
+        u.name
+      FROM attendance_edit_requests aer
+      JOIN attendance a
+        ON a.id = aer.attendance_id
+      JOIN users u
+        ON u.id = aer.user_id
+      WHERE aer.id = $1
+      FOR UPDATE OF aer
+      `,
+      [id]
     );
 
-    if (result.rows.length === 0) {
+    if (!requestResult.rows.length) {
       await client.query("ROLLBACK");
+      transactionStarted = false;
 
       return res.status(404).json({
         success: false,
@@ -771,14 +765,13 @@ exports.approveAttendanceEdit = async (req, res) => {
       });
     }
 
-    const request = result.rows[0];
+    const request = requestResult.rows[0];
 
-    // =========================
-    // CEK SUPERVISOR
-    // =========================
-
-    if (Number(request.supervisor_id) !== Number(supervisorId)) {
+    if (
+      Number(request.supervisor_id) !== supervisorId
+    ) {
       await client.query("ROLLBACK");
+      transactionStarted = false;
 
       return res.status(403).json({
         success: false,
@@ -786,12 +779,9 @@ exports.approveAttendanceEdit = async (req, res) => {
       });
     }
 
-    // =========================
-    // CEK STATUS
-    // =========================
-
     if (request.status !== "PENDING_SUPERVISOR") {
       await client.query("ROLLBACK");
+      transactionStarted = false;
 
       return res.status(400).json({
         success: false,
@@ -799,137 +789,152 @@ exports.approveAttendanceEdit = async (req, res) => {
       });
     }
 
-    // =========================
-    // JAM FINAL
-    // =========================
-    // Kalau yang diubah hanya check-in,
-    // check-out lama tetap digunakan.
-    //
-    // Kalau yang diubah hanya check-out,
-    // check-in lama tetap digunakan.
+    // Kunci per karyawan.
+    await client.query(
+      "SELECT pg_advisory_xact_lock($1, $2)",
+      [17001, Number(request.user_id)]
+    );
 
     const finalCheckIn =
-      request.new_check_in || request.old_check_in || request.check_in;
+      request.new_check_in ??
+      request.check_in;
 
     const finalCheckOut =
-      request.new_check_out || request.old_check_out || request.check_out;
+      request.new_check_out ??
+      request.check_out;
 
-    // =========================
-    // HITUNG KETERLAMBATAN
-    // =========================
-
-    let isLate = false;
-    let lateMinutes = 0;
-
-    if (finalCheckIn) {
-      const checkInDate = new Date(finalCheckIn);
-
-      const officeStart = new Date(checkInDate);
-
-      officeStart.setHours(9, 0, 0, 0);
-
-      if (checkInDate > officeStart) {
-        isLate = true;
-
-        lateMinutes = Math.floor((checkInDate - officeStart) / 60000);
-      }
-    }
-
-    // =========================
-    // UPDATE ATTENDANCE
-    // =========================
-
+    // Update jam absensi.
+    // PostgreSQL menghitung keterlambatan
+    // berdasarkan waktu lokal yang tersimpan.
     await client.query(
       `
-            UPDATE attendance
+      UPDATE attendance
+      SET
+        check_in = $1,
+        check_out = $2,
 
-            SET
-                check_in = $1,
-                check_out = $2,
-                is_late = $3,
-                late_minutes = $4
+        is_late = CASE
+          WHEN UPPER(
+            COALESCE(attendance_type, 'OFFICE')
+          ) = 'OFFICE'
+          AND $1::timestamp IS NOT NULL
+          THEN $1::timestamp::time > TIME '08:00'
+          ELSE FALSE
+        END,
 
-            WHERE id = $5
-            `,
-      [finalCheckIn, finalCheckOut, isLate, lateMinutes, request.attendance_id],
+        late_minutes = CASE
+          WHEN UPPER(
+            COALESCE(attendance_type, 'OFFICE')
+          ) = 'OFFICE'
+          AND $1::timestamp IS NOT NULL
+          THEN GREATEST(
+            0,
+            CEIL(
+              EXTRACT(
+                EPOCH FROM (
+                  $1::timestamp::time - TIME '08:00'
+                )
+              ) / 60
+            )
+          )::integer
+          ELSE 0
+        END
+
+      WHERE id = $3
+      `,
+      [
+        finalCheckIn,
+        finalCheckOut,
+        request.attendance_id,
+      ]
     );
 
-    // =========================
-    // UPDATE REQUEST
-    // =========================
-
     await client.query(
       `
-            UPDATE attendance_edit_requests
-
-            SET
-                status = 'APPROVED',
-                approved_by = $1,
-                approved_at = NOW(),
-                rejection_reason = NULL,
-                updated_at = NOW()
-
-            WHERE id = $2
-            `,
-      [supervisorId, id],
+      UPDATE attendance_edit_requests
+      SET
+        status = 'APPROVED',
+        approved_by = $1,
+        approved_at = NOW(),
+        rejection_reason = NULL,
+        updated_at = NOW()
+      WHERE id = $2
+      `,
+      [supervisorId, id]
     );
 
-    // =========================
-    // NOTIFICATION KE KARYAWAN
-    // =========================
+    // Rebuild saldo utang dan pembayaran FIFO.
+    const {
+      reconcileEmployeeLateCompensation,
+    } = require("../services/lateCompensationService");
+
+    const compensation =
+      await reconcileEmployeeLateCompensation(
+        client,
+        request.user_id
+      );
 
     await client.query(
       `
-            INSERT INTO notifications
-            (
-                user_id,
-                title,
-                message,
-                type,
-                reference_id
-            )
-
-            VALUES
-            (
-                $1,
-                $2,
-                $3,
-                $4,
-                $5
-            )
-            `,
+      INSERT INTO notifications (
+        user_id,
+        title,
+        message,
+        type,
+        reference_id
+      )
+      VALUES ($1, $2, $3, $4, $5)
+      `,
       [
         request.user_id,
         "Perubahan Absensi Disetujui",
         "Pengajuan perubahan absensi Anda telah disetujui.",
         "ATTENDANCE_EDIT_APPROVED",
         request.id,
-      ],
+      ]
     );
 
-    // =========================
-    // COMMIT
-    // =========================
-
     await client.query("COMMIT");
+    transactionStarted = false;
 
     return res.json({
       success: true,
       message: "Perubahan absensi berhasil disetujui.",
+      compensation: {
+        totalLateMinutes:
+          compensation.total_late_minutes,
+        totalPaidMinutes:
+          compensation.total_paid_minutes,
+        outstandingMinutes:
+          compensation.outstanding_minutes,
+      },
     });
-  } catch (err) {
-    await client.query("ROLLBACK");
 
-    console.error(err);
+  } catch (err) {
+    if (transactionStarted) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rollbackError) {
+        console.error(
+          "APPROVE ATTENDANCE ROLLBACK:",
+          rollbackError
+        );
+      }
+    }
+
+    console.error("APPROVE ATTENDANCE EDIT:", err);
 
     return res.status(500).json({
       success: false,
-      message: err.message,
+      message:
+        "Gagal menyetujui perubahan absensi.",
     });
+
   } finally {
     client.release();
   }
 };
+
 
 exports.rejectAttendanceEdit = async (req, res) => {
   const client = await pool.connect();

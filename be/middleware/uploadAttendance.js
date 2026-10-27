@@ -1,7 +1,7 @@
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-
+const { randomUUID } = require("crypto");
 const os = require("os");
 
 const uploadDir = process.env.VERCEL
@@ -19,12 +19,9 @@ const storage = multer.diskStorage({
     },
 
     filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
+        const ext = path.extname(file.originalname).toLowerCase();
 
-        cb(
-            null,
-            `${Date.now()}_${req.user.id}${ext}`
-        );
+        cb(null, `${randomUUID()}${ext}`);
     }
 });
 

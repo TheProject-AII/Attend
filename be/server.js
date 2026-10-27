@@ -69,6 +69,10 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/leave", leaveRoutes);
 app.use("/api/leader", supervisorRoutes);
 app.use("/api/notification", notificationRoutes);
+app.use(
+  "/api/late-compensation",
+  require("./routes/lateCompensation.routes")
+);
 // ==============================
 // Root
 // ==============================

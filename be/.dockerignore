@@ -1,0 +1,23 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.git/
+uploads/
+*.log
+
+# Sensitive employee data
+hris_karyawan_import.json
+import_karyawan.js
+test-storage.js
+controllers/Untitled-1.jsx
+
+# Credentials and backups
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite3
+*.zip
+*.tar.gz

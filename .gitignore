@@ -45,3 +45,19 @@ fe/android/local.properties
 *.keystore
 *.jks
 google-services.json
+
+# Production secrets and configuration
+/config/
+**/config/backend.env
+**/config/face.env
+
+# Production backups and deployment archives
+HRIS-Deploy.zip
+*.tar.gz
+*.zip
+
+# Additional credential files
+*.p12
+*.pfx
+*.sqlite
+*.sqlite3

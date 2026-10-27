@@ -7,13 +7,23 @@ const attendanceService = {
   },
 
   checkIn: async (formData) => {
-    const { data } = await api.post("/attendance/checkin", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const start = performance.now();
 
-    return data;
+    try {
+      const { data } = await api.post("/attendance/checkin", formData);
+
+      const duration = ((performance.now() - start) / 1000).toFixed(2);
+
+      console.log(`✅ CHECK-IN API: ${duration} detik`);
+
+      return data;
+    } catch (error) {
+      const duration = ((performance.now() - start) / 1000).toFixed(2);
+
+      console.error(`❌ CHECK-IN API gagal setelah ${duration} detik`);
+
+      throw error;
+    }
   },
 
   checkOut: async (formData) => {
@@ -84,10 +94,7 @@ const attendanceService = {
   },
 
   updateEmployee: async (id, formData) => {
-    const { data } = await api.put(
-      `/auth/employees/${id}`,
-      formData
-    );
+    const { data } = await api.put(`/auth/employees/${id}`, formData);
     return data;
   },
   deactivateEmployee: async (id) => {
