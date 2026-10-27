@@ -32,10 +32,22 @@ rsync -a "$SOURCE/fe/" "$PROD/fe/" \
 
 echo "===== BUILD DOCKER IMAGES ====="
 cd "$PROD"
-docker compose build hris-backend hris-frontend
+
+if ! docker compose build hris-backend hris-frontend; then
+  echo "ERROR: Build gagal. Mengembalikan source sebelumnya."
+  rsync -a "$BACKUP/be/" "$PROD/be/"
+  rsync -a "$BACKUP/fe/" "$PROD/fe/"
+  exit 1
+fi
 
 echo "===== UPDATE CONTAINERS ====="
-docker compose up -d --no-deps hris-backend hris-frontend
+if ! docker compose up -d --no-deps hris-backend hris-frontend; then
+  echo "ERROR: Update container gagal. Memulihkan source."
+  rsync -a "$BACKUP/be/" "$PROD/be/"
+  rsync -a "$BACKUP/fe/" "$PROD/fe/"
+  echo "PERHATIAN: Container perlu diperiksa. Rollback image belum otomatis."
+  exit 1
+fi
 
 echo "===== DEPLOYMENT SELESAI ====="
 docker compose ps
