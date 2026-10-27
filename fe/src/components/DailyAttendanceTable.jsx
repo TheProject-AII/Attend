@@ -27,9 +27,10 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import AttendanceLocationMap from "./attendance/AttendanceLocationMap";
 
 // Set VITE_API_URL to the backend origin (or origin + /api) in Vercel.
-const configuredApi = (
-  import.meta.env.VITE_API_URL || "/api"
-).replace(/\/+$/, "");
+const configuredApi = (import.meta.env.VITE_API_URL || "/api").replace(
+  /\/+$/,
+  "",
+);
 
 const API_ROOT = configuredApi.endsWith("/api")
   ? configuredApi

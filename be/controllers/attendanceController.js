@@ -474,7 +474,6 @@ exports.checkIn = async (req, res) => {
     const insertStart = performance.now();
     const result = await pool.query(
       `
-
   WITH jakarta_clock AS (
     SELECT
       NOW() AT TIME ZONE 'Asia/Jakarta' AS jakarta_now
@@ -1059,7 +1058,6 @@ exports.getDailyAttendance = async (req, res) => {
     const queryDate = date || new Date().toISOString().slice(0, 10);
     const result = await pool.query(
       `
-
     SELECT
     u.id,
     a.id AS attendance_id,

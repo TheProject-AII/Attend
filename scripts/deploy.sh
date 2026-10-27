@@ -1,3 +1,4 @@
+
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
@@ -10,24 +11,39 @@ mkdir -p "$BACKUP"
 cd "$PROD"
 
 echo "===== SAVE CURRENT IMAGES ====="
-docker inspect hris_hris-backend_1 --format '{{.Image}}' > "$BACKUP/backend-image"
-docker inspect hris_hris-frontend_1 --format '{{.Image}}' > "$BACKUP/frontend-image"
+for service in hris-backend hris-frontend hris-face; do
+  id=$(docker compose -p "$PROJECT" ps -q "$service")
+  test -n "$id" || { echo "Container missing: $service"; exit 1; }
+  docker inspect "$id" --format '{{.Image}}' > "$BACKUP/$service-image"
+done
 
 echo "===== BACKUP SOURCE ====="
 rsync -a be/ "$BACKUP/be/" --exclude=node_modules --exclude=uploads --exclude='.env*'
 rsync -a fe/ "$BACKUP/fe/" --exclude=node_modules --exclude=dist --exclude='.env*'
+rsync -a face-service/ "$BACKUP/face-service/" \
+  --exclude='.venv' --exclude='__pycache__' --exclude='.env*'
 
 restore_source() {
-  rsync -a "$BACKUP/be/" "$PROD/be/"
-  rsync -a "$BACKUP/fe/" "$PROD/fe/"
+  rsync -a --delete "$BACKUP/be/" "$PROD/be/" \
+    --exclude=node_modules --exclude=uploads --exclude='.env*'
+  rsync -a --delete "$BACKUP/fe/" "$PROD/fe/" \
+    --exclude=node_modules --exclude=dist --exclude='.env*'
+  rsync -a --delete "$BACKUP/face-service/" "$PROD/face-service/" \
+    --exclude='.venv' --exclude='__pycache__' --exclude='.env*'
 }
 
 rollback() {
   echo "===== ROLLBACK ====="
   restore_source
-  docker tag "$(cat "$BACKUP/backend-image")" hris_hris-backend:latest
-  docker tag "$(cat "$BACKUP/frontend-image")" hris_hris-frontend:latest
-  docker compose -p "$PROJECT" up -d --no-deps hris-backend hris-frontend || true
+
+  for service in hris-backend hris-frontend hris-face; do
+    docker tag "$(cat "$BACKUP/$service-image")" \
+      "${PROJECT}-${service}:latest"
+  done
+
+  docker compose -p "$PROJECT" up -d --no-deps --force-recreate \
+    hris-backend hris-frontend hris-face || true
+
   echo "Rollback attempted. Verify application health."
 }
 
@@ -41,23 +57,32 @@ rsync -a "$SOURCE/fe/" "$PROD/fe/" \
   --exclude='.env*' --exclude=node_modules --exclude=dist \
   --exclude=android
 
+rsync -a "$SOURCE/face-service/" "$PROD/face-service/" \
+  --exclude='.env*' --exclude='.venv' \
+  --exclude='__pycache__' --exclude='.deepface'
+
 echo "===== BUILD ====="
-if ! docker compose -p "$PROJECT" build hris-backend hris-frontend; then
-  restore_source
+if ! docker compose -p "$PROJECT" build \
+  hris-backend hris-frontend hris-face; then
+  rollback
   exit 1
 fi
 
 echo "===== DEPLOY ====="
-if ! docker compose -p "$PROJECT" up -d --no-deps hris-backend hris-frontend; then
+if ! docker compose -p "$PROJECT" up -d --no-deps \
+  hris-backend hris-frontend hris-face; then
   rollback
   exit 1
 fi
 
 echo "===== HEALTH CHECK ====="
 healthy=false
-for i in $(seq 1 20); do
+
+for i in $(seq 1 40); do
   if docker compose -p "$PROJECT" exec -T hris-backend \
     node -e "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" \
+    && docker compose -p "$PROJECT" exec -T hris-face \
+    python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7860/openapi.json', timeout=5)" \
     && curl -fsS -o /dev/null https://hris.so-mak.com/; then
     healthy=true
     break
