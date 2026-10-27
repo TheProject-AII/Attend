@@ -10,8 +10,8 @@ mkdir -p "$BACKUP"
 cd "$PROD"
 
 echo "===== SAVE CURRENT IMAGES ====="
-docker image inspect hris_hris-backend:latest --format '{{.Id}}' > "$BACKUP/backend-image"
-docker image inspect hris_hris-frontend:latest --format '{{.Id}}' > "$BACKUP/frontend-image"
+docker inspect hris_hris-backend_1 --format '{{.Image}}' > "$BACKUP/backend-image"
+docker inspect hris_hris-frontend_1 --format '{{.Image}}' > "$BACKUP/frontend-image"
 
 echo "===== BACKUP SOURCE ====="
 rsync -a be/ "$BACKUP/be/" --exclude=node_modules --exclude=uploads --exclude='.env*'
@@ -27,7 +27,7 @@ rollback() {
   restore_source
   docker tag "$(cat "$BACKUP/backend-image")" hris_hris-backend:latest
   docker tag "$(cat "$BACKUP/frontend-image")" hris_hris-frontend:latest
-  docker compose -p "$PROJECT" up -d --no-deps --force-recreate hris-backend hris-frontend || true
+  docker compose -p "$PROJECT" up -d --no-deps hris-backend hris-frontend || true
   echo "Rollback attempted. Verify application health."
 }
 
