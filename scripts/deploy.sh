@@ -32,10 +32,10 @@ rsync -a "$SOURCE/fe/" "$PROD/fe/" \
 
 echo "===== BUILD DOCKER IMAGES ====="
 cd "$PROD"
-docker-compose build hris-backend hris-frontend
+docker compose build hris-backend hris-frontend
 
 echo "===== UPDATE CONTAINERS ====="
-docker-compose up -d --no-deps hris-backend hris-frontend
+docker compose up -d --no-deps hris-backend hris-frontend
 
 echo "===== DEPLOYMENT SELESAI ====="
-docker-compose ps
+docker compose ps
