@@ -1,9 +1,46 @@
 const fs = require("fs");
 const pool = require("../config/db");
 const haversine = require("../utils/haversine");
+const { verifyAttendanceFace } = require("../services/faceRecognitionService");
+const fsPromises = require("fs/promises");
 const {
-  verifyAttendanceFace,
-} = require("../services/faceRecognitionService");
+  processLateCompensation,
+} = require("../services/lateCompensationService");
+
+const {
+  uploadToStorage,
+  deleteFromStorage,
+  getPrivateFileUrl,
+} = require("../services/storageService");
+
+async function uploadAttendanceSelfie(file) {
+  if (!file?.path) {
+    throw new Error("File selfie tidak ditemukan.");
+  }
+
+  const buffer = await fsPromises.readFile(file.path);
+
+  return uploadToStorage(
+    {
+      buffer,
+      originalname: file.originalname || file.filename || "selfie.jpg",
+      mimetype: file.mimetype || "image/jpeg",
+    },
+    "attendance",
+  );
+}
+
+async function cleanupAttendanceSelfie(file) {
+  if (!file?.path) return;
+
+  try {
+    await fsPromises.unlink(file.path);
+  } catch (err) {
+    if (err.code !== "ENOENT") {
+      console.error("Gagal menghapus selfie sementara:", err);
+    }
+  }
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -31,7 +68,7 @@ exports.today = async (req, res) => {
           END AS working_hours
       FROM attendance
       WHERE user_id = $1
-      AND attendance_date = CURRENT_DATE
+      AND attendance_date = (now() AT TIME ZONE 'Asia/Jakarta')::date
       LIMIT 1
       `,
       [userId],
@@ -251,8 +288,21 @@ exports.chart = async (req, res) => {
 */
 
 exports.checkIn = async (req, res) => {
+  let uploadedPhotoKey = null;
+  let attendanceSaved = false;
+
   try {
     const userId = req.user.id;
+    const startedAt = performance.now();
+
+    const logDuration = (label) => {
+      console.log(
+        `[CHECK-IN] ${label}: ${(
+          (performance.now() - startedAt) /
+          1000
+        ).toFixed(2)} detik`,
+      );
+    };
 
     const {
       latitude,
@@ -261,42 +311,44 @@ exports.checkIn = async (req, res) => {
       notes = "",
     } = req.body;
 
-    if (!req.file) {
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+
+    if (!req.file?.path) {
       return res.status(400).json({
         success: false,
         message: "Foto selfie wajib diambil.",
       });
     }
 
-    if (!latitude || !longitude) {
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-
+    if (
+      latitude == null ||
+      longitude == null ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      lat < -90 ||
+      lat > 90 ||
+      lng < -180 ||
+      lng > 180
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Latitude dan Longitude wajib diisi.",
+        message: "Koordinat tidak valid.",
       });
     }
 
-    // Ambil lokasi kantor user
-
     const officeResult = await pool.query(
       `
-            SELECT o.*
-            FROM users u
-            JOIN office_locations o
-                ON u.office_location_id = o.id
-            WHERE u.id = $1
-            `,
+      SELECT o.*
+      FROM users u
+      JOIN office_locations o
+        ON u.office_location_id = o.id
+      WHERE u.id = $1
+      `,
       [userId],
     );
 
-    if (officeResult.rows.length === 0) {
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-
+    if (!officeResult.rows.length) {
       return res.status(400).json({
         success: false,
         message: "Lokasi kantor belum diatur.",
@@ -305,41 +357,17 @@ exports.checkIn = async (req, res) => {
 
     const office = officeResult.rows[0];
 
-    // Sudah check in hari ini?
-
-    const todayAttendance = await pool.query(
-      `
-            SELECT id
-            FROM attendance
-            WHERE user_id = $1
-            AND attendance_date = CURRENT_DATE
-            `,
-      [userId],
-    );
-
-    if (todayAttendance.rows.length > 0) {
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-
-      return res.status(400).json({
-        success: false,
-        message: "Anda sudah Check In hari ini.",
-      });
-    }
-
-    // Hitung jarak
-
     const distance = haversine(
-      Number(latitude),
-      Number(longitude),
+      lat,
+      lng,
       Number(office.latitude),
       Number(office.longitude),
     );
 
-    // Jenis absensi yang boleh di luar kantor
+    const normalizedType = String(attendance_type).toUpperCase();
 
-    const outsideAttendance = [
+    const allowedTypes = [
+      "OFFICE",
       "WFH",
       "CLIENT",
       "MEETING",
@@ -347,15 +375,14 @@ exports.checkIn = async (req, res) => {
       "OTHER",
     ];
 
-    const allowOutsideOffice = outsideAttendance.includes(attendance_type);
+    if (!allowedTypes.includes(normalizedType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Jenis absensi tidak valid.",
+      });
+    }
 
-    // Kalau OFFICE wajib dalam radius
-
-    if (distance > Number(office.radius) && !allowOutsideOffice) {
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-
+    if (normalizedType === "OFFICE" && distance > Number(office.radius)) {
       return res.status(400).json({
         success: false,
         message: "Anda berada di luar radius kantor.",
@@ -364,105 +391,189 @@ exports.checkIn = async (req, res) => {
       });
     }
 
-
-    const verification = await verifyAttendanceFace(
-      userId,
-      req.file.path
+    const existing = await pool.query(
+      `
+      SELECT id
+      FROM attendance
+      WHERE user_id = $1
+        AND attendance_date =
+          (NOW() AT TIME ZONE 'Asia/Jakarta')::date
+      LIMIT 1
+      `,
+      [userId],
     );
+    logDuration("Validasi database selesai");
 
-    if (!verification.matched) {
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+    if (existing.rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Anda sudah Check In hari ini.",
+      });
+    }
+    const faceStart = performance.now();
+
+    let verification;
+
+    try {
+      verification = await verifyAttendanceFace(userId, req.file.path);
+    } catch (error) {
+      const causeCode = error.cause?.code || error.code;
+
+      if (
+        causeCode === "ECONNREFUSED" ||
+        causeCode === "ENOTFOUND" ||
+        causeCode === "ETIMEDOUT" ||
+        causeCode === "UND_ERR_CONNECT_TIMEOUT"
+      ) {
+        console.error("FACE AI SERVICE UNAVAILABLE:", error.message);
+
+        return res.status(503).json({
+          success: false,
+          code: "FACE_AI_UNAVAILABLE",
+          message:
+            "Face Recognition AI belum berjalan. Silakan hubungi administrator.",
+        });
       }
 
+      throw error;
+    }
+
+    if (!verification.matched) {
       return res.status(403).json({
         success: false,
-        message:
-          "Wajah tidak sesuai dengan pas foto karyawan.",
+        code: "FACE_NOT_MATCHED",
+        message: "Wajah tidak sesuai dengan pas foto karyawan.",
       });
     }
 
-    const photoPath = req.file
-      ? `/uploads/attendance/${req.file.filename}`
-      : null;
-
-    const officeStart = "09:00:00";
-
-    const checkInTime = new Date();
-
-    const jamMasuk = new Date();
-
-    jamMasuk.setHours(9, 0, 0, 0);
-
-    const isLate = checkInTime > jamMasuk;
-
-    const lateMinutes = isLate
-      ? Math.floor((checkInTime - jamMasuk) / 60000)
-      : 0;
-
-    // Simpan attendance
-
-    await pool.query(
-      `
-            INSERT INTO attendance
-            (
-                user_id,
-                attendance_date,
-                check_in,
-                check_in_lat,
-                check_in_lng,
-                photo_path,
-                attendance_type,
-                notes,
-                status,
-                is_late,
-late_minutes
-            )
-            VALUES
-            (
-                $1,
-                CURRENT_DATE,
-                NOW(),
-                $2,
-                $3,
-                $4,
-                $5,
-                $6,
-                'Hadir',
-                $7,
-                $8
-            )
-            `,
-      [
-        userId,
-        latitude,
-        longitude,
-        photoPath,
-        attendance_type,
-        notes,
-        isLate,
-        lateMinutes,
-      ],
+    console.log(
+      `[CHECK-IN] Face Recognition: ${(
+        (performance.now() - faceStart) /
+        1000
+      ).toFixed(2)} detik`,
     );
 
+    if (!verification.matched) {
+      return res.status(403).json({
+        success: false,
+        message: "Wajah tidak sesuai dengan pas foto karyawan.",
+      });
+    }
+
+    const uploadStart = performance.now();
+
+    uploadedPhotoKey = await uploadAttendanceSelfie(req.file);
+
+    console.log(
+      `[CHECK-IN] Upload Neon Storage: ${(
+        (performance.now() - uploadStart) /
+        1000
+      ).toFixed(2)} detik`,
+    );
+
+    const insertStart = performance.now();
+    const result = await pool.query(
+      `
+
+  WITH jakarta_clock AS (
+    SELECT
+      NOW() AT TIME ZONE 'Asia/Jakarta' AS jakarta_now
+  )
+  INSERT INTO attendance (
+  user_id,
+  attendance_date,
+  check_in,
+  check_in_lat,
+  check_in_lng,
+  photo_path,
+  attendance_type,
+  notes,
+  status,
+  is_late,
+  late_minutes
+)
+SELECT
+  $1,
+  jakarta_now::date,
+  jakarta_now,
+  $2,
+  $3,
+  $4,
+  $5::text,
+  $6,
+  'Hadir',
+  CASE
+    WHEN $5::text = 'OFFICE'
+    THEN jakarta_now::time > TIME '08:00'
+    ELSE FALSE
+  END,
+  CASE
+    WHEN $5::text = 'OFFICE'
+    THEN GREATEST(
+      0,
+      CEIL(
+        EXTRACT(
+          EPOCH FROM (
+            jakarta_now::time - TIME '08:00'
+          )
+        ) / 60
+      )
+    )::integer
+    ELSE 0
+  END
+FROM jakarta_clock
+RETURNING
+  id,
+  attendance_date,
+  check_in,
+  is_late,
+  late_minutes
+  `,
+      [userId, lat, lng, uploadedPhotoKey, normalizedType, notes],
+    );
+
+    attendanceSaved = true;
+
+    console.log(
+      `[CHECK-IN] Simpan Attendance: ${(
+        (performance.now() - insertStart) /
+        1000
+      ).toFixed(2)} detik`,
+    );
+
+    logDuration("Total proses Check-In");
     return res.json({
       success: true,
       message: "Check In berhasil.",
       office: office.office_name,
       distance: Math.round(distance),
-      attendance_type,
+      attendance_type: normalizedType,
+      data: result.rows[0],
     });
   } catch (err) {
-    console.error(err);
+    console.error("CHECK IN ERROR:", err);
 
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    if (err.code === "23505") {
+      return res.status(409).json({
+        success: false,
+        message: "Anda sudah Check In hari ini.",
+      });
     }
 
     return res.status(500).json({
       success: false,
-      message: err.message,
+      message: "Check In gagal. Silakan coba kembali.",
     });
+  } finally {
+    if (uploadedPhotoKey && !attendanceSaved) {
+      try {
+        await deleteFromStorage(uploadedPhotoKey);
+      } catch (err) {
+        console.error("CHECK IN PHOTO CLEANUP:", err);
+      }
+    }
+
+    await cleanupAttendanceSelfie(req.file);
   }
 };
 
@@ -472,32 +583,24 @@ late_minutes
 |--------------------------------------------------------------------------
 */
 
-
 exports.checkOut = async (req, res) => {
   const userId = req.user.id;
   const selfiePath = req.file?.path;
 
-  // Hapus selfie sementara setelah proses selesai
-  const cleanupSelfie = async () => {
-    if (!selfiePath) return;
-
-    try {
-      await fs.unlink(selfiePath);
-    } catch (err) {
-      if (err.code !== "ENOENT") {
-        console.error("Gagal menghapus selfie:", err);
-      }
-    }
-  };
+  let uploadedPhotoKey = null;
+  let attendanceSaved = false;
+  let client = null;
+  let transactionStarted = false;
 
   try {
     const { latitude, longitude } = req.body;
 
-    // 1. Validasi koordinat
     const lat = Number(latitude);
     const lng = Number(longitude);
 
     if (
+      latitude == null ||
+      longitude == null ||
       !Number.isFinite(lat) ||
       !Number.isFinite(lng) ||
       lat < -90 ||
@@ -511,7 +614,6 @@ exports.checkOut = async (req, res) => {
       });
     }
 
-    // 2. Selfie wajib
     if (!selfiePath) {
       return res.status(400).json({
         success: false,
@@ -519,31 +621,29 @@ exports.checkOut = async (req, res) => {
       });
     }
 
-    // 3. Pastikan ada Check In aktif
-    const attendance = await pool.query(
+    const existing = await pool.query(
       `
       SELECT id
       FROM attendance
       WHERE user_id = $1
-        AND attendance_date = CURRENT_DATE
+        AND attendance_date =
+          (NOW() AT TIME ZONE 'Asia/Jakarta')::date
         AND check_out IS NULL
       LIMIT 1
       `,
-      [userId]
+      [userId],
     );
 
-    if (attendance.rows.length === 0) {
+    if (!existing.rows.length) {
       return res.status(400).json({
         success: false,
         message: "Anda belum Check In atau sudah Check Out.",
       });
     }
 
-    // 4. Verifikasi wajah dengan DeepFace
-    const verification = await verifyAttendanceFace(
-      userId,
-      selfiePath
-    );
+    // Face Recognition tetap dijalankan sebelum
+    // mengubah data absensi.
+    const verification = await verifyAttendanceFace(userId, selfiePath);
 
     console.log("CHECK OUT FACE RESULT:", {
       userId,
@@ -552,69 +652,106 @@ exports.checkOut = async (req, res) => {
       threshold: verification.threshold,
     });
 
-    // 5. Tolak jika wajah tidak cocok
     if (!verification.matched) {
       return res.status(403).json({
         success: false,
-        message:
-          "Wajah tidak sesuai dengan pas foto karyawan.",
+        message: "Wajah tidak sesuai dengan pas foto karyawan.",
       });
     }
 
-    // 6. Simpan Check Out setelah wajah cocok
-    const result = await pool.query(
+    // Upload foto setelah wajah terverifikasi.
+    uploadedPhotoKey = await uploadAttendanceSelfie(req.file);
+
+    client = await pool.connect();
+
+    await client.query("BEGIN");
+    transactionStarted = true;
+
+    // Satu karyawan hanya boleh memiliki satu
+    // proses perhitungan saldo pada saat bersamaan.
+    await client.query("SELECT pg_advisory_xact_lock($1, $2)", [17001, userId]);
+
+    const result = await client.query(
       `
       UPDATE attendance
       SET
-        check_out = NOW(),
+        check_out =
+          NOW() AT TIME ZONE 'Asia/Jakarta',
         check_out_lat = $1,
         check_out_lng = $2,
+        check_out_photo_path = $3,
         status = 'Pulang'
-      WHERE user_id = $3
-        AND attendance_date = CURRENT_DATE
+      WHERE user_id = $4
+        AND attendance_date =
+          (NOW() AT TIME ZONE 'Asia/Jakarta')::date
         AND check_out IS NULL
-      RETURNING *
+      RETURNING id
       `,
-      [lat, lng, userId]
+      [lat, lng, uploadedPhotoKey, userId],
     );
 
-    if (result.rows.length === 0) {
+    if (!result.rows.length) {
+      await client.query("ROLLBACK");
+      transactionStarted = false;
+
       return res.status(409).json({
         success: false,
-        message:
-          "Check Out sudah diproses atau data absensi berubah.",
+        message: "Check Out sudah diproses atau data absensi berubah.",
       });
     }
+
+    const attendanceId = result.rows[0].id;
+
+    // Proses kompensasi dalam transaksi yang sama.
+    const compensation = await processLateCompensation(client, attendanceId);
+
+    await client.query("COMMIT");
+    transactionStarted = false;
+    attendanceSaved = true;
 
     return res.json({
       success: true,
       message: "Check Out berhasil.",
+      attendanceId,
+      compensation,
     });
-
   } catch (err) {
+    if (client && transactionStarted) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rollbackError) {
+        console.error("CHECK OUT ROLLBACK ERROR:", rollbackError);
+      }
+    }
+
     console.error("CHECK OUT ERROR:", err);
 
-    const isFaceDetectionError =
-      /face|wajah|detect|deteksi|pencahayaan/i.test(
-        err.message || ""
-      );
+    const isFaceDetectionError = /face|wajah|detect|deteksi|pencahayaan/i.test(
+      err.message || "",
+    );
 
-    return res.status(
-      isFaceDetectionError ? 422 : 500
-    ).json({
+    return res.status(isFaceDetectionError ? 422 : 500).json({
       success: false,
       message: isFaceDetectionError
         ? "Tampilkan satu wajah yang jelas dan cukup terang."
         : "Check Out gagal. Silakan coba kembali.",
     });
-
   } finally {
-    // Selfie Check Out belum disimpan ke database.
-    // Hapus file sementara baik berhasil maupun gagal.
-    await cleanupSelfie();
+    if (client) {
+      client.release();
+    }
+
+    if (uploadedPhotoKey && !attendanceSaved) {
+      try {
+        await deleteFromStorage(uploadedPhotoKey);
+      } catch (cleanupError) {
+        console.error("CHECK OUT PHOTO CLEANUP:", cleanupError);
+      }
+    }
+
+    await cleanupAttendanceSelfie(req.file);
   }
 };
-
 
 exports.list = async (req, res) => {
   try {
@@ -922,15 +1059,12 @@ exports.getDailyAttendance = async (req, res) => {
     const queryDate = date || new Date().toISOString().slice(0, 10);
     const result = await pool.query(
       `
-            
-           SELECT
 
+    SELECT
     u.id,
-
+    a.id AS attendance_id,
     u.name,
-
     u.department,
-
     a.check_in,
 
     a.check_out,
@@ -994,6 +1128,101 @@ ORDER BY u.name;
     return res.status(500).json({
       success: false,
       message: err.message,
+    });
+  }
+};
+
+exports.getAttendancePhoto = async (req, res) => {
+  try {
+    const { id, type } = req.params;
+    const userId = req.user.id;
+    const role = String(req.user.role || "")
+      .trim()
+      .toUpperCase();
+
+    const allowedRoles = ["ADMIN", "HR", "ADMIN HR"];
+    const isAdmin = allowedRoles.includes(role);
+
+    // Validasi jenis foto
+    if (!["check-in", "check-out"].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: "Jenis foto tidak valid.",
+      });
+    }
+
+    // Ambil data absensi
+    const result = await pool.query(
+      `
+      SELECT
+        id,
+        user_id,
+        photo_path,
+        check_out_photo_path
+      FROM attendance
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Data absensi tidak ditemukan.",
+      });
+    }
+
+    const attendance = result.rows[0];
+
+    // Admin / HR boleh melihat foto karyawan.
+    // Karyawan biasa hanya boleh melihat fotonya sendiri.
+    const isOwner = String(attendance.user_id) === String(userId);
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki akses ke foto ini.",
+      });
+    }
+
+    // Tentukan foto masuk atau pulang
+    const photoKey =
+      type === "check-in"
+        ? attendance.photo_path
+        : attendance.check_out_photo_path;
+
+    if (!photoKey) {
+      return res.status(404).json({
+        success: false,
+        message: "Foto absensi belum tersedia.",
+      });
+    }
+
+    // Hanya terima file dari Neon Storage folder attendance
+    if (typeof photoKey !== "string" || !photoKey.startsWith("attendance/")) {
+      return res.status(404).json({
+        success: false,
+        message: "Foto lama belum tersedia di Neon Storage.",
+      });
+    }
+
+    // Buat URL privat, berlaku 5 menit
+    const url = await getPrivateFileUrl(photoKey);
+
+    return res.json({
+      success: true,
+      data: {
+        url,
+        expiresIn: 300,
+      },
+    });
+  } catch (err) {
+    console.error("GET ATTENDANCE PHOTO ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil foto absensi.",
     });
   }
 };

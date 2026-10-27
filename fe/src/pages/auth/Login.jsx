@@ -465,6 +465,7 @@ export default function Login() {
                         }}
                     >
                         © {new Date().getFullYear()} HRIS
+                        Version 1.0.0
                     </Typography>
                 </Box>
             </Box>

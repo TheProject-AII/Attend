@@ -5,7 +5,15 @@ exports.create = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const { leave_type, leave_category, start_date, end_date, reason } = req.body;
+    const {
+      leave_type,
+      leave_category,
+      start_date,
+      end_date,
+      start_time,
+      end_time,
+      reason,
+    } = req.body;
 
     if (!leave_type || !start_date || !end_date) {
       if (req.file && fs.existsSync(req.file.path)) {
@@ -16,6 +24,36 @@ exports.create = async (req, res) => {
         success: false,
         message: "Data belum lengkap.",
       });
+    }
+
+    if (leave_type === "IZIN_PULANG_AWAL") {
+      if (!start_time || !end_time) {
+        return res.status(400).json({
+          success: false,
+          message: "Jam mulai dan selesai izin wajib diisi.",
+        });
+      }
+
+      if (start_date !== end_date) {
+        return res.status(400).json({
+          success: false,
+          message: "Izin pulang awal hanya berlaku untuk satu hari.",
+        });
+      }
+
+      const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+      if (
+        !timePattern.test(start_time) ||
+        !timePattern.test(end_time) ||
+        start_time >= end_time ||
+        end_time > "17:00"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Rentang jam izin pulang awal tidak valid.",
+        });
+      }
     }
 
     const attachment = req.file ? req.file.path : null;
@@ -50,13 +88,14 @@ exports.create = async (req, res) => {
       `
 SELECT id
 FROM leave_requests
-WHERE
-user_id = $1
-AND status = 'PENDING_SUPERVISOR'
-AND (
-    start_date <= $3
-    AND end_date >= $2
-)
+WHERE user_id = $1
+  AND leave_type = 'IZIN_PULANG_AWAL'
+  AND status = 'APPROVED'
+  AND start_date = $2
+  AND end_date = $2
+  AND start_time <= $3::time
+  AND end_time >= $3::time
+LIMIT 1;
 `,
       [userId, start_date, end_date],
     );

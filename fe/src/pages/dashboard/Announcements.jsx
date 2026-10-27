@@ -357,7 +357,7 @@ export default function Announcements() {
                                 {item.image_url && (
                                     <Box
                                         component="img"
-                                        src={`http://localhost:3000${item.image_url}`}
+                                        src={/^https?:\/\//i.test(item.image_url) ? item.image_url : `${window.location.origin}${item.image_url.startsWith("/") ? "" : "/"}${item.image_url}`}
                                         alt={item.title}
                                         sx={{
                                             width: 120,
