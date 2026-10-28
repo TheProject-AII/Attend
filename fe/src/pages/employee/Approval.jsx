@@ -123,7 +123,7 @@ export default function Approval() {
         } catch (err) {
 
             console.error(
-                "Gagal mengambil data approval:",
+                "Failed to load approval requests:",
                 err
             );
 
@@ -153,7 +153,7 @@ export default function Approval() {
             } catch (err) {
 
                 console.error(
-                    "Gagal menandai notification sebagai dibaca:",
+                    "Failed to mark notifications as read:",
                     err
                 );
 
@@ -200,7 +200,7 @@ export default function Approval() {
         }
 
         return new Date(date).toLocaleDateString(
-            "id-ID",
+            "en-US",
             {
                 day: "2-digit",
                 month: "long",
@@ -231,7 +231,7 @@ export default function Approval() {
                 (1000 * 60 * 60 * 24)
             ) + 1;
 
-        return `${diff} Hari`;
+        return `${diff} days`;
 
     };
 
@@ -300,7 +300,7 @@ export default function Approval() {
                 <Typography
                     color="text.secondary"
                 >
-                    {summary.pending} Menunggu Persetujuan
+                    {summary.pending} Pending Approval
                 </Typography>
 
 
@@ -510,7 +510,7 @@ export default function Approval() {
                                         placeItems: "center"
                                     }}
                                 >
-                                    Tidak ada data
+                                    No data available
                                 </Typography>
 
                             ) : (
@@ -578,10 +578,17 @@ export default function Approval() {
                                                 >
 
                                                     <strong>
-                                                        Pengajuan :
+                                                        Request:
                                                     </strong>{" "}
 
-                                                    {item.leave_type}{" "}
+                                                    {({
+                                                        CUTI: "Leave",
+                                                        IZIN: "Permission",
+                                                        SAKIT: "Sick Leave",
+                                                        LEMBUR: "Overtime",
+                                                        BUSINESS_TRIP: "Business Travel",
+                                                        CLIENT: "Client Visit",
+                                                    })[item.leave_type] || item.leave_type}{" "}
 
                                                     {getDuration(
                                                         item.start_date,
@@ -599,7 +606,7 @@ export default function Approval() {
                                                 >
 
                                                     <strong>
-                                                        Tanggal :
+                                                        Date:
                                                     </strong>{" "}
 
                                                     {formatDate(
@@ -633,7 +640,7 @@ export default function Approval() {
                                                             >
 
                                                                 <strong>
-                                                                    Jam Masuk :
+                                                                    Check-in Time:
                                                                 </strong>{" "}
 
                                                                 {formatTime(
@@ -655,7 +662,7 @@ export default function Approval() {
                                                             >
 
                                                                 <strong>
-                                                                    Jam Pulang :
+                                                                    Check-out Time:
                                                                 </strong>{" "}
 
                                                                 {formatTime(

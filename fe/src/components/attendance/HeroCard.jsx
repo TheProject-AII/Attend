@@ -31,31 +31,31 @@ export default function HeroCard({
 
         // 1. Sudah check out
         if (status === "checked-out") {
-            return "✅ Sudah Absen Pulang";
+            return "✅ Checked Out";
         }
 
         // 2. Weekend (tidak bergantung GPS)
         if (day === 0 || day === 6) {
-            return "🎉 Selamat menikmati waktu istirahat di akhir pekan";
+            return "🎉 Enjoy your weekend";
         }
 
         // 3. Sedang bekerja
         if (status === "checked-in") {
-            return "🟢 Sedang Bekerja";
+            return "🟢 Currently Working";
         }
 
         // 4. GPS belum siap
         if (insideRadius === null) {
-            return "📍 Sedang mendapatkan lokasi...";
+            return "📍 Getting your location...";
         }
 
         // 5. Dalam area kantor
         if (insideRadius) {
-            return "🟢 Sudah siap untuk absen?";
+            return "🟢 Ready to check in?";
         }
 
         // 6. Di luar area
-        return "🔴 Kamu berada di luar area kantor";
+        return "🔴 You are outside the office area";
     };
 
     const formatTimeJam = (value) => {
@@ -70,7 +70,7 @@ export default function HeroCard({
             return "-";
         }
 
-        return date.toLocaleTimeString("id-ID", {
+        return date.toLocaleTimeString("en-US", {
             hour: "2-digit",
             minute: "2-digit",
             hour12: false,
@@ -84,7 +84,7 @@ export default function HeroCard({
 
         if (Number.isNaN(date.getTime())) return "-";
 
-        return new Intl.DateTimeFormat("id-ID", {
+        return new Intl.DateTimeFormat("en-US", {
             timeZone: "Asia/Jakarta",
             hour: "2-digit",
             minute: "2-digit",
@@ -115,8 +115,8 @@ export default function HeroCard({
                     <Tooltip
                         title={
                             gpsReady
-                                ? "Perbarui Lokasi"
-                                : "GPS belum aktif"
+                                ? "Refresh Location"
+                                : "GPS is not active"
                         }
                     >
                         <IconButton
@@ -175,7 +175,7 @@ export default function HeroCard({
                     opacity: .9,
                 }}
             >
-                {time.toLocaleDateString("id-ID", {
+                {time.toLocaleDateString("en-US", {
                     weekday: "long",
                     day: "numeric",
                     month: "long",
@@ -349,7 +349,7 @@ export default function HeroCard({
                             variant="body2"
                             sx={{ mt: .5 }}
                         >
-                            Total Kerja
+                            Total Work Time
                         </Typography>
 
                         <Typography
@@ -391,14 +391,14 @@ export default function HeroCard({
 
                 {
                     loading
-                        ? "Memproses..."
+                        ? "Processing..."
                         : status === "checked-in"
-                            ? "Absen Pulang"
+                            ? "Check Out"
                             : status === "checked-out"
-                                ? "Sudah Check Out"
+                                ? "Checked Out"
                                 : insideRadius
-                                    ? "Absen Masuk"
-                                    : "Absen Luar Kantor"
+                                    ? "Check In"
+                                    : "Off-site Check-in"
                 }
 
             </Button>

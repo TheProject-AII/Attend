@@ -44,7 +44,7 @@ export default function SummaryFilter({
                     alignItems="center"
                 >
 
-                    {/* Bulan */}
+                    {/* Month */}
 
                     <Grid size={{ xs: 12, md: 2 }}>
 
@@ -52,7 +52,7 @@ export default function SummaryFilter({
                             fullWidth
                             select
                             size="small"
-                            label="Bulan"
+                            label="Month"
                             value={filters.month}
                             onChange={(e) =>
                                 setFilters(prev => ({
@@ -63,18 +63,18 @@ export default function SummaryFilter({
                         >
 
                             {[
-                                "Januari",
-                                "Februari",
-                                "Maret",
+                                "January",
+                                "February",
+                                "March",
                                 "April",
-                                "Mei",
-                                "Juni",
-                                "Juli",
-                                "Agustus",
+                                "May",
+                                "June",
+                                "July",
+                                "August",
                                 "September",
-                                "Oktober",
+                                "October",
                                 "November",
-                                "Desember"
+                                "December"
                             ].map((item, index) => (
 
                                 <MenuItem
@@ -90,7 +90,7 @@ export default function SummaryFilter({
 
                     </Grid>
 
-                    {/* Tahun */}
+                    {/* Year */}
 
                     <Grid size={{ xs: 12, md: 2 }}>
 
@@ -98,7 +98,7 @@ export default function SummaryFilter({
                             fullWidth
                             select
                             size="small"
-                            label="Tahun"
+                            label="Year"
                             value={filters.year}
                             onChange={(e) =>
                                 setFilters(prev => ({
@@ -123,7 +123,7 @@ export default function SummaryFilter({
 
                     </Grid>
 
-                    {/* Divisi */}
+                    {/* Department */}
 
                     <Grid size={{ xs: 12, md: 2 }}>
 
@@ -131,7 +131,7 @@ export default function SummaryFilter({
                             fullWidth
                             select
                             size="small"
-                            label="Divisi"
+                            label="Department"
                             value={filters.department}
                             onChange={(e) =>
                                 setFilters(prev => ({
@@ -142,7 +142,7 @@ export default function SummaryFilter({
                         >
 
                             <MenuItem value="">
-                                Semua Divisi
+                                All Departments
                             </MenuItem>
 
                             {departments.map((item) => (
@@ -160,14 +160,14 @@ export default function SummaryFilter({
 
                     </Grid>
 
-                    {/* Nama */}
+                    {/* Employee */}
 
                     <Grid size={{ xs: 12, md: 3 }}>
 
                         <TextField
                             fullWidth
                             size="small"
-                            label="Cari Karyawan"
+                            label="Search Employees"
                             value={filters.search}
                             onChange={(e) =>
                                 setFilters(prev => ({
@@ -221,7 +221,7 @@ export default function SummaryFilter({
                             startIcon={<SearchIcon />}
                             onClick={() => onSearch(filters)}
                         >
-                            Cari
+                            Search
                         </Button>
 
                     </Grid>

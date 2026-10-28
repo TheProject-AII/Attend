@@ -42,20 +42,20 @@ export default function AttendanceChart({ data,
                         justifyContent: "space-between",
                     }}
                 >
-                    {/* JUDUL */}
+                    {/* TITLE */}
                     <Box>
                         <Typography
                             variant="h6"
                             fontWeight={700}
                         >
-                            Kehadiran
+                            Attendance
                         </Typography>
 
                         <Typography
                             variant="body2"
                             color="text.secondary"
                         >
-                            Jumlah karyawan yang melakukan absensi.
+                            Number of employees who checked in.
                         </Typography>
                     </Box>
 
@@ -74,15 +74,15 @@ export default function AttendanceChart({ data,
                             }
                         >
                             <MenuItem value={7}>
-                                7 Hari
+                                7 Days
                             </MenuItem>
 
                             <MenuItem value={14}>
-                                14 Hari
+                                14 Days
                             </MenuItem>
 
                             <MenuItem value={30}>
-                                30 Hari
+                                30 Days
                             </MenuItem>
                         </Select>
                     </FormControl>
@@ -147,8 +147,8 @@ export default function AttendanceChart({ data,
                             />
 
                             <Tooltip
-                                formatter={(value) => [`${value} Karyawan`, "Hadir"]}
-                                labelFormatter={(label) => `Hari ${label}`}
+                                formatter={(value) => [`${value} employees`, "Present"]}
+                                labelFormatter={(label) => `Day ${label}`}
                             />
 
                             <Area

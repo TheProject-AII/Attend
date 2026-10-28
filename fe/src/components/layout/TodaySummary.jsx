@@ -18,7 +18,7 @@ import PersonOffIcon from "@mui/icons-material/PersonOff";
 import WorkHistoryIcon from "@mui/icons-material/WorkHistory";
 export default function TodaySummary({ data }) {
 
-    const today = new Date().toLocaleDateString("id-ID", {
+    const today = new Date().toLocaleDateString("en-US", {
         day: "numeric",
         month: "long",
         year: "numeric"
@@ -38,7 +38,7 @@ export default function TodaySummary({ data }) {
                     fontWeight={700}
                     gutterBottom
                 >
-                    Ringkasan Hari Ini
+                    Today's Summary
                 </Typography>
 
                 <List disablePadding>
@@ -49,7 +49,7 @@ export default function TodaySummary({ data }) {
                         </ListItemIcon>
 
                         <ListItemText
-                            primary="Tanggal"
+                            primary="Date"
                             secondary={today}
                         />
                     </ListItem>
@@ -63,7 +63,7 @@ export default function TodaySummary({ data }) {
                         </ListItemIcon>
 
                         <ListItemText
-                            primary="Jam Kerja"
+                            primary="Working Hours"
                             secondary="09:00 - 18:00 WIB"
                         />
                     </ListItem>
@@ -74,8 +74,8 @@ export default function TodaySummary({ data }) {
                         </ListItemIcon>
 
                         <ListItemText
-                            primary="Hadir"
-                            secondary={`${data.present} Orang`}
+                            primary="Present"
+                            secondary={`${data.present} employees`}
                         />
                     </ListItem>
                     <Divider />
@@ -85,8 +85,8 @@ export default function TodaySummary({ data }) {
                         </ListItemIcon>
 
                         <ListItemText
-                            primary="Belum Check In"
-                            secondary={`${data.notCheckIn} Orang`}
+                            primary="Not Checked In"
+                            secondary={`${data.notCheckIn} employees`}
                         />
                     </ListItem>
 
@@ -98,8 +98,8 @@ export default function TodaySummary({ data }) {
                         </ListItemIcon>
 
                         <ListItemText
-                            primary="Cuti & Izin"
-                            secondary={`${data.leave} Orang`}
+                            primary="Leave & Permission"
+                            secondary={`${data.leave} employees`}
                         />
                     </ListItem>
 

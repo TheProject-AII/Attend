@@ -26,7 +26,7 @@ export default function BottomNav() {
   ].includes(role);
   const menus = [
     {
-      label: "Absen",
+      label: "Attendance",
       value: "/employee/attendance",
       icon: <AccessTimeRoundedIcon />,
     },
@@ -51,7 +51,7 @@ export default function BottomNav() {
 
   }
   menus.push({
-    label: "Profil",
+    label: "Profile",
     value: "/employee/profile",
     icon: <PersonRoundedIcon />,
   });

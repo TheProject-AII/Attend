@@ -56,7 +56,7 @@ export default function AttendanceApprovalDetail() {
 
         if (!date) return "-";
 
-        return new Date(date).toLocaleDateString("id-ID", {
+        return new Date(date).toLocaleDateString("en-US", {
             day: "2-digit",
             month: "long",
             year: "numeric"
@@ -68,7 +68,7 @@ export default function AttendanceApprovalDetail() {
 
         if (!date) return "-";
 
-        return new Date(date).toLocaleTimeString("id-ID", {
+        return new Date(date).toLocaleTimeString("en-US", {
             hour: "2-digit",
             minute: "2-digit"
         });
@@ -103,7 +103,7 @@ export default function AttendanceApprovalDetail() {
     const handleReject = async () => {
 
         if (!note.trim()) {
-            alert("Alasan penolakan wajib diisi.");
+            alert("A rejection reason is required.");
             return;
         }
 
@@ -150,7 +150,7 @@ export default function AttendanceApprovalDetail() {
 
         return (
             <Alert severity="error">
-                Data pengajuan tidak ditemukan.
+                Request not found.
             </Alert>
         );
 
@@ -170,18 +170,18 @@ export default function AttendanceApprovalDetail() {
                 fontWeight={700}
                 mb={1}
             >
-                Perubahan Absensi
+                Attendance Change Request
             </Typography>
 
             <Typography
                 color="text.secondary"
                 mb={3}
             >
-                Review pengajuan perubahan jam absensi karyawan.
+                Review the employee's request to change attendance times.
             </Typography>
 
 
-            {/* KARYAWAN */}
+            {/* EMPLOYEE */}
 
             <Card
                 elevation={0}
@@ -198,13 +198,13 @@ export default function AttendanceApprovalDetail() {
                         fontWeight={700}
                         mb={2}
                     >
-                        Informasi Karyawan
+                        Employee Information
                     </Typography>
 
                     <Stack spacing={1}>
 
                         <Typography>
-                            <strong>Nama:</strong>{" "}
+                            <strong>Name:</strong>{" "}
                             {data.name}
                         </Typography>
 
@@ -214,12 +214,12 @@ export default function AttendanceApprovalDetail() {
                         </Typography>
 
                         <Typography>
-                            <strong>Departemen:</strong>{" "}
+                            <strong>Department:</strong>{" "}
                             {data.department || "-"}
                         </Typography>
 
                         <Typography>
-                            <strong>Tanggal:</strong>{" "}
+                            <strong>Date:</strong>{" "}
                             {formatDate(data.attendance_date)}
                         </Typography>
 
@@ -230,7 +230,7 @@ export default function AttendanceApprovalDetail() {
             </Card>
 
 
-            {/* PERUBAHAN JAM */}
+            {/* TIME CHANGES */}
 
             <Card
                 elevation={0}
@@ -247,7 +247,7 @@ export default function AttendanceApprovalDetail() {
                         fontWeight={700}
                         mb={2}
                     >
-                        Perubahan Jam Absensi
+                        Attendance Time Changes
                     </Typography>
 
                     <Stack spacing={2}>
@@ -258,7 +258,7 @@ export default function AttendanceApprovalDetail() {
                                 color="text.secondary"
                                 fontSize={14}
                             >
-                                Jam Masuk
+                                Check-in Time
                             </Typography>
 
                             <Typography
@@ -280,7 +280,7 @@ export default function AttendanceApprovalDetail() {
                                 color="text.secondary"
                                 fontSize={14}
                             >
-                                Jam Pulang
+                                Check-out Time
                             </Typography>
 
                             <Typography
@@ -301,7 +301,7 @@ export default function AttendanceApprovalDetail() {
             </Card>
 
 
-            {/* ALASAN */}
+            {/* REASON */}
 
             <Card
                 elevation={0}
@@ -318,7 +318,7 @@ export default function AttendanceApprovalDetail() {
                         fontWeight={700}
                         mb={1}
                     >
-                        Alasan Perubahan
+                        Reason for Change
                     </Typography>
 
                     <Typography color="text.secondary">
@@ -330,7 +330,7 @@ export default function AttendanceApprovalDetail() {
             </Card>
 
 
-            {/* NOTE ATASAN */}
+            {/* SUPERVISOR NOTE */}
 
             {data.status === "PENDING" && (
 
@@ -349,14 +349,14 @@ export default function AttendanceApprovalDetail() {
                             fontWeight={700}
                             mb={1}
                         >
-                            Catatan Atasan
+                            Supervisor Note
                         </Typography>
 
                         <TextField
                             fullWidth
                             multiline
                             minRows={3}
-                            placeholder="Tambahkan catatan..."
+                            placeholder="Add a note..."
                             value={note}
                             onChange={(e) =>
                                 setNote(e.target.value)
@@ -370,7 +370,7 @@ export default function AttendanceApprovalDetail() {
             )}
 
 
-            {/* BUTTON */}
+            {/* ACTIONS */}
 
             {data.status === "PENDING" && (
 
@@ -388,7 +388,7 @@ export default function AttendanceApprovalDetail() {
                     >
                         {processing
                             ? <CircularProgress size={20} />
-                            : "Tolak"}
+                            : "Reject"}
                     </Button>
 
                     <Button
@@ -399,7 +399,7 @@ export default function AttendanceApprovalDetail() {
                     >
                         {processing
                             ? <CircularProgress size={20} />
-                            : "Setujui"}
+                            : "Approve"}
                     </Button>
 
                 </Stack>

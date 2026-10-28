@@ -33,10 +33,10 @@ const formatMinutes = (value) => {
   const hours = Math.floor(total / 60);
   const minutes = total % 60;
 
-  if (!hours) return `${minutes} menit`;
-  if (!minutes) return `${hours} jam`;
+  if (!hours) return `${minutes} min`;
+  if (!minutes) return `${hours} hr`;
 
-  return `${hours} jam ${minutes} menit`;
+  return `${hours} hr ${minutes} min`;
 };
 
 const formatDate = (value) => {
@@ -75,7 +75,7 @@ async function apiGet(path, signal) {
   const result = await response.json().catch(() => ({}));
 
   if (!response.ok || result.success === false) {
-    throw new Error(result.message || `Request gagal (${response.status})`);
+    throw new Error(result.message || `Request failed (${response.status})`);
   }
 
   return result;
@@ -123,10 +123,10 @@ function HistoryCard({ item }) {
   const hasDebt = balance > 0;
 
   const statusLabel = hasDebt
-    ? "Ada Utang"
+    ? "Outstanding"
     : late > 0 || paid > 0
-      ? "Lunas"
-      : "Tepat Waktu";
+      ? "Paid in Full"
+      : "On Time";
 
   return (
     <Paper
@@ -140,7 +140,7 @@ function HistoryCard({ item }) {
       }}
     >
       <Stack spacing={1.5}>
-        {/* TANGGAL & STATUS */}
+        {/* DATE & STATUS */}
         <Stack
           direction="row"
           alignItems="center"
@@ -181,7 +181,7 @@ function HistoryCard({ item }) {
           />
         </Stack>
 
-        {/* JAM MASUK DAN PULANG */}
+        {/* CHECK-IN AND CHECK-OUT TIMES */}
         <Stack
           direction="row"
           alignItems="center"
@@ -220,7 +220,7 @@ function HistoryCard({ item }) {
         >
           <Box>
             <Typography fontSize={10} color="text.secondary" mb={0.5}>
-              Terlambat
+              Late
             </Typography>
 
             <Typography fontSize={13} fontWeight={700}>
@@ -230,7 +230,7 @@ function HistoryCard({ item }) {
 
           <Box>
             <Typography fontSize={10} color="text.secondary" mb={0.5}>
-              Diganti
+              Compensated
             </Typography>
 
             <Typography fontSize={13} fontWeight={700} color="success.main">
@@ -240,7 +240,7 @@ function HistoryCard({ item }) {
 
           <Box>
             <Typography fontSize={10} color="text.secondary">
-              Saldo Akhir
+              Closing Balance
             </Typography>
 
             <Typography
@@ -338,11 +338,11 @@ export default function MyLateCompensation() {
       <Stack spacing={2.5}>
         <Box>
           <Typography fontSize={21} fontWeight={800} color="#1E293B">
-            Kompensasi Waktu
+            Time Compensation
           </Typography>
 
           <Typography fontSize={12} color="text.secondary" mt={0.5}>
-            Pantau keterlambatan dan penggantian waktu kerja.
+            Track late arrivals and make-up work time.
           </Typography>
         </Box>
 
@@ -383,7 +383,7 @@ export default function MyLateCompensation() {
                   <Divider />
 
                   <Stack direction="row" justifyContent="space-between">
-                    <Typography fontSize={12}>Progress kompensasi</Typography>
+                    <Typography fontSize={12}>Compensation Progress</Typography>
 
                     <Typography fontSize={12} fontWeight={800}>
                       {progress}%
@@ -406,12 +406,12 @@ export default function MyLateCompensation() {
 
                   <Typography fontSize={12} color="text.secondary">
                     {totalLate === 0
-                      ? "Belum ada keterlambatan tercatat."
+                      ? "No late arrivals have been recorded."
                       : outstanding === 0
-                        ? "Semua keterlambatan telah diganti."
+                        ? "All late time has been made up."
                         : `${formatMinutes(totalPaid)} dari ${formatMinutes(
                             totalLate,
-                          )} telah diganti.`}
+                          )} has been made up.`}
                   </Typography>
                 </Stack>
               </CardContent>
@@ -425,14 +425,14 @@ export default function MyLateCompensation() {
               }}
             >
               <MiniStat
-                label="Total Terlambat"
+                label="Total Late Time"
                 value={totalLate}
                 icon={<AccessTimeRoundedIcon />}
                 color="#EA580C"
               />
 
               <MiniStat
-                label="Sudah Diganti"
+                label="Time Compensated"
                 value={totalPaid}
                 icon={<CheckCircleRoundedIcon />}
                 color="#16A34A"
@@ -450,7 +450,7 @@ export default function MyLateCompensation() {
                   <HistoryRoundedIcon sx={{ color: "#16A34A" }} />
 
                   <Typography fontSize={16} fontWeight={800}>
-                    Riwayat Kompensasi
+                    Compensation History
                   </Typography>
                 </Stack>
 
@@ -486,7 +486,7 @@ export default function MyLateCompensation() {
                   />
 
                   <Typography fontSize={13} color="text.secondary">
-                    Belum ada riwayat kompensasi.
+                    No compensation history yet.
                   </Typography>
                 </Paper>
               ) : (

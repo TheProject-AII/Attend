@@ -4,9 +4,8 @@ const uploadAttendance = require("../middleware/uploadAttendance");
 const authMiddleware = require("../middleware/authMiddleware");
 const adminMiddleware = require("../middleware/adminMiddleware");
 const attendanceController = require("../controllers/attendanceController");
-const employeeFileController = require(
-  "../controllers/employeeFileController"
-);
+const employeeFileController = require("../controllers/employeeFileController");
+const faceEnrollmentController = require("../controllers/faceEnrollmentController");
 
 router.get("/today", authMiddleware, attendanceController.today);
 router.get("/history", authMiddleware, attendanceController.history);
@@ -54,6 +53,13 @@ router.post(
 );
 
 router.post(
+  "/face-enrollment",
+  authMiddleware,
+  uploadAttendance.single("photo"),
+  faceEnrollmentController.enroll,
+);
+
+router.post(
   "/edit-request",
   authMiddleware,
   attendanceController.createEditRequest,
@@ -76,12 +82,13 @@ router.get(
 router.get(
   "/employees/:id/files/:field",
   authMiddleware,
-  employeeFileController.getEmployeeFile
+  employeeFileController.getEmployeeFile,
 );
 
 router.get(
   "/:id/photo/:type",
   authMiddleware,
-  attendanceController.getAttendancePhoto
+  attendanceController.getAttendancePhoto,
 );
+
 module.exports = router;

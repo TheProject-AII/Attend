@@ -78,7 +78,7 @@ export default function AttendanceDialog({
                                 fontWeight: 600
                             }}
                         >
-                            Jenis Absensi
+                            Attendance Type
                         </Typography>
 
                         <FormControl fullWidth size="small">
@@ -98,10 +98,10 @@ export default function AttendanceDialog({
                                 }}
                             >
                                 <MenuItem value="WFH">Work From Home</MenuItem>
-                                <MenuItem value="CLIENT">Kunjungan Client</MenuItem>
+                                <MenuItem value="CLIENT">Client Visit</MenuItem>
                                 <MenuItem value="MEETING">Meeting</MenuItem>
-                                <MenuItem value="BUSINESS_TRIP">Perjalanan Dinas</MenuItem>
-                                <MenuItem value="OTHER">Lainnya</MenuItem>
+                                <MenuItem value="BUSINESS_TRIP">Business Trip</MenuItem>
+                                <MenuItem value="OTHER">Other</MenuItem>
                             </Select>
 
                             {attendanceType === "OTHER" && (
@@ -110,8 +110,8 @@ export default function AttendanceDialog({
                                     fullWidth
                                     multiline
                                     rows={3}
-                                    label="Keterangan"
-                                    placeholder="Masukkan alasan absensi..."
+                                    label="Details"
+                                    placeholder="Enter an attendance reason..."
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     sx={{ mt: 2 }}
@@ -135,7 +135,7 @@ export default function AttendanceDialog({
                     onClick={onClose}
                     disabled={loading}
                 >
-                    Batal
+                    Cancel
                 </Button>
 
 
@@ -143,7 +143,7 @@ export default function AttendanceDialog({
                     variant="contained"
                     disabled={loading}
                     onClick={async () => {
-                        // Check In dan Check Out wajib mengambil selfie
+                        // Check-in and check-out require a selfie.
                         const image = await cameraRef.current?.capture();
 
                         if (!image) return;
@@ -152,7 +152,7 @@ export default function AttendanceDialog({
                     }}
                 >
                     {loading
-                        ? "Memproses..."
+                        ? "Processing..."
                         : status === "checked-in"
                             ? "Konfirmasi Check Out"
                             : "Konfirmasi Check In"}

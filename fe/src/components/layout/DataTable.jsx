@@ -33,7 +33,7 @@ export default function AttendanceTable({ data }) {
                     fontWeight={700}
                     mb={2}
                 >
-                    Riwayat Absensi
+                    Attendance History
                 </Typography>
 
                 <TableContainer component={Paper} elevation={0}>
@@ -47,9 +47,9 @@ export default function AttendanceTable({ data }) {
                                     bgcolor: "#F8FAFC",
                                 }}
                             >
-                                <TableCell><strong>Nama</strong></TableCell>
+                                <TableCell><strong>Name</strong></TableCell>
 
-                                <TableCell><strong>Divisi</strong></TableCell>
+                                <TableCell><strong>Department</strong></TableCell>
 
                                 <TableCell><strong>Check In</strong></TableCell>
 
@@ -114,7 +114,15 @@ export default function AttendanceTable({ data }) {
 
                                         <Chip
                                             size="small"
-                                            label={item.status}
+                                            label={
+                                                ({
+                                                    Hadir: "Present",
+                                                    Terlambat: "Late",
+                                                    Pulang: "Checked Out",
+                                                    "Belum Check In": "Not Checked In",
+                                                    "Belum Pulang": "Not Checked Out",
+                                                })[item.status] || item.status
+                                            }
                                             sx={{
                                                 minWidth: 95,
                                                 fontWeight: 600,

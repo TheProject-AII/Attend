@@ -112,7 +112,7 @@ export default function Announcements() {
 
         if (!form.title.trim()) {
             alert(
-                "Judul pengumuman wajib diisi"
+                "Announcement title is required."
             );
             return;
         }
@@ -179,7 +179,7 @@ export default function Announcements() {
 
             alert(
                 err.response?.data?.message ||
-                "Gagal membuat pengumuman"
+                "Failed to create announcement."
             );
 
         } finally {
@@ -239,7 +239,7 @@ export default function Announcements() {
     const formatDate = (date) => {
         if (!date) return "-";
 
-        // Ambil bagian YYYY-MM-DD saja
+        // Use the YYYY-MM-DD portion only.
         const cleanDate = date.substring(0, 10);
 
         const [year, month, day] = cleanDate.split("-");
@@ -273,7 +273,7 @@ export default function Announcements() {
                     startIcon={<AddIcon />}
                     onClick={handleOpen}
                 >
-                    Tambah Pengumuman
+                    Add Announcement
                 </Button>
 
             </Stack>
@@ -289,7 +289,7 @@ export default function Announcements() {
                         <Typography
                             color="text.secondary"
                         >
-                            Memuat pengumuman...
+                            Loading announcements...
                         </Typography>
                     </CardContent>
 
@@ -310,7 +310,7 @@ export default function Announcements() {
                             <Typography
                                 fontWeight={600}
                             >
-                                Belum ada pengumuman
+                                No announcements yet
                             </Typography>
 
                             <Typography
@@ -318,9 +318,8 @@ export default function Announcements() {
                                 color="text.secondary"
                                 sx={{ mt: 0.5 }}
                             >
-                                Tambahkan pengumuman
-                                untuk ditampilkan pada
-                                aplikasi karyawan.
+                                Add an announcement to display it
+                                in the employee app.
                             </Typography>
                         </Box>
 
@@ -397,8 +396,8 @@ export default function Announcements() {
                                             <Chip
                                                 label={
                                                     item.is_active
-                                                        ? "Aktif"
-                                                        : "Nonaktif"
+                                                        ? "Active"
+                                                        : "Inactive"
                                                 }
                                                 size="small"
                                                 color={
@@ -426,8 +425,8 @@ export default function Announcements() {
                                             }}
                                         >
                                             {item.is_active
-                                                ? "Nonaktifkan"
-                                                : "Aktifkan"}
+                                                ? "Deactivate"
+                                                : "Activate"}
                                         </Button>
                                     </Stack>
 
@@ -450,7 +449,7 @@ export default function Announcements() {
                                             mb: 0.5,
                                         }}
                                     >
-                                        Periode: {formatDate(item.start_date)} -{" "}
+                                        Period: {formatDate(item.start_date)} -{" "}
                                         {formatDate(item.end_date)}
                                     </Typography>
 
@@ -490,7 +489,7 @@ export default function Announcements() {
             )}
 
 
-            {/* MODAL TAMBAH */}
+            {/* ADD ANNOUNCEMENT DIALOG */}
 
             <Dialog
                 open={open}
@@ -500,7 +499,7 @@ export default function Announcements() {
             >
 
                 <DialogTitle>
-                    Tambah Pengumuman
+                    Add Announcement
                 </DialogTitle>
 
                 <DialogContent dividers>
@@ -515,7 +514,7 @@ export default function Announcements() {
                             <TextField
                                 fullWidth
                                 required
-                                label="Judul Pengumuman"
+                                label="Announcement Title"
                                 name="title"
                                 value={form.title}
                                 onChange={handleChange}
@@ -527,7 +526,7 @@ export default function Announcements() {
                                 fullWidth
                                 multiline
                                 minRows={3}
-                                label="Deskripsi"
+                                label="Description"
                                 name="description"
                                 value={form.description}
                                 onChange={handleChange}
@@ -540,14 +539,14 @@ export default function Announcements() {
                                 variant="subtitle2"
                                 sx={{ mb: 1 }}
                             >
-                                Banner Pengumuman
+                                Announcement Banner
                             </Typography>
 
                             <Button
                                 variant="outlined"
                                 component="label"
                             >
-                                Pilih Gambar
+                                Choose Image
 
                                 <input
                                     hidden
@@ -590,12 +589,12 @@ export default function Announcements() {
                         <Grid size={{ xs: 12 }}>
                             <TextField
                                 fullWidth
-                                label="URL Berita / Link Tujuan"
+                                label="News URL / Destination Link"
                                 name="url"
                                 value={form.url}
                                 onChange={handleChange}
                                 placeholder="https://..."
-                                helperText="Opsional. Contoh: link berita, website perusahaan, Google Drive, atau halaman informasi lainnya."
+                                helperText="Optional. For example, a news article, company website, Google Drive, or another information page."
                             />
                         </Grid>
 
@@ -608,7 +607,7 @@ export default function Announcements() {
                             <TextField
                                 fullWidth
                                 type="date"
-                                label="Tanggal Mulai"
+                                label="Start Date"
                                 name="start_date"
                                 value={
                                     form.start_date
@@ -633,7 +632,7 @@ export default function Announcements() {
                             <TextField
                                 fullWidth
                                 type="date"
-                                label="Tanggal Selesai"
+                                label="End Date"
                                 name="end_date"
                                 value={
                                     form.end_date
@@ -670,8 +669,8 @@ export default function Announcements() {
                                 }
                                 label={
                                     form.is_active
-                                        ? "Pengumuman Aktif"
-                                        : "Pengumuman Nonaktif"
+                                        ? "Announcement Active"
+                                        : "Announcement Inactive"
                                 }
                             />
                         </Grid>
@@ -686,7 +685,7 @@ export default function Announcements() {
                         onClick={handleClose}
                         disabled={saving}
                     >
-                        Batal
+                        Cancel
                     </Button>
 
                     <Button
@@ -695,8 +694,8 @@ export default function Announcements() {
                         disabled={saving}
                     >
                         {saving
-                            ? "Menyimpan..."
-                            : "Simpan Pengumuman"}
+                            ? "Saving..."
+                            : "Save Announcement"}
                     </Button>
 
                 </DialogActions>

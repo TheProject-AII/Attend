@@ -20,7 +20,7 @@ const attendanceService = {
     } catch (error) {
       const duration = ((performance.now() - start) / 1000).toFixed(2);
 
-      console.error(`❌ CHECK-IN API gagal setelah ${duration} detik`);
+      console.error(`❌ CHECK-IN API failed after ${duration} seconds`);
 
       throw error;
     }

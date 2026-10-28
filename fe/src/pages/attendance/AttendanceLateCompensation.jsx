@@ -63,7 +63,7 @@ async function apiGet(path, signal) {
   const json = await response.json().catch(() => ({}));
 
   if (!response.ok || json.success === false) {
-    throw new Error(json.message || `Request gagal (${response.status})`);
+    throw new Error(json.message || `Request failed (${response.status})`);
   }
 
   return json;
@@ -74,10 +74,10 @@ function formatMinutes(value) {
   const hours = Math.floor(total / 60);
   const minutes = total % 60;
 
-  if (!hours) return `${minutes} mnt`;
-  if (!minutes) return `${hours} jam`;
+  if (!hours) return `${minutes} min`;
+  if (!minutes) return `${hours} hr`;
 
-  return `${hours} jam ${minutes} mnt`;
+  return `${hours} hr ${minutes} min`;
 }
 
 function formatDate(value) {
@@ -187,12 +187,12 @@ function DetailDialog({ employeeId, open, onClose }) {
         }}
       >
         <Typography component="span" fontWeight={800}>
-          Detail Kompensasi
+          Compensation Details
         </Typography>
 
         <IconButton
           onClick={onClose}
-          aria-label="Tutup dialog"
+          aria-label="Close dialog"
           size="small"
           sx={{ ml: "auto" }}
         >
@@ -236,21 +236,21 @@ function DetailDialog({ employeeId, open, onClose }) {
               }}
             >
               <SummaryCard
-                label="Total Terlambat"
+                label="Total Late Time"
                 value={formatMinutes(data.summary?.total_late_minutes)}
                 icon={<AccessTimeRoundedIcon />}
                 color="#EA580C"
               />
 
               <SummaryCard
-                label="Sudah Diganti"
+                label="Time Compensated"
                 value={formatMinutes(data.summary?.total_paid_minutes)}
                 icon={<CheckCircleRoundedIcon />}
                 color="#16A34A"
               />
 
               <SummaryCard
-                label="Sisa Utang"
+                label="Outstanding Time"
                 value={formatMinutes(data.summary?.outstanding_minutes)}
                 icon={<WarningAmberRoundedIcon />}
                 color="#D97706"
@@ -259,7 +259,7 @@ function DetailDialog({ employeeId, open, onClose }) {
 
             <Divider />
 
-            <Typography fontWeight={800}>Riwayat Kompensasi</Typography>
+            <Typography fontWeight={800}>Compensation History</Typography>
 
             <TableContainer
               component={Paper}
@@ -269,13 +269,13 @@ function DetailDialog({ employeeId, open, onClose }) {
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>Tanggal</TableCell>
-                    <TableCell>Masuk</TableCell>
-                    <TableCell>Pulang</TableCell>
-                    <TableCell align="right">Terlambat</TableCell>
-                    <TableCell align="right">Diganti</TableCell>
-                    <TableCell align="right">Saldo Awal</TableCell>
-                    <TableCell align="right">Saldo Akhir</TableCell>
+                    <TableCell>Date</TableCell>
+                    <TableCell>Check In</TableCell>
+                    <TableCell>Check Out</TableCell>
+                    <TableCell align="right">Late</TableCell>
+                    <TableCell align="right">Compensated</TableCell>
+                    <TableCell align="right">Opening Balance</TableCell>
+                    <TableCell align="right">Closing Balance</TableCell>
                   </TableRow>
                 </TableHead>
 
@@ -318,7 +318,7 @@ function DetailDialog({ employeeId, open, onClose }) {
                   {!data.history?.length && (
                     <TableRow>
                       <TableCell colSpan={7} align="center">
-                        Belum ada riwayat.
+                        No history yet.
                       </TableCell>
                     </TableRow>
                   )}
@@ -388,8 +388,8 @@ export default function AttendanceLateCompensation() {
 
       Swal.fire({
         icon: "error",
-        title: "Export Gagal",
-        text: "Gagal mengunduh data Late Compensation.",
+        title: "Export Failed",
+        text: "Failed to download late compensation data.",
       });
     } finally {
       setExporting(false);
@@ -467,28 +467,28 @@ export default function AttendanceLateCompensation() {
           }}
         >
           <SummaryCard
-            label="Pernah Terlambat"
+            label="Employees with Late Arrivals"
             value={summary?.total_employees_with_late || 0}
             icon={<GroupsRoundedIcon />}
             color="#2563EB"
           />
 
           <SummaryCard
-            label="Total Keterlambatan"
+            label="Total Late Time"
             value={formatMinutes(summary?.total_late_minutes)}
             icon={<AccessTimeRoundedIcon />}
             color="#EA580C"
           />
 
           <SummaryCard
-            label="Sudah Dikompensasi"
+            label="Time Compensated"
             value={formatMinutes(summary?.total_paid_minutes)}
             icon={<CheckCircleRoundedIcon />}
             color="#16A34A"
           />
 
           <SummaryCard
-            label="Sisa Utang"
+            label="Outstanding Time"
             value={formatMinutes(summary?.outstanding_minutes)}
             icon={<WarningAmberRoundedIcon />}
             color="#D97706"
@@ -516,7 +516,7 @@ export default function AttendanceLateCompensation() {
               spacing={2}
             >
               <Typography variant="h6" fontWeight={800}>
-                Daftar Kompensasi Karyawan
+                Employee Compensation
               </Typography>
 
               <Button
@@ -533,7 +533,7 @@ export default function AttendanceLateCompensation() {
                 onClick={handleExportExcel}
                 disabled={exporting}
               >
-                {exporting ? "Mengexport..." : "Export Excel"}
+                {exporting ? "Exporting..." : "Export Excel"}
               </Button>
             </Stack>
 
@@ -546,7 +546,7 @@ export default function AttendanceLateCompensation() {
             >
               <TextField
                 size="small"
-                placeholder="Cari nama atau email..."
+                placeholder="Search by name or email..."
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 sx={{ flex: 1 }}
@@ -568,9 +568,9 @@ export default function AttendanceLateCompensation() {
                 }}
                 sx={{ minWidth: 180 }}
               >
-                <MenuItem value="ALL">Semua Status</MenuItem>
-                <MenuItem value="DEBT">Masih Ada Utang</MenuItem>
-                <MenuItem value="PAID">Sudah Lunas</MenuItem>
+                <MenuItem value="ALL">All Statuses</MenuItem>
+                <MenuItem value="DEBT">Outstanding</MenuItem>
+                <MenuItem value="PAID">Paid in Full</MenuItem>
               </Select>
             </Stack>
 
@@ -578,11 +578,11 @@ export default function AttendanceLateCompensation() {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Karyawan</TableCell>
-                    <TableCell>Departemen</TableCell>
-                    <TableCell align="right">Terlambat</TableCell>
-                    <TableCell align="right">Diganti</TableCell>
-                    <TableCell align="right">Sisa Utang</TableCell>
+                    <TableCell>Employee</TableCell>
+                    <TableCell>Department</TableCell>
+                    <TableCell align="right">Late</TableCell>
+                    <TableCell align="right">Compensated</TableCell>
+                    <TableCell align="right">Outstanding</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell align="center">Detail</TableCell>
                   </TableRow>
@@ -598,7 +598,7 @@ export default function AttendanceLateCompensation() {
                   ) : employees.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
-                        Tidak ada data karyawan.
+                        No employee data available.
                       </TableCell>
                     </TableRow>
                   ) : (

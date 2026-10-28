@@ -59,13 +59,13 @@ export default function LeaveDialog({
         >
 
             <DialogTitle>
-                Pengajuan
+                Request
             </DialogTitle>
 
             <DialogContent>
 
                 {/* ========================= */}
-                {/* JENIS PENGAJUAN */}
+                    {/* REQUEST TYPE */}
                 {/* ========================= */}
 
                 <FormControl
@@ -76,12 +76,12 @@ export default function LeaveDialog({
                 >
 
                     <InputLabel>
-                        Jenis Pengajuan
+                        Request Type
                     </InputLabel>
 
                     <Select
                         value={leaveType}
-                        label="Jenis Pengajuan"
+                        label="Request Type"
                         onChange={(e) => {
 
                             const value =
@@ -89,8 +89,7 @@ export default function LeaveDialog({
 
                             setLeaveType(value);
 
-                            // Reset field ketika
-                            // pindah jenis pengajuan
+                            // Reset fields when the request type changes.
                             setStartDate("");
                             setEndDate("");
                             setReason("");
@@ -112,19 +111,19 @@ export default function LeaveDialog({
                     >
 
                         <MenuItem value="SAKIT">
-                            Sakit
+                            Sick Leave
                         </MenuItem>
 
                         <MenuItem value="IZIN">
-                            Izin
+                            Permission
                         </MenuItem>
 
                         <MenuItem value="CUTI">
-                            Cuti
+                            Leave
                         </MenuItem>
 
                         <MenuItem value="LEMBUR">
-                            Lembur
+                            Overtime
                         </MenuItem>
 
                     </Select>
@@ -134,31 +133,31 @@ export default function LeaveDialog({
                             <FormControl fullWidth>
 
                                 <InputLabel>
-                                    Jenis Cuti
+                                    Leave Type
                                 </InputLabel>
 
                                 <Select
                                     value={cutiType}
-                                    label="Jenis Cuti"
+                                    label="Leave Type"
                                     onChange={(e) =>
                                         setCutiType(e.target.value)
                                     }
                                 >
 
                                     <MenuItem value="TAHUNAN">
-                                        Cuti Tahunan
+                                        Annual Leave
                                     </MenuItem>
 
                                     <MenuItem value="MENIKAH">
-                                        Menikah
+                                        Marriage
                                     </MenuItem>
 
                                     <MenuItem value="MELAHIRKAN">
-                                        Melahirkan
+                                        Maternity Leave
                                     </MenuItem>
 
                                     <MenuItem value="KELUARGA_MENINGGAL">
-                                        Keluarga Meninggal
+                                        Bereavement Leave
                                     </MenuItem>
 
                                 </Select>
@@ -171,21 +170,21 @@ export default function LeaveDialog({
 
 
                 {/* ================================= */}
-                {/* FORM LEMBUR */}
+                {/* OVERTIME FORM */}
                 {/* ================================= */}
 
                 {isOvertime ? (
 
                     <>
 
-                        {/* TANGGAL */}
+                        {/* DATE */}
 
                         <Box sx={{ mt: 2 }}>
 
                             <TextField
                                 fullWidth
                                 type="date"
-                                label="Tanggal Lembur"
+                                label="Overtime Date"
                                 value={startDate}
                                 onChange={(e) =>
                                     setStartDate(
@@ -200,7 +199,7 @@ export default function LeaveDialog({
                         </Box>
 
 
-                        {/* JAM */}
+                        {/* TIME */}
 
                         <Box
                             sx={{
@@ -217,7 +216,7 @@ export default function LeaveDialog({
                             <TextField
                                 fullWidth
                                 type="time"
-                                label="Jam Mulai"
+                                label="Start Time"
                                 value={
                                     startTime || ""
                                 }
@@ -234,7 +233,7 @@ export default function LeaveDialog({
                             <TextField
                                 fullWidth
                                 type="time"
-                                label="Jam Selesai"
+                                label="End Time"
                                 value={
                                     endTime || ""
                                 }
@@ -251,7 +250,7 @@ export default function LeaveDialog({
                         </Box>
 
 
-                        {/* ALASAN */}
+                        {/* REASON */}
 
                         <Box sx={{ mt: 2 }}>
 
@@ -259,8 +258,8 @@ export default function LeaveDialog({
                                 fullWidth
                                 multiline
                                 rows={4}
-                                label="Pekerjaan / Alasan Lembur"
-                                placeholder="Contoh: Maintenance server..."
+                                label="Work / Overtime Reason"
+                                placeholder="Example: Server maintenance..."
                                 value={reason}
                                 onChange={(e) =>
                                     setReason(
@@ -276,7 +275,7 @@ export default function LeaveDialog({
                 ) : (
 
                     /* ================================= */
-                    /* FORM CUTI / IZIN / SAKIT */
+                    /* LEAVE / PERMISSION / SICK LEAVE FORM */
                     /* ================================= */
 
                     <>
@@ -286,7 +285,7 @@ export default function LeaveDialog({
                             <TextField
                                 fullWidth
                                 type="date"
-                                label="Tanggal Mulai"
+                                label="Start Date"
                                 value={startDate}
                                 onChange={(e) => {
 
@@ -316,7 +315,7 @@ export default function LeaveDialog({
                             <TextField
                                 fullWidth
                                 type="date"
-                                label="Tanggal Selesai"
+                                label="End Date"
                                 value={endDate}
                                 onChange={(e) =>
                                     setEndDate(
@@ -337,8 +336,8 @@ export default function LeaveDialog({
                                 fullWidth
                                 multiline
                                 rows={4}
-                                label="Keterangan"
-                                placeholder="Masukkan alasan pengajuan..."
+                                label="Details"
+                                placeholder="Enter a reason for your request..."
                                 value={reason}
                                 onChange={(e) =>
                                     setReason(
@@ -365,7 +364,7 @@ export default function LeaveDialog({
                                 }}
                             >
 
-                                Pilih Lampiran
+                                Attach File
 
                                 <input
                                     hidden
@@ -413,7 +412,7 @@ export default function LeaveDialog({
 
 
             {/* ========================= */}
-            {/* BUTTON */}
+                    {/* ACTIONS */}
             {/* ========================= */}
 
             <DialogActions>
@@ -422,7 +421,7 @@ export default function LeaveDialog({
                     onClick={onClose}
                     disabled={loading}
                 >
-                    Batal
+                    Cancel
                 </Button>
 
                 <Button
@@ -446,10 +445,10 @@ export default function LeaveDialog({
                     }
                 >
                     {loading
-                        ? "Mengirim"
+                        ? "Submitting..."
                         : isOvertime
-                            ? "Ajukan Lembur"
-                            : "Kirim"
+                            ? "Submit Overtime Request"
+                            : "Submit"
                     }
                 </Button>
 

@@ -219,7 +219,7 @@ export default function EmployeeOfMonth({
                                         </Typography>
 
                                         <Chip
-                                            label={`${item.percent}% Hadir`}
+                                            label={`${item.percent}% Present`}
                                             color="success"
                                             size="small"
                                             sx={{
@@ -229,7 +229,7 @@ export default function EmployeeOfMonth({
                                         />
 
                                         <Chip
-                                            label={`${item.late}x Terlambat`}
+                                            label={`${item.late} late arrivals`}
                                             color={
                                                 Number(item.late) === 0
                                                     ? "success"

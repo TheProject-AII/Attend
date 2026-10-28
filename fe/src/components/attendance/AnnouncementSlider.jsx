@@ -38,7 +38,7 @@ export default function AnnouncementSlider({ announcements }) {
 
         if (Number.isNaN(parsed.getTime())) return "-";
 
-        return parsed.toLocaleDateString("id-ID", {
+        return parsed.toLocaleDateString("en-US", {
             day: "numeric",
             month: "long",
             year: "numeric"
@@ -71,7 +71,7 @@ export default function AnnouncementSlider({ announcements }) {
                         color="text.secondary"
                         textAlign="center"
                     >
-                        📢 Belum ada pengumuman aktif
+                        📢 No active announcements
                     </Typography>
                 </CardContent>
             </Card>
@@ -121,7 +121,7 @@ export default function AnnouncementSlider({ announcements }) {
                         : {}
                 }}
             >
-                {/* AREA UTAMA */}
+                {/* MAIN CONTENT */}
                 <Box
                     sx={{
                         display: "flex",
@@ -130,7 +130,7 @@ export default function AnnouncementSlider({ announcements }) {
                         gap: 1.5
                     }}
                 >
-                    {/* GAMBAR KIRI */}
+                    {/* LEFT IMAGE */}
                     {item.image_url && (
                         <Box
                             sx={{
@@ -165,7 +165,7 @@ export default function AnnouncementSlider({ announcements }) {
                         </Box>
                     )}
 
-                    {/* KONTEN KANAN */}
+                    {/* RIGHT CONTENT */}
                     <Box
                         sx={{
                             flex: 1,
@@ -174,7 +174,7 @@ export default function AnnouncementSlider({ announcements }) {
                         }}
                     >
                         <Chip
-                            label="📢 Pengumuman"
+                            label="📢 Announcement"
                             size="small"
                             sx={{
                                 mb: 1,
@@ -234,12 +234,12 @@ export default function AnnouncementSlider({ announcements }) {
                                 textTransform: "none"
                             }}
                         >
-                            Baca Selengkapnya →
+                            Read More →
                         </Button>
                     </Box>
                 </Box>
 
-                {/* INDICATOR BAWAH */}
+                {/* BOTTOM INDICATOR */}
                 {announcements.length > 1 && (
                     <Box
                         sx={{
@@ -293,7 +293,7 @@ export default function AnnouncementSlider({ announcements }) {
                         fontWeight: 700
                     }}
                 >
-                    Detail Pengumuman
+                    Announcement Details
 
                     <IconButton onClick={handleCloseDetail}>
                         <CloseIcon />
@@ -332,7 +332,7 @@ export default function AnnouncementSlider({ announcements }) {
                                 variant="caption"
                                 color="text.secondary"
                             >
-                                Pembuat
+                                Created By
                             </Typography>
 
                             <Typography fontWeight={600}>
@@ -345,7 +345,7 @@ export default function AnnouncementSlider({ announcements }) {
                                 variant="caption"
                                 color="text.secondary"
                             >
-                                Tanggal
+                                Date
                             </Typography>
 
                             <Typography fontWeight={600}>
@@ -361,7 +361,7 @@ export default function AnnouncementSlider({ announcements }) {
                             variant="caption"
                             color="text.secondary"
                         >
-                            Isi Pengumuman
+                                Announcement
                         </Typography>
 
                         <Typography

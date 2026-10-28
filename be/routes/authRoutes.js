@@ -33,12 +33,7 @@ router.get(
   authController.getEmployees,
 );
 
-router.get(
-  "/roles",
-  authMiddleware,
-  adminMiddleware,
-  authController.getRoles
-);
+router.get("/roles", authMiddleware, adminMiddleware, authController.getRoles);
 
 router.put(
   "/employees/:id",
@@ -67,6 +62,12 @@ router.patch(
   authMiddleware,
   adminMiddleware,
   authController.activateEmployee,
+);
+
+router.get(
+  "/face-enrollment-status",
+  authMiddleware,
+  authController.getFaceEnrollmentStatus,
 );
 
 module.exports = router;

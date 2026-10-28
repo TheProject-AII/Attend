@@ -68,7 +68,7 @@ export default function AttendanceLocationMap({
     const hasCheckOut = validCoordinate(checkOutLat, checkOutLng);
 
     if (!hasCheckIn && !hasCheckOut) {
-        return <div>Lokasi absensi tidak tersedia.</div>;
+        return <div>Attendance location is unavailable.</div>;
     }
 
     const inPosition = hasCheckIn
@@ -143,7 +143,7 @@ export default function AttendanceLocationMap({
                 <span>🟢 Check In</span>
                 <span>🔴 Check Out</span>
                 {sameLocation && (
-                    <span>Lokasi sama (marker bertumpuk)</span>
+                    <span>Same location (markers overlap)</span>
                 )}
             </div>
         </div>

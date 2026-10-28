@@ -33,6 +33,7 @@ import OvertimeHistory from "../pages/employee/OvertimeHistory";
 import Announcements from "../pages/dashboard/Announcements";
 import AttendanceLateCompensation from "../pages/attendance/AttendanceLateCompensation";
 import MyLateCompensation from "../pages/attendance/MyLateCompensation";
+import FaceEnrollment from "../pages/employee/FaceEnrollment";
 
 export default function AppRoutes() {
   const isLogin = !!localStorage.getItem("token");
@@ -71,7 +72,7 @@ export default function AppRoutes() {
             <ProtectedAdminRoute>
               <DashboardLayout
                 title="Dashboard"
-                subtitle={`Selamat Datang, ${user?.name} 👋`}
+                subtitle={`Welcome, ${user?.name} 👋`}
               >
                 <Dashboard />
               </DashboardLayout>
@@ -83,8 +84,8 @@ export default function AppRoutes() {
           element={
             <ProtectedAdminRoute>
               <DashboardLayout
-                title="Absensi"
-                subtitle="Kelola data absensi karyawan"
+                title="Attendance"
+                subtitle="Manage employee attendance"
               >
                 <AdminAttendance />
               </DashboardLayout>
@@ -96,8 +97,8 @@ export default function AppRoutes() {
           element={
             <ProtectedAdminRoute>
               <DashboardLayout
-                title="Keterlambatan"
-                subtitle="Kelola data absensi karyawan"
+                title="Late Arrivals"
+                subtitle="Manage employee attendance"
               >
                 <AttendanceLateCompensation />
               </DashboardLayout>
@@ -109,7 +110,7 @@ export default function AppRoutes() {
           path="/admin/employees"
           element={
             <ProtectedAdminRoute>
-              <DashboardLayout title="Karyawan" subtitle="Kelola data karyawan">
+              <DashboardLayout title="Employees" subtitle="Manage employee records">
                 <EmployeeList />
               </DashboardLayout>
             </ProtectedAdminRoute>
@@ -120,8 +121,8 @@ export default function AppRoutes() {
           element={
             <ProtectedAdminRoute>
               <DashboardLayout
-                title="Lemburan"
-                subtitle="Kelola Overtime Karyawan"
+                title="Overtime"
+                subtitle="Manage employee overtime"
               >
                 <OvertimeRecap />
               </DashboardLayout>
@@ -133,8 +134,8 @@ export default function AppRoutes() {
           element={
             <ProtectedAdminRoute>
               <DashboardLayout
-                title="Pengumuman"
-                subtitle="Kelola Berita Untuk Karyawan"
+                title="Announcements"
+                subtitle="Manage employee announcements"
               >
                 <Announcements />
               </DashboardLayout>
@@ -147,8 +148,8 @@ export default function AppRoutes() {
           element={
             <ProtectedAdminRoute>
               <DashboardLayout
-                title="Pengaturan"
-                subtitle="Kelola Pengaturan Absensi"
+                title="Settings"
+                subtitle="Manage attendance settings"
               >
                 <OvertimeSettings />
               </DashboardLayout>
@@ -191,10 +192,7 @@ export default function AppRoutes() {
         >
           <Route path="attendance" element={<EmployeeAttendance />} />
 
-          {/* <Route
-            path="/my-late-compensation"
-            element={<MyLateCompensation />}
-          /> */}
+          <Route path="face-enrollment" element={<FaceEnrollment />} />
 
           <Route path="history" element={<EmployeeHistoryPage />} />
 

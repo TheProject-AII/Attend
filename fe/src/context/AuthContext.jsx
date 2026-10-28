@@ -4,49 +4,56 @@ import authService from "../services/authService";
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    const loadUser = async () => {
-        const token = localStorage.getItem("token");
+  const loadUser = async () => {
+    const token = localStorage.getItem("token");
 
-        if (!token) {
-            setLoading(false);
-            return;
-        }
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return null;
+    }
 
-        try {
-            const data = await authService.getMe(token);
+    try {
+      const data = await authService.getMe(token);
+      const currentUser = data.user;
 
-            setUser(data.user);
-        } catch (err) {
-            console.error(err);
+      setUser(currentUser);
+      localStorage.setItem("user", JSON.stringify(currentUser));
 
-            localStorage.removeItem("token");
-            setUser(null);
-        } finally {
-            setLoading(false);
-        }
-    };
+      return currentUser;
+    } catch (err) {
+      console.error("Failed to load user:", err);
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setUser(null);
 
-    useEffect(() => {
-        loadUser();
-    }, []);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <AuthContext.Provider
-            value={{
-                user,
-                setUser,
-                loadUser,
-                loading,
-            }}
-        >
-            {children}
-        </AuthContext.Provider>
-    );
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        setUser,
+        loadUser,
+        loading,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
-    return useContext(AuthContext);
+  return useContext(AuthContext);
 }

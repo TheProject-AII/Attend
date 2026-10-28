@@ -69,7 +69,7 @@ export default function OvertimeApprovalDetail() {
         if (!date) return "-";
 
         return new Date(date).toLocaleDateString(
-            "id-ID",
+            "en-US",
             {
                 day: "numeric",
                 month: "long",
@@ -103,10 +103,10 @@ export default function OvertimeApprovalDetail() {
             minutes % 60;
 
         if (remaining === 0) {
-            return `${hours} jam`;
+            return `${hours} hr`;
         }
 
-        return `${hours} jam ${remaining} menit`;
+        return `${hours} hr ${remaining} min`;
 
     };
 
@@ -115,7 +115,7 @@ export default function OvertimeApprovalDetail() {
         return (
             <Box p={3}>
                 <Typography>
-                    Memuat detail...
+                    Loading details...
                 </Typography>
             </Box>
         );
@@ -128,7 +128,7 @@ export default function OvertimeApprovalDetail() {
             <Box p={3}>
 
                 <Typography>
-                    Data lembur tidak ditemukan.
+                    Overtime request not found.
                 </Typography>
 
                 <Button
@@ -137,7 +137,7 @@ export default function OvertimeApprovalDetail() {
                         navigate("/employee/approval")
                     }
                 >
-                    Kembali
+                    Back
                 </Button>
 
             </Box>
@@ -157,19 +157,19 @@ export default function OvertimeApprovalDetail() {
 
 
             // =====================================
-            // ALERT BERHASIL
+            // SUCCESS ALERT
             // =====================================
 
             await Swal.fire({
                 icon: "success",
-                title: "Berhasil",
-                text: "Pengajuan lembur berhasil disetujui.",
+                title: "Success",
+                text: "Overtime request approved successfully.",
                 confirmButtonText: "OK",
             });
 
 
             // =====================================
-            // BARU KEMBALI KE LIST
+            // Return to the list after confirmation.
             // =====================================
 
             navigate("/employee/approval");
@@ -185,10 +185,10 @@ export default function OvertimeApprovalDetail() {
 
             Swal.fire({
                 icon: "error",
-                title: "Gagal",
+                title: "Failed",
                 text:
                     err.response?.data?.message ||
-                    "Gagal menyetujui pengajuan lembur.",
+                    "Failed to approve overtime request.",
                 confirmButtonText: "OK",
             });
 
@@ -207,8 +207,8 @@ export default function OvertimeApprovalDetail() {
 
             Swal.fire({
                 icon: "warning",
-                title: "Alasan Wajib Diisi",
-                text: "Silakan masukkan alasan penolakan.",
+                title: "Reason Required",
+                text: "Enter a reason for rejection.",
                 confirmButtonText: "OK",
             });
 
@@ -226,16 +226,16 @@ export default function OvertimeApprovalDetail() {
             );
 
 
-            // Tutup dialog dulu
+            // Close the dialog first.
             setRejectDialog(false);
             setRejectNote("");
 
 
-            // Baru tampilkan SweetAlert
+            // Then show the confirmation alert.
             await Swal.fire({
                 icon: "success",
-                title: "Berhasil",
-                text: "Pengajuan lembur berhasil ditolak.",
+                title: "Success",
+                text: "Overtime request rejected successfully.",
                 confirmButtonText: "OK",
                 customClass: {
                     container: "swal2-over-mui"
@@ -243,7 +243,7 @@ export default function OvertimeApprovalDetail() {
             });
 
 
-            // Kembali ke list
+            // Return to the list.
             navigate("/employee/approval");
 
 
@@ -257,10 +257,10 @@ export default function OvertimeApprovalDetail() {
 
             Swal.fire({
                 icon: "error",
-                title: "Gagal",
+                title: "Failed",
                 text:
                     err.response?.data?.message ||
-                    "Gagal menolak pengajuan lembur.",
+                    "Failed to reject overtime request.",
                 confirmButtonText: "OK",
             });
 
@@ -285,14 +285,14 @@ export default function OvertimeApprovalDetail() {
                 variant="h5"
                 fontWeight={700}
             >
-                Detail Pengajuan Lembur
+                Overtime Request Details
             </Typography>
 
             <Typography
                 color="text.secondary"
                 sx={{ mb: 2 }}
             >
-                Detail pengajuan lembur karyawan
+                Employee overtime request details
             </Typography>
 
             <Card>
@@ -307,7 +307,7 @@ export default function OvertimeApprovalDetail() {
                                 color="text.secondary"
                                 variant="body2"
                             >
-                                Nama Karyawan
+                                Employee Name
                             </Typography>
 
                             <Typography
@@ -341,7 +341,7 @@ export default function OvertimeApprovalDetail() {
                                 color="text.secondary"
                                 variant="body2"
                             >
-                                Tanggal Lembur
+                                Overtime Date
                             </Typography>
 
                             <Typography
@@ -360,7 +360,7 @@ export default function OvertimeApprovalDetail() {
                                 color="text.secondary"
                                 variant="body2"
                             >
-                                Jam Lembur
+                                Overtime Hours
                             </Typography>
 
                             <Typography
@@ -383,7 +383,7 @@ export default function OvertimeApprovalDetail() {
                                 color="text.secondary"
                                 variant="body2"
                             >
-                                Durasi
+                                Duration
                             </Typography>
 
                             <Typography
@@ -402,7 +402,7 @@ export default function OvertimeApprovalDetail() {
                                 color="text.secondary"
                                 variant="body2"
                             >
-                                Pekerjaan / Alasan
+                                Work / Reason
                             </Typography>
 
                             <Typography>
@@ -451,7 +451,7 @@ export default function OvertimeApprovalDetail() {
             >
 
                 <DialogTitle>
-                    Tolak Pengajuan Lembur
+                    Reject Overtime Request
                 </DialogTitle>
 
                 <DialogContent>
@@ -460,15 +460,15 @@ export default function OvertimeApprovalDetail() {
                         color="text.secondary"
                         sx={{ mb: 2 }}
                     >
-                        Masukkan alasan penolakan pengajuan lembur.
+                        Enter a reason for rejecting this overtime request.
                     </Typography>
 
                     <TextField
                         fullWidth
                         multiline
                         rows={4}
-                        label="Alasan Penolakan"
-                        placeholder="Contoh: Pekerjaan lembur tidak diperlukan..."
+                        label="Rejection Reason"
+                        placeholder="Example: Overtime is not required..."
                         value={rejectNote}
                         onChange={(e) =>
                             setRejectNote(e.target.value)
@@ -486,7 +486,7 @@ export default function OvertimeApprovalDetail() {
                         }
                         disabled={processing}
                     >
-                        Batal
+                        Cancel
                     </Button>
 
                     <Button
@@ -499,8 +499,8 @@ export default function OvertimeApprovalDetail() {
                         }
                     >
                         {processing
-                            ? "Memproses..."
-                            : "Tolak Pengajuan"}
+                            ? "Processing..."
+                            : "Reject Request"}
                     </Button>
 
                 </DialogActions>
@@ -521,7 +521,7 @@ export default function OvertimeApprovalDetail() {
                     }
                     disabled={processing}
                 >
-                    Kembali
+                    Back
                 </Button>
 
                 {data.status === "PENDING_MANAGER" && (
@@ -536,7 +536,7 @@ export default function OvertimeApprovalDetail() {
                             }}
                             disabled={processing}
                         >
-                            Tolak
+                            Reject
                         </Button>
 
                         <Button
@@ -547,8 +547,8 @@ export default function OvertimeApprovalDetail() {
                             disabled={processing}
                         >
                             {processing
-                                ? "Memproses..."
-                                : "Setujui"}
+                                ? "Processing..."
+                                : "Approve"}
                         </Button>
                     </>
                 )}

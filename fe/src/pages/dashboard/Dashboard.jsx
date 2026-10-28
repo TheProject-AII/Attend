@@ -113,7 +113,7 @@ export default function Dashboard() {
                     <StatCard
                         title={t("dashboard.totalEmployees")}
                         value={dashboard.totalEmployee}
-                        subtitle={`Tahun ${new Date().getFullYear()}`}
+                        subtitle={`Year ${new Date().getFullYear()}`}
                         color="#2E7D32"
                     />
                 </Grid>
@@ -122,7 +122,7 @@ export default function Dashboard() {
                     <StatCard
                         title={t("dashboard.presentToday")}
                         value={dashboard.present}
-                        subtitle={new Date().toLocaleDateString("id-ID", {
+                        subtitle={new Date().toLocaleDateString("en-US", {
                             day: "numeric",
                             month: "long",
                             year: "numeric"
@@ -135,7 +135,7 @@ export default function Dashboard() {
                     <StatCard
                         title={t("dashboard.leave")}
                         value={dashboard.leave}
-                        subtitle={new Date().toLocaleDateString("id-ID", {
+                        subtitle={new Date().toLocaleDateString("en-US", {
                             day: "numeric",
                             month: "long",
                             year: "numeric"
@@ -148,7 +148,7 @@ export default function Dashboard() {
                     <StatCard
                         title={t("dashboard.late")}
                         value={dashboard.late}
-                        subtitle={new Date().toLocaleDateString("id-ID", {
+                        subtitle={new Date().toLocaleDateString("en-US", {
                             day: "numeric",
                             month: "long",
                             year: "numeric"

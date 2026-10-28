@@ -415,34 +415,34 @@ export default function AdminAttendance() {
 
                     "No.": index + 1,
 
-                    "Karyawan":
+                    "Employee":
                         getEmployeeName(item),
 
-                    "Divisi":
+                    "Department":
                         getDepartment(item),
 
-                    "Hadir":
+                    "Present":
                         hadir,
 
-                    "Terlambat":
+                    "Late Arrivals":
                         terlambat,
 
-                    "Menit Telat":
+                    "Late Minutes":
                         menitTelat,
 
-                    "Cuti":
+                    "Leave":
                         cuti,
 
-                    "Izin":
+                    "Permission":
                         izin,
 
-                    "Sakit":
+                    "Sick Leave":
                         sakit,
 
                     "Alpha":
                         alpha,
 
-                    "Kehadiran":
+                    "Attendance":
                         `${Number(
                             kehadiran
                         ).toFixed(2)}%`
@@ -461,7 +461,7 @@ export default function AdminAttendance() {
 
     const handleExportExcel = () => {
         if (!summaryData || summaryData.length === 0) {
-            alert("Tidak ada data rekap untuk diekspor.");
+            alert("There is no attendance summary data to export.");
             return;
         }
 
@@ -470,10 +470,10 @@ export default function AdminAttendance() {
         const monthName = getMonthName();
 
         const department =
-            summaryFilters.department || "Semua Divisi";
+            summaryFilters.department || "All Departments";
 
         const employee =
-            summaryFilters.search || "Semua Karyawan";
+            summaryFilters.search || "All Employees";
 
 
         // =====================================================
@@ -482,53 +482,53 @@ export default function AdminAttendance() {
 
         const worksheetData = [
 
-            // Judul
-            ["REKAP ABSENSI KARYAWAN"],
+            // Title
+            ["EMPLOYEE ATTENDANCE SUMMARY"],
 
-            // Informasi
-            [`Periode : ${monthName} ${summaryFilters.year}`],
+            // Report information
+            [`Period: ${monthName} ${summaryFilters.year}`],
 
-            [`Divisi : ${department}`],
+            [`Department: ${department}`],
 
-            [`Karyawan : ${employee}`],
+            [`Employee: ${employee}`],
 
             [],
 
             // Header tabel
             [
                 "No.",
-                "Karyawan",
-                "Divisi",
-                "Hadir",
-                "Terlambat",
-                "Menit Telat",
-                "Cuti",
-                "Izin",
-                "Sakit",
+                "Employee",
+                "Department",
+                "Present",
+                "Late Arrivals",
+                "Late Minutes",
+                "Leave",
+                "Permission",
+                "Sick Leave",
                 "Alpha",
-                "Kehadiran"
+                "Attendance"
             ],
 
             // Data
             ...exportData.map((item) => [
                 item["No."],
-                item["Karyawan"],
-                item["Divisi"],
-                item["Hadir"],
-                item["Terlambat"],
-                item["Menit Telat"],
-                item["Cuti"],
-                item["Izin"],
-                item["Sakit"],
+                item["Employee"],
+                item["Department"],
+                item["Present"],
+                item["Late Arrivals"],
+                item["Late Minutes"],
+                item["Leave"],
+                item["Permission"],
+                item["Sick Leave"],
                 item["Alpha"],
-                item["Kehadiran"]
+                item["Attendance"]
             ]),
 
             [],
 
             // Footer
             [
-                `Total Karyawan : ${exportData.length}`
+                `Total Employees: ${exportData.length}`
             ]
 
         ];
@@ -570,25 +570,25 @@ export default function AdminAttendance() {
 
             { wch: 6 },   // No
 
-            { wch: 25 },  // Karyawan
+            { wch: 25 },  // Employee
 
-            { wch: 20 },  // Divisi
+            { wch: 20 },  // Department
 
-            { wch: 10 },  // Hadir
+            { wch: 10 },  // Present
 
-            { wch: 12 },  // Terlambat
+            { wch: 12 },  // Late arrivals
 
-            { wch: 15 },  // Menit Telat
+            { wch: 15 },  // Late minutes
 
-            { wch: 10 },  // Cuti
+            { wch: 10 },  // Leave
 
-            { wch: 10 },  // Izin
+            { wch: 10 },  // Permission
 
-            { wch: 10 },  // Sakit
+            { wch: 10 },  // Sick leave
 
             { wch: 10 },  // Alpha
 
-            { wch: 15 }   // Kehadiran
+            { wch: 15 }   // Attendance
 
         ];
 
@@ -866,7 +866,7 @@ export default function AdminAttendance() {
         XLSX.utils.book_append_sheet(
             workbook,
             worksheet,
-            "Rekap Absensi"
+            "Attendance Summary"
         );
 
 
@@ -890,7 +890,7 @@ export default function AdminAttendance() {
 
 
         const filename =
-            `Rekap_Absensi_${monthName}_${summaryFilters.year}${departmentName}${employeeName}.xlsx`;
+            `Attendance_Summary_${monthName}_${summaryFilters.year}${departmentName}${employeeName}.xlsx`;
 
 
         // =====================================================
@@ -909,7 +909,7 @@ export default function AdminAttendance() {
 
     const handleExportPDF = () => {
         if (!summaryData || summaryData.length === 0) {
-            alert("Tidak ada data rekap untuk diekspor.");
+            alert("There is no attendance summary data to export.");
             return;
         }
 
@@ -918,10 +918,10 @@ export default function AdminAttendance() {
         const monthName = getMonthName();
 
         const department =
-            summaryFilters.department || "Semua Divisi";
+            summaryFilters.department || "All Departments";
 
         const employee =
-            summaryFilters.search || "Semua Karyawan";
+            summaryFilters.search || "All Employees";
 
 
         // =====================================================
@@ -936,7 +936,7 @@ export default function AdminAttendance() {
 
 
         // =====================================================
-        // JUDUL
+        // TITLE
         // =====================================================
 
         doc.setFont("helvetica", "bold");
@@ -944,7 +944,7 @@ export default function AdminAttendance() {
         doc.setFontSize(18);
 
         doc.text(
-            "REKAP ABSENSI KARYAWAN",
+            "EMPLOYEE ATTENDANCE SUMMARY",
             148,
             15,
             {
@@ -954,7 +954,7 @@ export default function AdminAttendance() {
 
 
         // =====================================================
-        // INFORMASI LAPORAN
+        // REPORT INFORMATION
         // =====================================================
 
         doc.setFont("helvetica", "normal");
@@ -962,19 +962,19 @@ export default function AdminAttendance() {
         doc.setFontSize(10);
 
         doc.text(
-            `Periode : ${monthName} ${summaryFilters.year}`,
+            `Period: ${monthName} ${summaryFilters.year}`,
             14,
             25
         );
 
         doc.text(
-            `Divisi : ${department}`,
+            `Department: ${department}`,
             14,
             31
         );
 
         doc.text(
-            `Karyawan : ${employee}`,
+            `Employee: ${employee}`,
             14,
             37
         );
@@ -990,41 +990,41 @@ export default function AdminAttendance() {
 
             head: [[
                 "No.",
-                "Karyawan",
-                "Divisi",
-                "Hadir",
-                "Terlambat",
-                "Menit Telat",
-                "Cuti",
-                "Izin",
-                "Sakit",
+                "Employee",
+                "Department",
+                "Present",
+                "Late Arrivals",
+                "Late Minutes",
+                "Leave",
+                "Permission",
+                "Sick Leave",
                 "Alpha",
-                "Kehadiran"
+                "Attendance"
             ]],
 
             body: exportData.map((item) => [
 
                 item["No."],
 
-                item["Karyawan"],
+                item["Employee"],
 
-                item["Divisi"],
+                item["Department"],
 
-                item["Hadir"],
+                item["Present"],
 
-                item["Terlambat"],
+                item["Late Arrivals"],
 
-                item["Menit Telat"],
+                item["Late Minutes"],
 
-                item["Cuti"],
+                item["Leave"],
 
-                item["Izin"],
+                item["Permission"],
 
-                item["Sakit"],
+                item["Sick Leave"],
 
                 item["Alpha"],
 
-                item["Kehadiran"]
+                item["Attendance"]
 
             ]),
 
@@ -1158,7 +1158,7 @@ export default function AdminAttendance() {
 
 
                 doc.text(
-                    `Halaman ${pageNumber}`,
+                    `Page ${pageNumber}`,
                     pageWidth - 14,
                     pageHeight - 8,
                     {
@@ -1172,7 +1172,7 @@ export default function AdminAttendance() {
 
 
         // =====================================================
-        // TOTAL KARYAWAN
+        // TOTAL EMPLOYEES
         // =====================================================
 
         const finalY =
@@ -1187,7 +1187,7 @@ export default function AdminAttendance() {
         doc.setFontSize(10);
 
         doc.text(
-            `Total Karyawan : ${exportData.length}`,
+            `Total Employees: ${exportData.length}`,
             14,
             finalY
         );
@@ -1213,7 +1213,7 @@ export default function AdminAttendance() {
 
 
         const filename =
-            `Rekap_Absensi_${monthName}_${summaryFilters.year}${departmentName}${employeeName}.pdf`;
+            `Attendance_Summary_${monthName}_${summaryFilters.year}${departmentName}${employeeName}.pdf`;
 
 
         // =====================================================
@@ -1271,11 +1271,11 @@ export default function AdminAttendance() {
                 >
 
                     <Tab
-                        label="Absensi Harian"
+                        label="Daily Attendance"
                     />
 
                     <Tab
-                        label="Rekap Absensi"
+                        label="Attendance Summary"
                     />
 
                 </Tabs>

@@ -52,28 +52,28 @@ export default function Overtime() {
         setError("");
 
         if (!form.overtime_date) {
-            setError("Tanggal lembur wajib diisi.");
+            setError("Overtime date is required.");
             return;
         }
 
         if (!form.start_time) {
-            setError("Jam mulai wajib diisi.");
+            setError("Start time is required.");
             return;
         }
 
         if (!form.end_time) {
-            setError("Jam selesai wajib diisi.");
+            setError("End time is required.");
             return;
         }
 
         if (!form.reason.trim()) {
-            setError("Alasan lembur wajib diisi.");
+            setError("Overtime reason is required.");
             return;
         }
 
         if (form.end_time <= form.start_time) {
             setError(
-                "Jam selesai harus lebih besar dari jam mulai.",
+                "End time must be later than start time.",
             );
             return;
         }
@@ -85,7 +85,7 @@ export default function Overtime() {
             await overtimeService.create(form);
 
             setSuccess(
-                "Pengajuan lembur berhasil dikirim.",
+                "Overtime request submitted successfully.",
             );
 
             setForm((prev) => ({
@@ -99,7 +99,7 @@ export default function Overtime() {
 
             setError(
                 err.response?.data?.message ||
-                "Gagal mengajukan lembur.",
+                "Failed to submit overtime request.",
             );
 
         } finally {
@@ -144,14 +144,14 @@ export default function Overtime() {
                                 variant="h6"
                                 fontWeight={700}
                             >
-                                Pengajuan Lembur
+                                Overtime Request
                             </Typography>
 
                             <Typography
                                 variant="body2"
                                 color="text.secondary"
                             >
-                                Ajukan lembur Anda
+                                Submit an overtime request
                             </Typography>
 
                         </Box>
@@ -184,7 +184,7 @@ export default function Overtime() {
                         <Stack spacing={2.5}>
 
                             <TextField
-                                label="Tanggal Lembur"
+                                label="Overtime Date"
                                 type="date"
                                 fullWidth
                                 value={
@@ -208,7 +208,7 @@ export default function Overtime() {
                             >
 
                                 <TextField
-                                    label="Jam Mulai"
+                                    label="Start Time"
                                     type="time"
                                     fullWidth
                                     value={
@@ -224,7 +224,7 @@ export default function Overtime() {
                                 />
 
                                 <TextField
-                                    label="Jam Selesai"
+                                    label="End Time"
                                     type="time"
                                     fullWidth
                                     value={
@@ -242,8 +242,8 @@ export default function Overtime() {
                             </Stack>
 
                             <TextField
-                                label="Pekerjaan / Alasan Lembur"
-                                placeholder="Contoh: Maintenance server"
+                                label="Work / Overtime Reason"
+                                placeholder="Example: Server maintenance"
                                 multiline
                                 minRows={4}
                                 fullWidth
@@ -274,8 +274,8 @@ export default function Overtime() {
                                 }}
                             >
                                 {loading
-                                    ? "Mengirim..."
-                                    : "Ajukan Lembur"}
+                                    ? "Submitting..."
+                                    : "Submit Overtime Request"}
                             </Button>
 
                         </Stack>

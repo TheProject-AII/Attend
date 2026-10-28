@@ -32,25 +32,25 @@ export default function DailySummaryCards({
             <Chip
                 color="success"
                 icon={<CheckCircleIcon />}
-                label={`Hadir (${data.hadir} Orang)`}
+                label={`Present (${data.hadir} employees)`}
             />
 
             <Chip
                 color="warning"
                 icon={<AccessTimeIcon />}
-                label={`Terlambat (${data.terlambat} Orang)`}
+                label={`Late (${data.terlambat} employees)`}
             />
 
             <Chip
                 color="primary"
                 icon={<LogoutIcon />}
-                label={`Belum Pulang (${data.belum_pulang} Orang)`}
+                label={`Not Checked Out (${data.belum_pulang} employees)`}
             />
 
             <Chip
                 color="error"
                 icon={<HighlightOffIcon />}
-                label={`Belum Check In (${data.belum_checkin} Orang)`}
+                label={`Not Checked In (${data.belum_checkin} employees)`}
             />
 
         </Stack>

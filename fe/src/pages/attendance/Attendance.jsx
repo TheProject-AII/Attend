@@ -67,7 +67,7 @@ export default function Attendance() {
 
     if (Number.isNaN(date.getTime())) return "-";
 
-    return new Intl.DateTimeFormat("id-ID", {
+    return new Intl.DateTimeFormat("en-US", {
       timeZone: "Asia/Jakarta",
       hour: "2-digit",
       minute: "2-digit",
@@ -150,8 +150,8 @@ export default function Attendance() {
     if (!currentLocation) {
       Swal.fire({
         icon: "error",
-        title: "Lokasi",
-        text: "Lokasi belum berhasil didapatkan.",
+        title: "Location",
+        text: "Unable to retrieve your location.",
       });
 
       return;
@@ -176,38 +176,37 @@ export default function Attendance() {
 
       const result = await attendanceService.checkIn(formData);
 
-      // Tutup dialog kamera
+      // Close the camera dialog.
       setOpenDialog(false);
       setPhoto(null);
       setAttendanceType("OFFICE");
       setNotes("");
 
-      // Tampilkan SweetAlert segera setelah API berhasil
+      // Show the success alert after the API request completes.
       Swal.fire({
         icon: "success",
-        title: "Check In Berhasil",
+        title: "Check-in Successful",
         html: `
         <b>${result.office}</b><br>
-        Jarak ${result.distance} meter
+        Distance: ${result.distance} meters
     `,
         timer: 2000,
         showConfirmButton: false,
       });
 
-      // Refresh data absensi
+      // Refresh attendance data.
       await loadToday();
 
-      // Tidak perlu mengambil GPS ulang
+      // No need to retrieve GPS again here.
       // await loadLocation();
 
       await loadLocation();
       // Reset dialog
     } catch (err) {
       const message =
-        err.response?.data?.message || err.message || "Check In gagal.";
+        err.response?.data?.message || err.message || "Check-in failed.";
 
-      // Jika wajah tidak cocok, tampilkan
-      // pesan di CameraCard, bukan popup
+      // Show face-matching errors in CameraCard instead of a popup.
       const errorCode = err.response?.data?.code;
 
       const isFaceError =
@@ -222,7 +221,7 @@ export default function Attendance() {
       // Error lainnya tetap menggunakan SweetAlert
       Swal.fire({
         icon: "error",
-        title: "Check In Gagal",
+        title: "Check-in Failed",
         text: message,
       });
     } finally {
@@ -247,8 +246,8 @@ export default function Attendance() {
     if (!overtimeReason.trim()) {
       Swal.fire({
         icon: "warning",
-        title: "Pekerjaan Wajib Diisi",
-        text: "Silakan isi pekerjaan yang dilakukan saat lembur.",
+        title: "Work Description Required",
+        text: "Enter the work performed during overtime.",
       });
 
       return;
@@ -270,16 +269,16 @@ export default function Attendance() {
 
       Swal.fire({
         icon: "success",
-        title: "Lembur Berhasil Diajukan",
-        text: "Pengajuan lembur menunggu persetujuan Manager.",
+        title: "Overtime Request Submitted",
+        text: "Your overtime request is awaiting manager approval.",
       });
     } catch (err) {
       console.error("CREATE OVERTIME ERROR:", err);
 
       Swal.fire({
         icon: "error",
-        title: "Gagal Mengajukan Lembur",
-        text: err.response?.data?.message || "Pengajuan lembur gagal.",
+        title: "Overtime Request Failed",
+        text: err.response?.data?.message || "Failed to submit overtime request.",
       });
     } finally {
       setLoading(false);
@@ -287,7 +286,7 @@ export default function Attendance() {
   };
   const handleCheckOut = async (image) => {
     if (!image) {
-      cameraRef.current?.showError("Silakan ambil foto wajah.");
+      cameraRef.current?.showError("Please take a photo of your face.");
       return;
     }
 
@@ -300,8 +299,8 @@ export default function Attendance() {
     if (!currentLocation) {
       Swal.fire({
         icon: "error",
-        title: "Lokasi",
-        text: "Lokasi belum berhasil didapatkan.",
+        title: "Location",
+        text: "Unable to retrieve your location.",
       });
 
       return;
@@ -341,8 +340,7 @@ export default function Attendance() {
 
       if (today?.checkIn && today?.checkOut) {
         // ---------------------------------
-        // Ambil jam mentah dari API
-        // tanpa konversi timezone
+        // Use the raw API time without converting the time zone.
         // ---------------------------------
 
         const checkInTime = formatTimeWIB(today.checkIn);
@@ -350,7 +348,7 @@ export default function Attendance() {
         const checkOutTime = formatTimeWIB(today.checkOut);
 
         // ---------------------------------
-        // Ubah HH:mm menjadi total menit
+        // Convert HH:mm to total minutes.
         // ---------------------------------
 
         const [checkInHour, checkInMinute] = checkInTime.split(":").map(Number);
@@ -364,7 +362,7 @@ export default function Attendance() {
         let checkOutTotal = checkOutHour * 60 + checkOutMinute;
 
         // ---------------------------------
-        // Jika checkout lewat tengah malam
+        // Handle check-out after midnight.
         // ---------------------------------
 
         if (checkOutTotal < checkInTotal) {
@@ -372,7 +370,7 @@ export default function Attendance() {
         }
 
         // ---------------------------------
-        // TOTAL JAM KERJA
+        // TOTAL WORKING TIME
         // ---------------------------------
 
         const workingMinutes = checkOutTotal - checkInTotal;
@@ -384,7 +382,7 @@ export default function Attendance() {
         console.log("TOTAL JAM KERJA:", workingMinutes, "MENIT");
 
         // =================================
-        // LEBIH DARI 9 JAM?
+        // MORE THAN 9 HOURS?
         // =================================
 
         if (workingMinutes > 9 * 60) {
@@ -399,22 +397,22 @@ export default function Attendance() {
           const confirm = await Swal.fire({
             icon: "question",
 
-            title: "Pengajuan Lembur",
+            title: "Overtime Request",
 
             html: `
-                            Jam kerja Anda adalah
+                            Your working time is
                             <b>
-                                ${hours} jam ${minutes} menit
+                                ${hours} hr ${minutes} min
                             </b>.
                             <br><br>
-                            Apakah Anda melakukan lembur?
+                            Did you work overtime?
                         `,
 
             showCancelButton: true,
 
-            confirmButtonText: "Ya, Ajukan Lembur",
+            confirmButtonText: "Yes, Submit Overtime Request",
 
-            cancelButtonText: "Tidak",
+            cancelButtonText: "No",
           });
 
           // =================================
@@ -483,7 +481,7 @@ export default function Attendance() {
 
       Swal.fire({
         icon: "success",
-        title: "Berhasil",
+            title: "Success",
         text: result.message,
       });
     } catch (err) {
@@ -493,7 +491,7 @@ export default function Attendance() {
         err.response?.data?.message ||
         err.response?.data?.detail ||
         err.message ||
-        "Check Out gagal.";
+        "Check-out failed.";
 
       const isFaceError = /wajah|face|selfie|foto referensi|pencahayaan/i.test(
         message,
@@ -506,7 +504,7 @@ export default function Attendance() {
 
       Swal.fire({
         icon: "error",
-        title: "Check Out Gagal",
+        title: "Check-out Failed",
         text: message,
       });
     } finally {
@@ -546,30 +544,30 @@ export default function Attendance() {
       setGpsReady(false);
       setInsideRadius(null);
 
-      let title = "Gagal Mendapatkan Lokasi";
-      let text = err.message || "Silakan coba lagi.";
+      let title = "Failed to Get Location";
+      let text = err.message || "Please try again.";
 
       switch (err.code) {
         case 1:
-          title = "Izin Lokasi Ditolak";
+          title = "Location Permission Denied";
           text =
-            "Silakan izinkan akses lokasi pada aplikasi melalui Pengaturan.";
+            "Allow location access for this app in Settings.";
           break;
 
         case 2:
-          title = "GPS Belum Aktif";
-          text = "Aktifkan GPS terlebih dahulu, lalu tekan tombol refresh.";
+          title = "GPS Is Not Active";
+          text = "Turn on GPS, then press the refresh button.";
           break;
 
         case 3:
           title = "GPS Timeout";
           text =
-            "Lokasi tidak berhasil diperoleh. Pastikan GPS aktif lalu coba lagi.";
+            "Unable to retrieve your location. Make sure GPS is enabled and try again.";
           break;
 
         default:
-          title = "Lokasi Tidak Tersedia";
-          text = err.message || "Terjadi kesalahan saat mengambil lokasi.";
+          title = "Location Unavailable";
+          text = err.message || "An error occurred while retrieving your location.";
       }
 
       await Swal.fire({
@@ -680,18 +678,18 @@ export default function Attendance() {
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>Pengajuan Lembur</DialogTitle>
+        <DialogTitle>Overtime Request</DialogTitle>
 
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Jam kerja Anda sudah lebih dari 9 jam. Silakan lengkapi pengajuan
-            lembur.
+            You have worked for more than 9 hours. Complete your overtime
+            request.
           </Typography>
 
           <TextField
             fullWidth
             type="date"
-            label="Tanggal Lembur"
+            label="Overtime Date"
             value={overtimeDate}
             InputLabelProps={{
               shrink: true,
@@ -710,7 +708,7 @@ export default function Attendance() {
             <TextField
               fullWidth
               type="time"
-              label="Jam Mulai"
+              label="Start Time"
               value={overtimeStart}
               InputLabelProps={{
                 shrink: true,
@@ -721,7 +719,7 @@ export default function Attendance() {
             <TextField
               fullWidth
               type="time"
-              label="Jam Selesai"
+              label="End Time"
               value={overtimeEnd}
               InputLabelProps={{
                 shrink: true,
@@ -734,8 +732,8 @@ export default function Attendance() {
             fullWidth
             multiline
             rows={4}
-            label="Pekerjaan / Keterangan"
-            placeholder="Jelaskan pekerjaan yang dilakukan saat lembur..."
+            label="Work / Details"
+            placeholder="Describe the work performed during overtime..."
             value={overtimeReason}
             onChange={(e) => setOvertimeReason(e.target.value)}
           />
@@ -743,7 +741,7 @@ export default function Attendance() {
 
         <DialogActions>
           <Button onClick={() => setOvertimeDialog(false)} disabled={loading}>
-            Nanti
+            Later
           </Button>
 
           <Button
@@ -752,7 +750,7 @@ export default function Attendance() {
             onClick={handleSubmitOvertime}
             disabled={loading || !overtimeReason.trim()}
           >
-            {loading ? "Mengirim..." : "Ajukan Lembur"}
+            {loading ? "Submitting..." : "Submit Overtime Request"}
           </Button>
         </DialogActions>
       </Dialog>

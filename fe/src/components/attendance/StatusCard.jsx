@@ -28,7 +28,7 @@ export default function StatusCard({
                     variant="h6"
                     mb={2}
                 >
-                    Status Absensi
+                    Attendance Status
                 </Typography>
 
                 <Stack spacing={2}>
@@ -43,7 +43,7 @@ export default function StatusCard({
 
                         <Typography fontWeight={600}>
                             {checkIn
-                                ? checkIn.toLocaleTimeString("id-ID")
+                                ? checkIn.toLocaleTimeString("en-US")
                                 : "-"}
                         </Typography>
                     </Stack>
@@ -60,7 +60,7 @@ export default function StatusCard({
 
                         <Typography fontWeight={600}>
                             {checkOut
-                                ? checkOut.toLocaleTimeString("id-ID")
+                                ? checkOut.toLocaleTimeString("en-US")
                                 : "-"}
                         </Typography>
                     </Stack>

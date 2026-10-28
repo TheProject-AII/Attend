@@ -21,7 +21,7 @@ export default function LeaveDetailDialog({
     if (!data) return null;
 
     const formatDate = (date) =>
-        new Date(date).toLocaleDateString("id-ID", {
+        new Date(date).toLocaleDateString("en-US", {
             day: "numeric",
             month: "long",
             year: "numeric"
@@ -49,7 +49,7 @@ export default function LeaveDetailDialog({
 
             <DialogTitle>
 
-                Detail Pengajuan
+                Request Details
 
             </DialogTitle>
 
@@ -58,7 +58,16 @@ export default function LeaveDetailDialog({
                 <Stack spacing={2}>
 
                     <Chip
-                        label={data.status}
+                        label={
+                            ({
+                                PENDING: "Pending",
+                                PENDING_SUPERVISOR: "Pending Supervisor Approval",
+                                PENDING_MANAGER: "Pending Manager Approval",
+                                APPROVED: "Approved",
+                                REJECTED: "Rejected",
+                                CANCELLED: "Cancelled",
+                            })[data.status] || data.status
+                        }
                         color={
                             data.status === "APPROVED"
                                 ? "success"
@@ -72,36 +81,46 @@ export default function LeaveDetailDialog({
                     <Divider />
 
                     <BoxItem
-                        title="🏥 Jenis"
-                        value={data.leave_type}
+                        title="🏥 Type"
+                        value={
+                            ({
+                                SAKIT: "Sick Leave",
+                                IZIN: "Permission",
+                                CUTI: "Leave",
+                                LEMBUR: "Overtime",
+                                DINAS: "Business Travel",
+                                BUSINESS_TRIP: "Business Travel",
+                                CLIENT: "Client Visit",
+                            })[data.leave_type] || data.leave_type
+                        }
                     />
 
                     <BoxItem
-                        title="📅 Tanggal"
+                        title="📅 Date"
                         value={`${formatDate(data.start_date)} - ${formatDate(data.end_date)}`}
                     />
 
                     <BoxItem
-                        title="⏳ Durasi"
-                        value={`${totalDays} Hari`}
+                        title="⏳ Duration"
+                        value={`${totalDays} days`}
                     />
 
                     <BoxItem
-                        title="📝 Keterangan"
+                        title="📝 Details"
                         value={data.reason || "-"}
                     />
 
                     <BoxItem
-                        title="📎 Lampiran"
+                        title="📎 Attachment"
                         value={
                             data.attachment
-                                ? "Ada Lampiran"
+                                ? "Attached"
                                 : "-"
                         }
                     />
 
                     <BoxItem
-                        title="💬 Catatan HR"
+                        title="💬 HR Notes"
                         value={data.approval_note || "-"}
                     />
 
@@ -113,7 +132,7 @@ export default function LeaveDetailDialog({
 
                 <Button onClick={onClose}>
 
-                    Tutup
+                    Close
 
                 </Button>
 

@@ -42,7 +42,7 @@ export default function ForgotPassword() {
         if (!email) {
 
             setError(
-                "Email wajib diisi."
+                "Email is required."
             );
 
             return;
@@ -62,7 +62,7 @@ export default function ForgotPassword() {
 
             setSuccess(
                 response.data.message ||
-                "Link reset password telah dikirim."
+                "A password reset link has been sent."
             );
 
         } catch (err) {
@@ -71,7 +71,7 @@ export default function ForgotPassword() {
 
             setError(
                 err.response?.data?.message ||
-                "Gagal mengirim link reset password."
+                "Failed to send the password reset link."
             );
 
         } finally {
@@ -115,7 +115,7 @@ export default function ForgotPassword() {
                         fontWeight={700}
                         textAlign="center"
                     >
-                        Lupa Password?
+                        Forgot Password?
                     </Typography>
 
                     <Typography
@@ -126,8 +126,8 @@ export default function ForgotPassword() {
                             mb: 4
                         }}
                     >
-                        Masukkan email yang
-                        terdaftar di KJI Attendance.
+                        Enter the email address
+                        registered with KJI Attendance.
                     </Typography>
 
                     {success && (
@@ -195,8 +195,8 @@ export default function ForgotPassword() {
                                 }}
                             >
                                 {loading
-                                    ? "Mengirim..."
-                                    : "Kirim Link Reset Password"}
+                                    ? "Sending..."
+                                    : "Send Password Reset Link"}
                             </Button>
 
                             <Button
@@ -215,7 +215,7 @@ export default function ForgotPassword() {
                                     fontWeight: 600
                                 }}
                             >
-                                Kembali ke Login
+                                Back to Sign In
                             </Button>
 
                         </Stack>

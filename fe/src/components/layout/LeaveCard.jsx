@@ -8,15 +8,15 @@ import {
 } from "@mui/material";
 
 const leaveTypeLabel = {
-    SAKIT: "Sakit",
-    IZIN: "Izin",
-    CUTI: "Cuti",
-    DINAS: "Dinas",
-    BUSINESS_TRIP: "Perjalanan Dinas",
+    SAKIT: "Sick Leave",
+    IZIN: "Permission",
+    CUTI: "Leave",
+    DINAS: "Business Travel",
+    BUSINESS_TRIP: "Business Travel",
     CLIENT: "Client",
     MEETING: "Meeting",
     WFH: "WFH",
-    LEMBUR: "Lembur"
+    LEMBUR: "Overtime"
 };
 
 const getStatusLabel = (status) => {
@@ -26,16 +26,16 @@ const getStatusLabel = (status) => {
         case "PENDING":
         case "PENDING_SUPERVISOR":
         case "PENDING_MANAGER":
-            return "Menunggu";
+            return "Pending";
 
         case "APPROVED":
-            return "Disetujui";
+            return "Approved";
 
         case "REJECTED":
-            return "Ditolak";
+            return "Rejected";
 
         case "CANCELLED":
-            return "Dibatalkan";
+            return "Cancelled";
 
         default:
             return status || "-";
@@ -55,7 +55,7 @@ export default function LeaveCard({
         if (!date) return "-";
 
         return new Date(date).toLocaleDateString(
-            "id-ID",
+            "en-US",
             {
                 day: "numeric",
                 month: "long",
@@ -90,14 +90,14 @@ export default function LeaveCard({
             minutes % 60;
 
         if (hours === 0) {
-            return `${remainingMinutes} menit`;
+            return `${remainingMinutes} min`;
         }
 
         if (remainingMinutes === 0) {
-            return `${hours} jam`;
+            return `${hours} hr`;
         }
 
-        return `${hours} jam ${remainingMinutes} menit`;
+        return `${hours} hr ${remainingMinutes} min`;
 
     };
 
@@ -137,14 +137,14 @@ export default function LeaveCard({
                     >
                         {item.leave_type === "CUTI"
                             ? item.leave_category === "TAHUNAN"
-                                ? "Cuti Tahunan"
+                                ? "Annual Leave"
                                 : item.leave_category === "MENIKAH"
-                                    ? "Cuti Menikah"
+                                    ? "Marriage Leave"
                                     : item.leave_category === "MELAHIRKAN"
-                                        ? "Cuti Melahirkan"
+                                        ? "Maternity Leave"
                                         : item.leave_category === "KELUARGA_MENINGGAL"
-                                            ? "Cuti Keluarga Meninggal"
-                                            : "Cuti"
+                                            ? "Bereavement Leave"
+                                            : "Leave"
                             : leaveTypeLabel[item.leave_type] ||
                             item.leave_type
                         }
@@ -177,7 +177,7 @@ export default function LeaveCard({
                             variant="body2"
                         >
                             <strong>
-                                Tanggal :
+                                Date:
                             </strong>{" "}
                             {formatDate(
                                 item.overtime_date
@@ -188,7 +188,7 @@ export default function LeaveCard({
                             variant="body2"
                         >
                             <strong>
-                                Jam :
+                                Time:
                             </strong>{" "}
                             {formatTime(
                                 item.start_time
@@ -203,7 +203,7 @@ export default function LeaveCard({
                             variant="body2"
                         >
                             <strong>
-                                Durasi :
+                                Duration:
                             </strong>{" "}
                             {formatDuration(
                                 item.duration_minutes
@@ -214,7 +214,7 @@ export default function LeaveCard({
                             variant="body2"
                         >
                             <strong>
-                                Pekerjaan :
+                                Work:
                             </strong>{" "}
                             {item.reason || "-"}
                         </Typography>
@@ -224,7 +224,7 @@ export default function LeaveCard({
                 ) : (
 
                     /* ===================== */
-                    /* CUTI / IZIN / SAKIT */
+                    /* LEAVE / PERMISSION / SICK LEAVE */
                     /* ===================== */
 
                     <Box sx={{ mt: 1.5 }}>
@@ -234,7 +234,7 @@ export default function LeaveCard({
                             sx={{ mb: 0 }}
                         >
                             <strong>
-                                Tanggal :
+                                Date:
                             </strong>{" "}
                             {formatDate(
                                 item.start_date
@@ -250,7 +250,7 @@ export default function LeaveCard({
                             sx={{ mb: 0 }}
                         >
                             <strong>
-                                Durasi :
+                                Duration:
                             </strong>{" "}
                             {
                                 Math.max(
@@ -267,13 +267,13 @@ export default function LeaveCard({
                                         86400000
                                     ) + 1
                                 )
-                            } Hari
+                            } days
                         </Typography>
 
                         <Typography variant="body2">
 
                             <strong>
-                                Keterangan :
+                                Details:
                             </strong>{" "}
 
                             {item.reason || "-"}

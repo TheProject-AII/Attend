@@ -158,7 +158,7 @@ export default function Profile() {
             >
 
                 <Typography color="error">
-                    Data profil tidak ditemukan.
+                    Profile not found.
                 </Typography>
 
             </Box>
@@ -308,7 +308,7 @@ export default function Profile() {
                             variant="caption"
                             color="text.secondary"
                         >
-                            Jabatan
+                            Position
                         </Typography>
 
                         <Typography
@@ -342,8 +342,8 @@ export default function Profile() {
                         </ListItemIcon>
 
                         <ListItemText
-                            primary="Rekap Lembur"
-                            secondary="Lihat riwayat dan pembayaran lembur"
+                            primary="Overtime Summary"
+                            secondary="View overtime history and payments"
                         />
 
                         <ChevronRightRoundedIcon color="action" />
@@ -357,8 +357,8 @@ export default function Profile() {
                         </ListItemIcon>
 
                         <ListItemText
-                            primary="Ganti Password"
-                            secondary="Ubah password akun Anda"
+                            primary="Change Password"
+                            secondary="Update your account password"
                         />
 
                         <ChevronRightRoundedIcon color="action" />
@@ -378,8 +378,8 @@ export default function Profile() {
                         </ListItemIcon>
 
                         <ListItemText
-                            primary="Logout"
-                            secondary="Keluar dari aplikasi"
+                            primary="Log Out"
+                            secondary="Sign out of the app"
                         />
 
                         <ChevronRightRoundedIcon color="error" />
@@ -398,7 +398,7 @@ export default function Profile() {
                 </DialogTitle>
 
                 <DialogContent>
-                    Apakah Anda yakin ingin keluar?
+                    Are you sure you want to log out?
                 </DialogContent>
 
                 <DialogActions>
@@ -406,7 +406,7 @@ export default function Profile() {
                     <Button
                         onClick={() => setOpenLogout(false)}
                     >
-                        Batal
+                        Cancel
                     </Button>
 
                     <Button

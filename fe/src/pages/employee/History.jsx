@@ -43,18 +43,18 @@ export default function History() {
         selectedMonth === now.getMonth() &&
         selectedYear === now.getFullYear();
     const monthNames = [
-        "Januari",
-        "Februari",
-        "Maret",
+        "January",
+        "February",
+        "March",
         "April",
-        "Mei",
-        "Juni",
-        "Juli",
-        "Agustus",
+        "May",
+        "June",
+        "July",
+        "August",
         "September",
-        "Oktober",
+        "October",
         "November",
-        "Desember"
+        "December"
     ];
 
     const prevMonth = () => {
@@ -116,7 +116,7 @@ export default function History() {
     const formatTime = (time) => {
         if (!time) return "-";
 
-        return new Date(time).toLocaleTimeString("id-ID", {
+        return new Date(time).toLocaleTimeString("en-US", {
             hour: "2-digit",
             minute: "2-digit",
             hour12: false
@@ -208,7 +208,7 @@ export default function History() {
         if (!editDialog) return;
 
         if (!editForm.reason.trim()) {
-            alert("Alasan perubahan wajib diisi.");
+            alert("A reason for the change is required.");
             return;
         }
 
@@ -216,7 +216,7 @@ export default function History() {
             editForm.check_in &&
             !isValidTime(editForm.check_in)
         ) {
-            alert("Jam masuk harus dalam format HH:mm, contoh 13:57.");
+            alert("Check-in time must use HH:mm format, for example 13:57.");
             return;
         }
 
@@ -224,7 +224,7 @@ export default function History() {
             editForm.check_out &&
             !isValidTime(editForm.check_out)
         ) {
-            alert("Jam pulang harus dalam format HH:mm, contoh 17:00.");
+            alert("Check-out time must use HH:mm format, for example 17:00.");
             return;
         }
 
@@ -275,7 +275,7 @@ export default function History() {
 
             alert(
                 err.response?.data?.message ||
-                "Gagal mengajukan perubahan absensi."
+                "Failed to submit the attendance change request."
             );
 
         } finally {
@@ -322,7 +322,7 @@ export default function History() {
                             variant="h5"
                             fontWeight={700}
                         >
-                            Riwayat Absensi
+                            Attendance History
                         </Typography>
 
 
@@ -367,7 +367,7 @@ export default function History() {
                             color="text.secondary"
                             sx={{ mt: .5, textAlign: "center" }}
                         >
-                            {summary.hadir} Hari Hadir | {summary.terlambat} Terlambat | {summary.tepatWaktu} Tepat Waktu
+                                            {summary.hadir} days present | {summary.terlambat} late | {summary.tepatWaktu} on time
                         </Typography>
 
 
@@ -451,7 +451,7 @@ export default function History() {
                                 align="center"
                                 color="text.secondary"
                             >
-                                Belum ada riwayat absensi.
+                                No attendance history yet.
                             </Typography>
 
                         </CardContent>
@@ -489,7 +489,7 @@ export default function History() {
                                             lineHeight: 1.4
                                         }}
                                     >
-                                        {new Date(item.attendance_date).toLocaleDateString("id-ID", {
+                                        {new Date(item.attendance_date).toLocaleDateString("en-US", {
                                             weekday: "long",
                                             day: "numeric",
                                             month: "long",
@@ -499,13 +499,13 @@ export default function History() {
 
                                     {item.attendance_status === "Terlambat" ? (
                                         <Chip
-                                            label={`Terlambat ${item.late_minutes} Menit`}
+                                            label={`Late by ${item.late_minutes} min`}
                                             color="error"
                                             size="small"
                                         />
                                     ) : (
                                         <Chip
-                                            label="Tepat Waktu"
+                                            label="On Time"
                                             color="success"
                                             size="small"
                                         />
@@ -588,7 +588,7 @@ export default function History() {
                                             variant="caption"
                                             color="text.secondary"
                                         >
-                                            Durasi
+                                            Duration
                                         </Typography>
 
                                     </Box>
@@ -605,7 +605,7 @@ export default function History() {
                                     {item.edit_request_status === "PENDING_SUPERVISOR" ? (
 
                                         <Chip
-                                            label="Menunggu Approval"
+                                            label="Pending Approval"
                                             color="warning"
                                             size="small"
                                         />
@@ -613,7 +613,7 @@ export default function History() {
                                     ) : item.edit_request_status === "APPROVED" ? (
 
                                         <Chip
-                                            label="Sudah Dikoreksi"
+                                            label="Corrected"
                                             color="success"
                                             size="small"
                                         />
@@ -626,7 +626,7 @@ export default function History() {
                                             startIcon={<EditRoundedIcon />}
                                             onClick={() => openEditDialog(item)}
                                         >
-                                            Ajukan Perubahan
+                                            Request Change
                                         </Button>
 
                                     )}
@@ -659,7 +659,7 @@ export default function History() {
                 <DialogTitle
                     fontWeight={700}
                 >
-                    Ajukan Perubahan Absensi
+                    Request Attendance Change
                 </DialogTitle>
 
                 <DialogContent>
@@ -672,7 +672,7 @@ export default function History() {
                             >
                                 {new Date(
                                     editDialog.attendance_date
-                                ).toLocaleDateString("id-ID", {
+                                ).toLocaleDateString("en-US", {
                                     weekday: "long",
                                     day: "numeric",
                                     month: "long",
@@ -682,7 +682,7 @@ export default function History() {
 
                             <TextField
                                 fullWidth
-                                label="Jam Masuk"
+                                label="Check-in Time"
                                 placeholder="HH:mm"
                                 value={editForm.check_in}
                                 onChange={(e) => {
@@ -695,12 +695,12 @@ export default function History() {
                                         }));
                                     }
                                 }}
-                                helperText="Format 24 jam, contoh: 13:57"
+                                helperText="24-hour format, for example: 13:57"
                             />
 
                             <TextField
                                 fullWidth
-                                label="Jam Pulang"
+                                label="Check-out Time"
                                 placeholder="HH:mm"
                                 value={editForm.check_out}
                                 onChange={(e) => {
@@ -713,14 +713,14 @@ export default function History() {
                                         }));
                                     }
                                 }}
-                                helperText="Format 24 jam, contoh: 17:00"
+                                helperText="24-hour format, for example: 17:00"
                             />
                             <TextField
                                 fullWidth
                                 multiline
                                 minRows={3}
-                                label="Alasan Perubahan"
-                                placeholder="Jelaskan alasan perubahan jam absensi..."
+                                label="Reason for Change"
+                                placeholder="Explain why the attendance times need to be changed..."
                                 value={editForm.reason}
                                 onChange={(e) =>
                                     setEditForm(prev => ({
@@ -741,7 +741,7 @@ export default function History() {
                         onClick={() => setEditDialog(null)}
                         disabled={submittingEdit}
                     >
-                        Batal
+                        Cancel
                     </Button>
 
                     <Button
@@ -754,8 +754,8 @@ export default function History() {
                         }
                     >
                         {submittingEdit
-                            ? "Mengirim..."
-                            : "Ajukan Perubahan"}
+                            ? "Submitting..."
+                            : "Submit Change Request"}
                     </Button>
 
                 </DialogActions>

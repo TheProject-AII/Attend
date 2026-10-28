@@ -42,22 +42,22 @@ export default function ResetPassword() {
         setSuccess("");
 
         if (!token) {
-            setError("Link reset password tidak valid.");
+            setError("Invalid password reset link.");
             return;
         }
 
         if (!password || !confirmPassword) {
-            setError("Password wajib diisi.");
+            setError("Password is required.");
             return;
         }
 
         if (password.length < 8) {
-            setError("Password minimal 8 karakter.");
+            setError("Password must be at least 8 characters.");
             return;
         }
 
         if (password !== confirmPassword) {
-            setError("Konfirmasi password tidak sama.");
+            setError("Password confirmation does not match.");
             return;
         }
 
@@ -75,7 +75,7 @@ export default function ResetPassword() {
 
             setSuccess(
                 response.data.message ||
-                "Password berhasil diubah.",
+                "Password changed successfully.",
             );
 
             setPassword("");
@@ -90,7 +90,7 @@ export default function ResetPassword() {
 
             setError(
                 err.response?.data?.message ||
-                "Gagal mengubah password.",
+                "Failed to change password.",
             );
         } finally {
             setLoading(false);
@@ -133,7 +133,7 @@ export default function ResetPassword() {
                         textAlign="center"
                         mb={3}
                     >
-                        Masukkan password baru untuk akun Anda.
+                        Enter a new password for your account.
                     </Typography>
 
                     {error && (
@@ -161,7 +161,7 @@ export default function ResetPassword() {
 
                         <TextField
                             fullWidth
-                            label="Password Baru"
+                            label="New Password"
                             type={
                                 showPassword
                                     ? "text"
@@ -197,7 +197,7 @@ export default function ResetPassword() {
 
                         <TextField
                             fullWidth
-                            label="Konfirmasi Password"
+                            label="Confirm Password"
                             type={
                                 showConfirm
                                     ? "text"

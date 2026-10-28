@@ -39,7 +39,7 @@ function formatTimeWIB(value) {
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
-  return new Intl.DateTimeFormat("id-ID", {
+  return new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Jakarta",
     hour: "2-digit",
     minute: "2-digit",
@@ -71,7 +71,7 @@ function PhotoPanel({ label, url, available, loading, error, color }) {
           <Box
             component="img"
             src={url}
-            alt={`Foto ${label}`}
+            alt={`${label} photo`}
             sx={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         ) : (
@@ -82,8 +82,8 @@ function PhotoPanel({ label, url, available, loading, error, color }) {
             px={2}
           >
             {available && error
-              ? "Foto gagal dimuat"
-              : `Foto ${label} tidak tersedia`}
+              ? "Failed to load photo"
+              : `${label} photo is unavailable`}
           </Typography>
         )}
       </Box>
@@ -115,13 +115,13 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
       if (!attendance.photo_path && !attendance.check_out_photo_path) return;
       if (!attendance.attendance_id) {
         setPhotoError(
-          "ID absensi tidak tersedia. Periksa query /daily pada backend.",
+          "Attendance ID is unavailable. Check the backend /daily query.",
         );
         return;
       }
       const token = localStorage.getItem("token");
       if (!token) {
-        setPhotoError("Sesi login tidak ditemukan. Silakan login kembali.");
+        setPhotoError("Login session not found. Please sign in again.");
         return;
       }
 
@@ -136,7 +136,7 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
         );
         const result = await response.json();
         if (!response.ok || !result.success || !result.data?.url) {
-          throw new Error(result.message || `Gagal mengambil foto ${type}`);
+          throw new Error(result.message || `Failed to retrieve ${type} photo`);
         }
         return result.data.url;
       };
@@ -155,7 +155,7 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
         });
         const errors = [checkIn, checkOut]
           .filter((result) => result.status === "rejected")
-          .map((result) => result.reason?.message || "Foto gagal dimuat");
+          .map((result) => result.reason?.message || "Failed to load photo");
         if (errors.length) setPhotoError(errors.join("; "));
       } finally {
         if (active) setPhotoLoading(false);
@@ -177,18 +177,18 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
       >
         <CardContent>
           <Typography variant="h6" fontWeight={700} mb={2}>
-            Data Absensi Hari Ini
+            Today's Attendance
           </Typography>
           <Box sx={{ overflowX: "auto" }}>
             <Table>
               <TableHead>
                 <TableRow>
                   <TableCell>No.</TableCell>
-                  <TableCell>Karyawan</TableCell>
+                  <TableCell>Employee</TableCell>
                   <TableCell>Check In</TableCell>
                   <TableCell>Check Out</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell>Telat</TableCell>
+                  <TableCell>Late (min)</TableCell>
                   <TableCell align="center">Detail</TableCell>
                 </TableRow>
               </TableHead>
@@ -222,7 +222,7 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
                 ) : data.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} align="center">
-                      Belum ada data absensi.
+                      No attendance records yet.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -267,7 +267,15 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
                       <TableCell>{formatTimeWIB(item.check_out)}</TableCell>
                       <TableCell>
                         <Chip
-                          label={item.status || "-"}
+                          label={
+                            ({
+                              "Belum Check In": "Not Checked In",
+                              "Belum Pulang": "Not Checked Out",
+                              Hadir: "Present",
+                              Terlambat: "Late",
+                              Pulang: "Checked Out",
+                            })[item.status] || item.status || "-"
+                          }
                           size="small"
                           color={
                             item.status === "Belum Check In"
@@ -276,12 +284,12 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
                           }
                         />
                       </TableCell>
-                      <TableCell>{item.late_minutes ?? 0} menit</TableCell>
+                      <TableCell>{item.late_minutes ?? 0} min</TableCell>
                       <TableCell align="center">
                         <IconButton
                           size="small"
                           color="primary"
-                          aria-label={`Detail absensi ${item.name}`}
+                          aria-label={`Attendance details for ${item.name}`}
                           onClick={() => {
                             setSelectedAttendance(item);
                             setOpenAttendanceDetail(true);
@@ -305,12 +313,12 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Detail Absensi</DialogTitle>
+        <DialogTitle>Attendance Details</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
             <Box>
               <Typography variant="body2" color="text.secondary">
-                Karyawan
+                Employee
               </Typography>
               <Typography fontWeight={600}>
                 {selectedAttendance?.name || "-"}
@@ -356,7 +364,15 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
                   Status
                 </Typography>
                 <Chip
-                  label={selectedAttendance?.status || "-"}
+                  label={
+                    ({
+                      Hadir: "Present",
+                      Terlambat: "Late",
+                      Pulang: "Checked Out",
+                      "Belum Check In": "Not Checked In",
+                      "Belum Pulang": "Not Checked Out",
+                    })[selectedAttendance?.status] || selectedAttendance?.status || "-"
+                  }
                   size="small"
                   color={
                     selectedAttendance?.status === "Pulang"
@@ -369,7 +385,7 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
             <Divider />
             <Box>
               <Typography variant="body2" color="text.secondary" mb={1}>
-                Lokasi Absensi
+                Attendance Location
               </Typography>
               {selectedAttendance && (
                 <AttendanceLocationMap
@@ -383,7 +399,7 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
             <Divider />
             <Box>
               <Typography variant="body2" color="text.secondary" mb={2}>
-                Foto Absensi
+                Attendance Photos
               </Typography>
               {photoError && (
                 <Alert severity="warning" sx={{ mb: 2 }}>
@@ -418,7 +434,7 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeDetail}>Tutup</Button>
+          <Button onClick={closeDetail}>Close</Button>
         </DialogActions>
       </Dialog>
     </>

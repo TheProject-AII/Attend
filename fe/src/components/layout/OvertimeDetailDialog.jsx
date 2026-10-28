@@ -20,16 +20,16 @@ const getStatusLabel = (status) => {
         case "PENDING":
         case "PENDING_SUPERVISOR":
         case "PENDING_MANAGER":
-            return "Menunggu";
+            return "Pending";
 
         case "APPROVED":
-            return "Disetujui";
+            return "Approved";
 
         case "REJECTED":
-            return "Ditolak";
+            return "Rejected";
 
         case "CANCELLED":
-            return "Dibatalkan";
+            return "Cancelled";
 
         default:
             return status || "-";
@@ -71,7 +71,7 @@ export default function OvertimeDetailDialog({
         }
 
         return new Date(date).toLocaleDateString(
-            "id-ID",
+            "en-US",
             {
                 day: "numeric",
                 month: "long",
@@ -106,14 +106,14 @@ export default function OvertimeDetailDialog({
             minutes % 60;
 
         if (hours === 0) {
-            return `${remainingMinutes} menit`;
+            return `${remainingMinutes} min`;
         }
 
         if (remainingMinutes === 0) {
-            return `${hours} jam`;
+            return `${hours} hr`;
         }
 
-        return `${hours} jam ${remainingMinutes} menit`;
+        return `${hours} hr ${remainingMinutes} min`;
     };
 
     return (
@@ -138,7 +138,7 @@ export default function OvertimeDetailDialog({
                     <Typography
                         fontWeight={700}
                     >
-                        Detail Pengajuan Lembur
+                        Overtime Request Details
                     </Typography>
 
                 </Stack>
@@ -172,7 +172,7 @@ export default function OvertimeDetailDialog({
 
                     <Divider />
 
-                    {/* TANGGAL */}
+                    {/* DATE */}
 
                     <Box>
 
@@ -180,7 +180,7 @@ export default function OvertimeDetailDialog({
                             variant="body2"
                             color="text.secondary"
                         >
-                            Tanggal Lembur
+                            Overtime Date
                         </Typography>
 
                         <Typography
@@ -193,7 +193,7 @@ export default function OvertimeDetailDialog({
 
                     </Box>
 
-                    {/* JAM */}
+                    {/* TIME */}
 
                     <Box>
 
@@ -201,7 +201,7 @@ export default function OvertimeDetailDialog({
                             variant="body2"
                             color="text.secondary"
                         >
-                            Jam Lembur
+                            Overtime Hours
                         </Typography>
 
                         <Typography
@@ -218,7 +218,7 @@ export default function OvertimeDetailDialog({
 
                     </Box>
 
-                    {/* DURASI */}
+                    {/* DURATION */}
 
                     <Box>
 
@@ -226,7 +226,7 @@ export default function OvertimeDetailDialog({
                             variant="body2"
                             color="text.secondary"
                         >
-                            Durasi
+                            Duration
                         </Typography>
 
                         <Typography
@@ -239,7 +239,7 @@ export default function OvertimeDetailDialog({
 
                     </Box>
 
-                    {/* ALASAN */}
+                    {/* REASON */}
 
                     <Box>
 
@@ -247,7 +247,7 @@ export default function OvertimeDetailDialog({
                             variant="body2"
                             color="text.secondary"
                         >
-                            Pekerjaan / Alasan
+                            Work / Reason
                         </Typography>
 
                         <Typography

@@ -58,18 +58,18 @@ const formatTotalDuration = (
         Number(hours) === 0 &&
         Number(minutes) === 0
     ) {
-        return "0 jam";
+        return "0 hr";
     }
 
     if (Number(hours) === 0) {
-        return `${minutes} menit`;
+        return `${minutes} min`;
     }
 
     if (Number(minutes) === 0) {
-        return `${hours} jam`;
+        return `${hours} hr`;
     }
 
-    return `${hours} jam ${minutes} menit`;
+    return `${hours} hr ${minutes} min`;
 
 };
 
@@ -150,16 +150,16 @@ export default function OvertimeRecap() {
         switch (status) {
 
             case "PENDING_MANAGER":
-                return "Menunggu";
+                return "Pending";
 
             case "APPROVED":
-                return "Disetujui";
+                return "Approved";
 
             case "REJECTED":
-                return "Ditolak";
+                return "Rejected";
 
             case "CANCELLED":
-                return "Dibatalkan";
+                return "Cancelled";
 
             default:
                 return status || "-";
@@ -196,7 +196,7 @@ export default function OvertimeRecap() {
         if (!date) return "-";
 
         return new Date(date).toLocaleDateString(
-            "id-ID",
+            "en-US",
             {
                 day: "numeric",
                 month: "short",
@@ -223,14 +223,14 @@ export default function OvertimeRecap() {
             minutes % 60;
 
         if (hours === 0) {
-            return `${remainingMinutes} menit`;
+            return `${remainingMinutes} min`;
         }
 
         if (remainingMinutes === 0) {
-            return `${hours} jam`;
+            return `${hours} hr`;
         }
 
-        return `${hours} jam ${remainingMinutes} menit`;
+        return `${hours} hr ${remainingMinutes} min`;
 
     };
 
@@ -457,8 +457,8 @@ export default function OvertimeRecap() {
 
                 Swal.fire({
                     icon: "info",
-                    title: "Tidak Ada Data",
-                    text: "Tidak ada data lembur untuk diexport."
+                    title: "No Data",
+                    text: "There is no overtime data to export."
                 });
 
                 return;
@@ -468,36 +468,36 @@ export default function OvertimeRecap() {
                 (item, index) => ({
                     "No": index + 1,
 
-                    "Nama Karyawan":
+                    "Employee Name":
                         item.employee_name || "-",
 
-                    "Divisi":
+                    "Department":
                         item.department || "-",
 
-                    "Tanggal":
+                    "Date":
                         formatDate(
                             item.overtime_date
                         ),
 
-                    "Jam Mulai":
+                    "Start Time":
                         item.start_time
                             ?.substring(0, 5) || "-",
 
-                    "Jam Selesai":
+                    "End Time":
                         item.end_time
                             ?.substring(0, 5) || "-",
 
-                    "Durasi":
+                    "Duration":
                         formatDuration(
                             item.duration_minutes
                         ),
 
-                    "Tarif / Jam":
+                    "Rate / Hour":
                         Number(
                             item.hourly_rate || 0
                         ),
 
-                    "Nominal":
+                    "Amount":
                         Number(
                             item.overtime_amount || 0
                         ),
@@ -507,14 +507,14 @@ export default function OvertimeRecap() {
                             item.status
                         ),
 
-                    "Pembayaran":
+                    "Payment":
                         item.status === "APPROVED"
                             ? item.payment_status === "PAID"
-                                ? "Sudah Dibayar"
-                                : "Belum Dibayar"
+                                ? "Paid"
+                                : "Unpaid"
                             : "-",
 
-                    "Pekerjaan":
+                    "Work Description":
                         item.reason || "-"
                 })
             );
@@ -530,12 +530,12 @@ export default function OvertimeRecap() {
             XLSX.utils.book_append_sheet(
                 workbook,
                 worksheet,
-                "Rekap Lembur"
+                "Overtime Summary"
             );
 
             XLSX.writeFile(
                 workbook,
-                `Rekap_Lembur_${new Date()
+                `Overtime_Summary_${new Date()
                     .toISOString()
                     .slice(0, 10)}.xlsx`
             );
@@ -549,10 +549,10 @@ export default function OvertimeRecap() {
 
             Swal.fire({
                 icon: "error",
-                title: "Gagal Export",
+                title: "Export Failed",
                 text:
                     err.response?.data?.message ||
-                    "Gagal export data lembur."
+                    "Failed to export overtime data."
             });
 
         }
@@ -562,15 +562,14 @@ export default function OvertimeRecap() {
 
         const confirm = await Swal.fire({
             icon: "question",
-            title: "Konfirmasi Pembayaran",
+            title: "Confirm Payment",
             html: `
-            Apakah lembur <b>${item.employee_name}</b>
-            pada tanggal <b>${formatDate(item.overtime_date)}</b>
-            sudah dibayarkan?
+            Has the overtime for <b>${item.employee_name}</b>
+            on <b>${formatDate(item.overtime_date)}</b> been paid?
         `,
             showCancelButton: true,
-            confirmButtonText: "Ya, Sudah Dibayar",
-            cancelButtonText: "Batal"
+            confirmButtonText: "Yes, Paid",
+            cancelButtonText: "Cancel"
         });
 
         if (!confirm.isConfirmed) {
@@ -585,21 +584,21 @@ export default function OvertimeRecap() {
 
 
             // =====================================
-            // ALERT BERHASIL DULU
+            // Show the success alert first.
             // =====================================
 
             await Swal.fire({
                 icon: "success",
-                title: "Berhasil",
+                title: "Success",
                 text:
                     response.data?.message ||
-                    "Pembayaran lembur berhasil dicatat.",
+                    "Overtime payment recorded successfully.",
                 confirmButtonText: "OK"
             });
 
 
             // =====================================
-            // BARU REFRESH DATA
+            // Then refresh the data.
             // =====================================
 
             await loadData();
@@ -614,10 +613,10 @@ export default function OvertimeRecap() {
 
             Swal.fire({
                 icon: "error",
-                title: "Gagal",
+                title: "Failed",
                 text:
                     err.response?.data?.message ||
-                    "Pembayaran lembur gagal dicatat."
+                    "Failed to record overtime payment."
             });
 
         }
@@ -641,7 +640,7 @@ export default function OvertimeRecap() {
             >
 
                 {/* ============================== */}
-                {/* LEMBUR DISETUJUI */}
+                {/* APPROVED OVERTIME */}
                 {/* ============================== */}
 
                 <Card
@@ -655,7 +654,7 @@ export default function OvertimeRecap() {
                             variant="body2"
                             color="text.secondary"
                         >
-                            Lembur Disetujui
+                            Approved Overtime
                         </Typography>
 
                         <Typography
@@ -671,7 +670,7 @@ export default function OvertimeRecap() {
 
 
                 {/* ============================== */}
-                {/* TOTAL JAM */}
+                {/* TOTAL HOURS */}
                 {/* ============================== */}
 
                 <Card
@@ -685,7 +684,7 @@ export default function OvertimeRecap() {
                             variant="body2"
                             color="text.secondary"
                         >
-                            Total Jam Lembur
+                            Total Overtime Hours
                         </Typography>
 
                         <Typography
@@ -736,7 +735,7 @@ export default function OvertimeRecap() {
 
 
                 {/* ============================== */}
-                {/* BELUM DIBAYAR */}
+                {/* UNPAID */}
                 {/* ============================== */}
 
                 <Card
@@ -750,7 +749,7 @@ export default function OvertimeRecap() {
                             variant="body2"
                             color="text.secondary"
                         >
-                            Belum Dibayar
+                            Unpaid
                         </Typography>
 
                         <Typography
@@ -768,7 +767,7 @@ export default function OvertimeRecap() {
 
 
                 {/* ============================== */}
-                {/* SUDAH DIBAYAR */}
+                {/* PAID */}
                 {/* ============================== */}
 
                 <Card
@@ -782,7 +781,7 @@ export default function OvertimeRecap() {
                             variant="body2"
                             color="text.secondary"
                         >
-                            Sudah Dibayar
+                            Paid
                         </Typography>
 
                         <Typography
@@ -825,7 +824,7 @@ export default function OvertimeRecap() {
                         <TextField
                             fullWidth
                             size="small"
-                            label="Nama Karyawan"
+                            label="Employee Name"
                             value={name}
                             onChange={(e) => {
 
@@ -836,7 +835,7 @@ export default function OvertimeRecap() {
                                 setPage(1);
 
                             }}
-                            placeholder="Cari nama..."
+                            placeholder="Search by name..."
                             InputProps={{
                                 startAdornment:
                                     <SearchIcon
@@ -855,7 +854,7 @@ export default function OvertimeRecap() {
                         <TextField
                             fullWidth
                             size="small"
-                            label="Divisi"
+                            label="Department"
                             value={department}
                             onChange={(e) => {
 
@@ -866,7 +865,7 @@ export default function OvertimeRecap() {
                                 setPage(1);
 
                             }}
-                            placeholder="Contoh: IT"
+                            placeholder="Example: IT"
                         />
 
 
@@ -876,7 +875,7 @@ export default function OvertimeRecap() {
                             fullWidth
                             size="small"
                             type="date"
-                            label="Dari Tanggal"
+                            label="Start Date"
                             value={startDate}
                             onChange={(e) => {
                                 setStartDate(e.target.value);
@@ -896,7 +895,7 @@ export default function OvertimeRecap() {
                             fullWidth
                             size="small"
                             type="date"
-                            label="Sampai Tanggal"
+                            label="End Date"
                             value={endDate}
                             onChange={(e) => {
                                 setEndDate(e.target.value);
@@ -926,7 +925,7 @@ export default function OvertimeRecap() {
                         <TextField
                             select
                             size="small"
-                            label="Urutan"
+                            label="Sort Order"
                             value={sort}
                             onChange={(e) => {
 
@@ -943,11 +942,11 @@ export default function OvertimeRecap() {
                         >
 
                             <MenuItem value="latest">
-                                Terbaru
+                                Newest First
                             </MenuItem>
 
                             <MenuItem value="oldest">
-                                Terlama
+                                Oldest First
                             </MenuItem>
 
                         </TextField>
@@ -962,7 +961,7 @@ export default function OvertimeRecap() {
                                 handleReset
                             }
                         >
-                            Reset Filter
+                            Reset Filters
                         </Button>
                         <Button
                             variant="outlined"
@@ -1016,31 +1015,31 @@ export default function OvertimeRecap() {
                                         No.
                                     </TableCell>
                                     <TableCell>
-                                        Karyawan
+                                        Employee
                                     </TableCell>
 
                                     <TableCell>
-                                        Divisi
+                                        Department
                                     </TableCell>
 
                                     <TableCell>
-                                        Tanggal
+                                        Date
                                     </TableCell>
 
                                     <TableCell>
-                                        Jam
+                                        Time
                                     </TableCell>
 
                                     <TableCell>
-                                        Durasi
+                                        Duration
                                     </TableCell>
 
                                     <TableCell>
-                                        Tarif / Jam
+                                        Rate / Hour
                                     </TableCell>
 
                                     <TableCell>
-                                        Nominal
+                                        Amount
                                     </TableCell>
 
                                     <TableCell>
@@ -1048,11 +1047,11 @@ export default function OvertimeRecap() {
                                     </TableCell>
 
                                     <TableCell>
-                                        Pembayaran
+                                        Payment
                                     </TableCell>
 
                                     <TableCell align="center">
-                                        Aksi
+                                        Actions
                                     </TableCell>
 
                                 </TableRow>
@@ -1073,7 +1072,7 @@ export default function OvertimeRecap() {
                                                 py: 5
                                             }}
                                         >
-                                            Memuat data...
+                                            Loading data...
                                         </TableCell>
 
                                     </TableRow>
@@ -1089,7 +1088,7 @@ export default function OvertimeRecap() {
                                                 py: 5
                                             }}
                                         >
-                                            Tidak ada data lembur.
+                                            No overtime data available.
                                         </TableCell>
 
                                     </TableRow>
@@ -1195,8 +1194,8 @@ export default function OvertimeRecap() {
                                                                     label={
                                                                         item.payment_status ===
                                                                             "PAID"
-                                                                            ? "Sudah Dibayar"
-                                                                            : "Belum Dibayar"
+                                                                            ? "Paid"
+                                                                            : "Unpaid"
                                                                     }
                                                                     size="small"
                                                                     color={
@@ -1232,7 +1231,7 @@ export default function OvertimeRecap() {
                                                             onClick={() =>
                                                                 setSelectedItem(item)
                                                             }
-                                                            title="Lihat Detail"
+                                                            title="View Details"
                                                         >
                                                             <VisibilityIcon
                                                                 fontSize="small"
@@ -1258,7 +1257,7 @@ export default function OvertimeRecap() {
                                                                         textTransform: "none"
                                                                     }}
                                                                 >
-                                                                    Bayar
+                                                                    Mark as Paid
                                                                 </Button>
 
                                                             )}
@@ -1372,7 +1371,7 @@ export default function OvertimeRecap() {
                                     whiteSpace: "nowrap"
                                 }}
                             >
-                                Sebelumnya
+                                Previous
                             </Button>
 
 
@@ -1446,7 +1445,7 @@ export default function OvertimeRecap() {
             >
 
                 <DialogTitle>
-                    Detail Lembur
+                    Overtime Details
                 </DialogTitle>
 
 
@@ -1463,7 +1462,7 @@ export default function OvertimeRecap() {
 
                             <Typography>
                                 <strong>
-                                    Karyawan:
+                                    Employee:
                                 </strong>{" "}
                                 {
                                     selectedItem.employee_name ||
@@ -1474,7 +1473,7 @@ export default function OvertimeRecap() {
 
                             <Typography>
                                 <strong>
-                                    Divisi:
+                                    Department:
                                 </strong>{" "}
                                 {
                                     selectedItem.department ||
@@ -1485,7 +1484,7 @@ export default function OvertimeRecap() {
 
                             <Typography>
                                 <strong>
-                                    Tanggal:
+                                    Date:
                                 </strong>{" "}
                                 {
                                     formatDate(
@@ -1497,7 +1496,7 @@ export default function OvertimeRecap() {
 
                             <Typography>
                                 <strong>
-                                    Jam:
+                                    Time:
                                 </strong>{" "}
                                 {
                                     selectedItem.start_time?.substring(
@@ -1519,7 +1518,7 @@ export default function OvertimeRecap() {
 
                             <Typography>
                                 <strong>
-                                    Durasi:
+                                    Duration:
                                 </strong>{" "}
                                 {
                                     formatDuration(
@@ -1543,15 +1542,15 @@ export default function OvertimeRecap() {
 
                             <Typography>
                                 <strong>
-                                    Pembayaran:
+                                    Payment:
                                 </strong>{" "}
                                 {
                                     selectedItem.status ===
                                         "APPROVED"
                                         ? selectedItem.payment_status ===
                                             "PAID"
-                                            ? "Sudah Dibayar"
-                                            : "Belum Dibayar"
+                                            ? "Paid"
+                                            : "Unpaid"
                                         : "-"
                                 }
                             </Typography>
@@ -1565,7 +1564,7 @@ export default function OvertimeRecap() {
                                         mb: 0.5
                                     }}
                                 >
-                                    Pekerjaan
+                                    Work Description
                                 </Typography>
 
 

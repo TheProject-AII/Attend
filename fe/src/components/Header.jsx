@@ -20,8 +20,6 @@ import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-
 import { useTranslation } from "react-i18next";
 import LanguageIcon from "@mui/icons-material/Language";
 
@@ -45,9 +43,9 @@ export default function Header({
         setLanguageAnchor(null);
     };
     const notifications = [
-        "Pengajuan cuti baru",
-        "3 Karyawan belum check in",
-        "1 Pengajuan lembur",
+        "New leave request",
+        "3 employees have not checked in",
+        "1 overtime request",
     ];
 
     const initial = user?.name
@@ -103,7 +101,7 @@ export default function Header({
                         variant="body2"
                         color="text.secondary"
                     >
-                        {subtitle || `Selamat Datang, ${user?.name} 👋`}
+                        {subtitle || `Welcome, ${user?.name} 👋`}
                     </Typography>
 
                 </Box>
@@ -218,7 +216,7 @@ export default function Header({
                     py={1.5}
                     fontWeight={700}
                 >
-                    Notifikasi
+                    Notifications
                 </Typography>
 
                 <Divider />
@@ -253,7 +251,7 @@ export default function Header({
                         <PersonRoundedIcon fontSize="small" />
                     </ListItemIcon>
 
-                    Profil
+                    Profile
                 </MenuItem>
 
                 <MenuItem>
@@ -261,7 +259,7 @@ export default function Header({
                         <PasswordRoundedIcon fontSize="small" />
                     </ListItemIcon>
 
-                    Ubah Password
+                    Change Password
                 </MenuItem>
 
                 <Divider />

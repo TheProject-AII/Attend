@@ -4,7 +4,7 @@ export const getCurrentLocation = () => {
         if (!navigator.geolocation) {
             reject({
                 code: 0,
-                message: "Browser tidak mendukung GPS."
+                message: "This browser does not support GPS."
             });
             return;
         }

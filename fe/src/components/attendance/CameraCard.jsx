@@ -49,7 +49,7 @@ const CameraCard = forwardRef(
                     console.error("Face model error:", err);
 
                     if (mounted) {
-                        setError("Model deteksi wajah gagal dimuat.");
+                        setError("Failed to load the face detection model.");
                     }
                 }
             };
@@ -71,7 +71,7 @@ const CameraCard = forwardRef(
 
                 if (value < 75) {
                     setLightingWarning(
-                        "Pencahayaan kurang. Silakan pindah ke tempat yang lebih terang."
+                        "Lighting is too low. Please move to a brighter area."
                     );
                 } else {
                     setLightingWarning("");
@@ -85,14 +85,14 @@ const CameraCard = forwardRef(
             setError("");
 
             if (!modelReady) {
-                setError("Model wajah belum siap.");
+                setError("The face model is not ready yet.");
                 return null;
             }
 
             const video = webcamRef.current?.video;
 
             if (!video || video.readyState < 2) {
-                setError("Kamera belum siap.");
+                setError("The camera is not ready yet.");
                 return null;
             }
 
@@ -109,14 +109,14 @@ const CameraCard = forwardRef(
 
                 if (faces.length === 0) {
                     setError(
-                        "Wajah tidak terdeteksi. Arahkan wajah ke kamera."
+                        "No face detected. Look toward the camera."
                     );
                     return null;
                 }
 
                 if (faces.length > 1) {
                     setError(
-                        "Terdeteksi lebih dari satu wajah. Pastikan hanya Anda di depan kamera."
+                        "Multiple faces detected. Make sure you are alone in front of the camera."
                     );
                     return null;
                 }
@@ -125,7 +125,7 @@ const CameraCard = forwardRef(
 
                 if (light !== null && light < 75) {
                     setError(
-                        "Pencahayaan terlalu gelap. Silakan cari tempat yang lebih terang sebelum absensi."
+                        "Lighting is too low. Find a brighter area before checking in."
                     );
                     setPhoto(null);
                     return null;
@@ -134,7 +134,7 @@ const CameraCard = forwardRef(
                 const image = await webcamRef.current?.getScreenshot();
 
                 if (!image) {
-                    setError("Gagal mengambil foto.");
+                    setError("Failed to take a photo.");
                     return null;
                 }
 
@@ -144,7 +144,7 @@ const CameraCard = forwardRef(
 
             } catch (err) {
                 console.error("Face detection error:", err);
-                setError("Terjadi kesalahan saat mendeteksi wajah.");
+                setError("An error occurred while detecting your face.");
                 return null;
             } finally {
                 setDetecting(false);
@@ -180,7 +180,7 @@ const CameraCard = forwardRef(
             let total = 0;
             let count = 0;
 
-            // Sampling setiap 4 piksel agar lebih ringan
+            // Sample every four pixels to reduce processing.
             for (let i = 0; i < data.length; i += 16) {
                 const r = data[i];
                 const g = data[i + 1];
@@ -226,7 +226,7 @@ const CameraCard = forwardRef(
                             mb: 2
                         }}
                     >
-                        Pastikan wajah terlihat jelas sebelum melanjutkan.
+                        Make sure your face is clearly visible before continuing.
                     </Typography>
 
                     {!modelReady && !error && (
@@ -241,7 +241,7 @@ const CameraCard = forwardRef(
                         >
                             <CircularProgress size={18} />
                             <Typography variant="body2">
-                                Memuat model deteksi wajah...
+                                Loading face detection model...
                             </Typography>
                         </Box>
                     )}
@@ -291,7 +291,7 @@ const CameraCard = forwardRef(
 
                     </Box>
 
-                    {/* Peringatan pencahayaan */}
+                    {/* Lighting warning */}
                     {!photo && lightingWarning && (
                         <Alert severity="warning" sx={{ mt: 2 }}>
                             {lightingWarning}
@@ -304,7 +304,7 @@ const CameraCard = forwardRef(
                             color="text.secondary"
                             sx={{ display: "block", mt: 1 }}
                         >
-                            Tingkat pencahayaan: {brightness}/255
+                            Lighting level: {brightness}/255
                         </Typography>
                     )}
 
@@ -313,7 +313,7 @@ const CameraCard = forwardRef(
                             variant="body2"
                             sx={{ mt: 1, textAlign: "center" }}
                         >
-                            Memeriksa wajah...
+                            Checking your face...
                         </Typography>
                     )}
                     {detecting && (
@@ -321,13 +321,13 @@ const CameraCard = forwardRef(
                             variant="body2"
                             sx={{ mt: 1, textAlign: "center" }}
                         >
-                            Memeriksa wajah...
+                            Checking your face...
                         </Typography>
                     )}
 
                     {/*
-                      Tombol opsional.
-                      Attendance.jsx tetap bisa memanggil
+                      Optional buttons.
+                      Attendance.jsx can still call
                       cameraRef.current.capture()
                     */}
 
@@ -341,7 +341,7 @@ const CameraCard = forwardRef(
                                 onClick={retake}
                                 sx={{ mt: 2 }}
                             >
-                                Ambil Ulang
+                                Retake Photo
                             </Button>
                         ) : (
                             <Button
@@ -356,7 +356,7 @@ const CameraCard = forwardRef(
                                 onClick={capture}
                                 sx={{ mt: 2 }}
                             >
-                                Ambil Foto
+                                Take Photo
                             </Button>
                         )
                     )}

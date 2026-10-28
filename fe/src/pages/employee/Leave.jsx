@@ -266,7 +266,7 @@ export default function Leave() {
         if (!date) return "-";
 
         return new Date(date).toLocaleDateString(
-            "id-ID",
+            "en-US",
             {
                 day: "numeric",
                 month: "long",
@@ -278,12 +278,12 @@ export default function Leave() {
 
     const leaveTypeLabel = {
 
-        SAKIT: "Sakit",
-        IZIN: "Izin",
-        CUTI: "Cuti",
-        DINAS: "Dinas",
-        BUSINESS_TRIP: "Perjalanan Dinas",
-        CLIENT: "Kunjungan Client",
+        SAKIT: "Sick Leave",
+        IZIN: "Permission",
+        CUTI: "Leave",
+        DINAS: "Business Travel",
+        BUSINESS_TRIP: "Business Travel",
+        CLIENT: "Client Visit",
         MEETING: "Meeting",
         WFH: "Work From Home"
 
@@ -298,7 +298,7 @@ export default function Leave() {
         if (!startDate) {
             Swal.fire({
                 icon: "warning",
-                title: "Tanggal belum lengkap"
+                title: "Date is incomplete"
             });
 
             return;
@@ -307,7 +307,7 @@ export default function Leave() {
         if (!reason.trim()) {
             Swal.fire({
                 icon: "warning",
-                title: "Keterangan wajib diisi"
+                title: "Details are required"
             });
 
             return;
@@ -323,8 +323,8 @@ export default function Leave() {
 
                 Swal.fire({
                     icon: "warning",
-                    title: "Jam lembur belum lengkap",
-                    text: "Jam mulai dan jam selesai wajib diisi."
+                    title: "Overtime hours are incomplete",
+                    text: "Start and end times are required."
                 });
 
                 return;
@@ -333,8 +333,8 @@ export default function Leave() {
             if (endTime === startTime) {
                 Swal.fire({
                     icon: "warning",
-                    title: "Jam lembur tidak valid",
-                    text: "Jam mulai dan jam selesai tidak boleh sama."
+                    title: "Invalid overtime hours",
+                    text: "Start and end times cannot be the same."
                 });
 
                 return;
@@ -355,8 +355,8 @@ export default function Leave() {
                 setOpenDialog(false);
                 await Swal.fire({
                     icon: "success",
-                    title: "Berhasil",
-                    text: "Pengajuan lembur berhasil dikirim."
+                    title: "Success",
+                    text: "Overtime request submitted successfully."
                 });
 
                 // RESET FORM
@@ -382,10 +382,10 @@ export default function Leave() {
 
                 Swal.fire({
                     icon: "error",
-                    title: "Gagal",
+                    title: "Failed",
                     text:
                         err.response?.data?.message ||
-                        "Gagal mengajukan lembur."
+                        "Failed to submit overtime request."
                 });
 
             } finally {
@@ -405,7 +405,7 @@ export default function Leave() {
 
             Swal.fire({
                 icon: "warning",
-                title: "Tanggal belum lengkap"
+                title: "Date is incomplete"
             });
 
             return;
@@ -472,8 +472,8 @@ export default function Leave() {
             // Baru tampilkan SweetAlert
             await Swal.fire({
                 icon: "success",
-                title: "Berhasil",
-                text: "Pengajuan berhasil dikirim.",
+                title: "Success",
+                text: "Request submitted successfully.",
                 confirmButtonText: "OK",
             });
             setLeaveType("SAKIT");
@@ -493,10 +493,10 @@ export default function Leave() {
 
             Swal.fire({
                 icon: "error",
-                title: "Gagal",
+                title: "Failed",
                 text:
                     err.response?.data?.message ||
-                    "Terjadi kesalahan."
+                    "An error occurred."
             });
 
         } finally {
@@ -554,7 +554,7 @@ export default function Leave() {
                             fontWeight={700}
                             sx={{ mb: 2 }}
                         >
-                            Pengajuan
+                            Requests
                         </Typography>
 
                         <Box
@@ -575,14 +575,14 @@ export default function Leave() {
                                     variant="body2"
                                     sx={{ opacity: 0.85 }}
                                 >
-                                    Sisa Cuti Tahunan
+                                    Annual Leave Balance
                                 </Typography>
 
                                 <Typography
                                     variant="h5"
                                     fontWeight={700}
                                 >
-                                    {summary.leave_balance} Hari
+                                    {summary.leave_balance} days
                                 </Typography>
                             </Box>
 
@@ -594,14 +594,14 @@ export default function Leave() {
                                     variant="body2"
                                     sx={{ opacity: 0.85 }}
                                 >
-                                    Cuti Diambil
+                                    Leave Taken
                                 </Typography>
 
                                 <Typography
                                     variant="h5"
                                     fontWeight={700}
                                 >
-                                    {summary.cuti_taken_days} Hari
+                                    {summary.cuti_taken_days} days
                                 </Typography>
                             </Box>
 
@@ -613,14 +613,14 @@ export default function Leave() {
                                     variant="body2"
                                     sx={{ opacity: 0.85 }}
                                 >
-                                    Sakit Potong Cuti
+                                    Sick Leave Deduction
                                 </Typography>
 
                                 <Typography
                                     variant="h5"
                                     fontWeight={700}
                                 >
-                                    {summary.sick_deduction_days} Hari
+                                    {summary.sick_deduction_days} days
                                 </Typography>
                             </Box>
 
@@ -632,14 +632,14 @@ export default function Leave() {
                                     variant="body2"
                                     sx={{ opacity: 0.85 }}
                                 >
-                                    Cuti Khusus
+                                    Special Leave
                                 </Typography>
 
                                 <Typography
                                     variant="h5"
                                     fontWeight={700}
                                 >
-                                    {summary.special_leave_days} Hari
+                                    {summary.special_leave_days} days
                                 </Typography>
                             </Box>
 
@@ -668,7 +668,7 @@ export default function Leave() {
                         }}
                     >
                         <Chip
-                            label={`Semua (${statusCount.ALL})`}
+                            label={`All (${statusCount.ALL})`}
                             sx={{ gap: 1 }}
                             clickable
                             color={statusFilter === "ALL" ? "primary" : "default"}
@@ -797,7 +797,7 @@ export default function Leave() {
                                         align="center"
                                         color="text.secondary"
                                     >
-                                        Belum ada riwayat pengajuan.
+                                        No request history yet.
                                     </Typography>
 
                                 </CardContent>

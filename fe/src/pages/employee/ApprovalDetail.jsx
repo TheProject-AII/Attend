@@ -82,7 +82,7 @@ export default function ApprovalDetail() {
     }, [id, isAttendanceEdit]);
 
     const formatDate = (date) =>
-        new Date(date).toLocaleDateString("id-ID", {
+        new Date(date).toLocaleDateString("en-US", {
             day: "2-digit",
             month: "long",
             year: "numeric",
@@ -195,9 +195,9 @@ export default function ApprovalDetail() {
                 message:
                     action === "APPROVE"
 
-                        ? "Pengajuan berhasil disetujui."
+                        ? "Request approved successfully."
 
-                        : "Pengajuan berhasil ditolak."
+                        : "Request rejected successfully."
 
             });
             setAction(null);
@@ -212,7 +212,7 @@ export default function ApprovalDetail() {
 
             alert(
                 err.response?.data?.message ||
-                "Terjadi kesalahan."
+                "An error occurred."
             );
 
         } finally {
@@ -226,7 +226,7 @@ export default function ApprovalDetail() {
     const formatTime = (date) => {
         if (!date) return "-";
 
-        return new Date(date).toLocaleTimeString("id-ID", {
+        return new Date(date).toLocaleTimeString("en-US", {
             hour: "2-digit",
             minute: "2-digit"
         });
@@ -254,7 +254,7 @@ export default function ApprovalDetail() {
                     variant="h5"
                     fontWeight={700}
                 >
-                    Detail Approval
+                    Approval Details
                 </Typography>
 
             </Box>
@@ -262,7 +262,7 @@ export default function ApprovalDetail() {
                 sx={{
                     p: 2,
                     pt: 1,
-                    pb: 12 // supaya tidak ketutup Bottom Navigation
+                    pb: 12 // Keep content clear of the bottom navigation.
                 }}
             >
 
@@ -274,7 +274,7 @@ export default function ApprovalDetail() {
 
                     <CardContent>
                         <InfoItem
-                            title="Nama Karyawan"
+                            title="Employee Name"
                             value={<>
                                 <Typography fontWeight={600}>
                                     {detail.name}
@@ -293,14 +293,21 @@ export default function ApprovalDetail() {
                                 <Divider sx={{ my: 2 }} />
 
                                 <InfoItem
-                                    title="Jenis Pengajuan"
-                                    value={detail.leave_type}
+                                    title="Request Type"
+                                    value={
+                                        ({
+                                            CUTI: "Leave",
+                                            IZIN: "Permission",
+                                            SAKIT: "Sick Leave",
+                                            LEMBUR: "Overtime",
+                                        })[detail.leave_type] || detail.leave_type
+                                    }
                                 />
 
                                 <Divider sx={{ my: 2 }} />
 
                                 <InfoItem
-                                    title="Tanggal"
+                                    title="Date"
                                     value={formatDateRange(
                                         detail.start_date,
                                         detail.end_date
@@ -310,15 +317,15 @@ export default function ApprovalDetail() {
                                 <Divider sx={{ my: 2 }} />
 
                                 <InfoItem
-                                    title="Durasi"
-                                    value={`${detail.leave_days} Hari`}
+                                    title="Duration"
+                                    value={`${detail.leave_days} days`}
                                 />
 
                                 <Divider sx={{ my: 2 }} />
 
                                 <InfoItem
-                                    title="Hak Cuti Tahunan"
-                                    value={`${detail.leave_balance} Hari`}
+                                    title="Annual Leave Entitlement"
+                                    value={`${detail.leave_balance} days`}
                                 />
 
                                 {detail.leave_type === "CUTI" && (
@@ -326,8 +333,8 @@ export default function ApprovalDetail() {
                                         <Divider sx={{ my: 2 }} />
 
                                         <InfoItem
-                                            title="Sisa Setelah Disetujui"
-                                            value={`${detail.remaining_leave} Hari`}
+                                            title="Remaining After Approval"
+                                            value={`${detail.remaining_leave} days`}
                                         />
                                     </>
                                 )}
@@ -338,21 +345,21 @@ export default function ApprovalDetail() {
                                 <Divider sx={{ my: 2 }} />
 
                                 <InfoItem
-                                    title="Jenis Pengajuan"
-                                    value="Perubahan Absensi"
+                                    title="Request Type"
+                                    value="Attendance Change"
                                 />
 
                                 <Divider sx={{ my: 2 }} />
 
                                 <InfoItem
-                                    title="Tanggal"
+                                    title="Date"
                                     value={formatDate(detail.attendance_date)}
                                 />
 
                                 <Divider sx={{ my: 2 }} />
 
                                 <InfoItem
-                                    title="Jam Masuk"
+                                    title="Check-in Time"
                                     value={
                                         <>
                                             {formatTime(detail.old_check_in)}
@@ -365,7 +372,7 @@ export default function ApprovalDetail() {
                                 <Divider sx={{ my: 2 }} />
 
                                 <InfoItem
-                                    title="Jam Pulang"
+                                    title="Check-out Time"
                                     value={
                                         <>
                                             {formatTime(detail.old_check_out)}
@@ -383,7 +390,7 @@ export default function ApprovalDetail() {
                             fontWeight={600}
                             mb={1}
                         >
-                            Alasan
+                            Reason
                         </Typography>
 
                         <Typography
@@ -398,7 +405,7 @@ export default function ApprovalDetail() {
                             fontWeight={600}
                             mb={1}
                         >
-                            Lampiran
+                            Attachment
                         </Typography>
 
                         {
@@ -409,7 +416,7 @@ export default function ApprovalDetail() {
 
                                 <Button>
 
-                                    Lihat Lampiran
+                                    View Attachment
 
                                 </Button>
 
@@ -419,7 +426,7 @@ export default function ApprovalDetail() {
                                     color="text.secondary"
                                 >
 
-                                    Tidak ada lampiran
+                                    No attachment
 
                                 </Typography>
 
@@ -433,7 +440,7 @@ export default function ApprovalDetail() {
                                         fontWeight={600}
                                         mb={1}
                                     >
-                                        Potong Cuti Tahunan?
+                                        Deduct Annual Leave?
                                     </Typography>
 
                                     <Stack
@@ -451,7 +458,7 @@ export default function ApprovalDetail() {
                                                 setDeductLeave(true)
                                             }
                                         >
-                                            Ya
+                                            Yes
                                         </Button>
 
                                         <Button
@@ -465,7 +472,7 @@ export default function ApprovalDetail() {
                                                 setDeductLeave(false)
                                             }
                                         >
-                                            Tidak
+                                            No
                                         </Button>
                                     </Stack>
 
@@ -474,8 +481,8 @@ export default function ApprovalDetail() {
                                         color="text.secondary"
                                         sx={{ mt: 1 }}
                                     >
-                                        Pilih "Ya" jika pengajuan sakit ini
-                                        akan mengurangi saldo cuti tahunan.
+                                        Select "Yes" to deduct this sick leave request
+                                        from the annual leave balance.
                                     </Typography>
                                 </>
                             )}
@@ -552,8 +559,8 @@ export default function ApprovalDetail() {
                             >
                                 {
                                     action === "APPROVE"
-                                        ? "Approve Pengajuan"
-                                        : "Reject Pengajuan"
+                                        ? "Approve Request"
+                                        : "Reject Request"
                                 }
                             </Typography>
 
@@ -563,8 +570,8 @@ export default function ApprovalDetail() {
                             >
                                 {
                                     action === "APPROVE"
-                                        ? "Catatan (Opsional)"
-                                        : "Alasan Penolakan"
+                                        ? "Note (Optional)"
+                                        : "Rejection Reason"
                                 }
                             </Typography>
 
@@ -576,8 +583,8 @@ export default function ApprovalDetail() {
                             rows={5}
                             placeholder={
                                 action === "APPROVE"
-                                    ? "Tambahkan catatan..."
-                                    : "Masukkan alasan penolakan..."
+                                    ? "Add a note..."
+                                    : "Enter a reason for rejection..."
                             }
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
@@ -593,7 +600,7 @@ export default function ApprovalDetail() {
                                 variant="outlined"
                                 onClick={() => setAction(null)}
                             >
-                                Batal
+                                Cancel
                             </Button>
 
                             <Button
@@ -608,7 +615,7 @@ export default function ApprovalDetail() {
                                 onClick={handleSubmit}
                             >
                                 {saving
-                                    ? "Memproses..."
+                                    ? "Processing..."
                                     : action === "APPROVE"
                                         ? "Approve"
                                         : "Reject"}

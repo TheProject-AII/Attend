@@ -52,14 +52,14 @@ const formatDuration = (minutes) => {
         total % 60;
 
     if (hours === 0) {
-        return `${remaining} menit`;
+        return `${remaining} min`;
     }
 
     if (remaining === 0) {
-        return `${hours} jam`;
+        return `${hours} hr`;
     }
 
-    return `${hours} jam ${remaining} menit`;
+    return `${hours} hr ${remaining} min`;
 
 };
 
@@ -71,7 +71,7 @@ const formatDate = (date) => {
     return new Date(
         `${date}T00:00:00`
     ).toLocaleDateString(
-        "id-ID",
+        "en-US",
         {
             day: "2-digit",
             month: "short",
@@ -87,16 +87,16 @@ const getStatusLabel = (status) => {
     switch (status) {
 
         case "PENDING_SUPERVISOR":
-            return "Menunggu Supervisor";
+            return "Pending Supervisor Approval";
 
         case "PENDING_MANAGER":
-            return "Menunggu Manager";
+            return "Pending Manager Approval";
 
         case "APPROVED":
-            return "Disetujui";
+            return "Approved";
 
         case "REJECTED":
-            return "Ditolak";
+            return "Rejected";
 
         default:
             return status || "-";
@@ -131,10 +131,10 @@ const getStatusColor = (status) => {
 const getPaymentLabel = (status) => {
 
     if (status === "PAID") {
-        return "Sudah Dibayar";
+        return "Paid";
     }
 
-    return "Belum Dibayar";
+    return "Unpaid";
 
 };
 
@@ -268,7 +268,7 @@ export default function OvertimeHistory() {
                     variant="h5"
                     fontWeight={700}
                 >
-                    Rekap Lembur
+                    Overtime Summary
                 </Typography>
 
                 <Typography
@@ -278,7 +278,7 @@ export default function OvertimeHistory() {
                         mt: 0.5,
                     }}
                 >
-                    Riwayat pengajuan dan pembayaran lembur Anda.
+                    Your overtime requests and payment history.
                 </Typography>
 
             </Box>
@@ -302,7 +302,7 @@ export default function OvertimeHistory() {
                 }}
             >
 
-                {/* DISETUJUI */}
+                {/* APPROVED */}
 
                 <Card
                     sx={{
@@ -316,7 +316,7 @@ export default function OvertimeHistory() {
                             variant="body2"
                             color="text.secondary"
                         >
-                            Lembur Disetujui
+                            Approved Overtime
                         </Typography>
 
                         <Typography
@@ -334,7 +334,7 @@ export default function OvertimeHistory() {
                 </Card>
 
 
-                {/* TOTAL JAM */}
+                {/* TOTAL HOURS */}
 
                 <Card
                     sx={{
@@ -348,7 +348,7 @@ export default function OvertimeHistory() {
                             variant="body2"
                             color="text.secondary"
                         >
-                            Total Jam Lembur
+                            Total Overtime Hours
                         </Typography>
 
                         <Typography
@@ -368,7 +368,7 @@ export default function OvertimeHistory() {
                 </Card>
 
 
-                {/* TOTAL TAGIHAN */}
+                {/* TOTAL BILLING */}
 
                 <Card
                     sx={{
@@ -382,7 +382,7 @@ export default function OvertimeHistory() {
                             variant="body2"
                             color="text.secondary"
                         >
-                            Total Tagihan
+                            Total Amount
                         </Typography>
 
                         <Typography
@@ -402,7 +402,7 @@ export default function OvertimeHistory() {
                 </Card>
 
 
-                {/* BELUM DIBAYAR */}
+                {/* UNPAID */}
 
                 <Card
                     sx={{
@@ -416,7 +416,7 @@ export default function OvertimeHistory() {
                             variant="body2"
                             color="text.secondary"
                         >
-                            Belum Dibayar
+                            Unpaid
                         </Typography>
 
                         <Typography
@@ -436,7 +436,7 @@ export default function OvertimeHistory() {
                 </Card>
 
 
-                {/* SUDAH DIBAYAR */}
+                {/* PAID */}
 
                 <Card
                     sx={{
@@ -450,7 +450,7 @@ export default function OvertimeHistory() {
                             variant="body2"
                             color="text.secondary"
                         >
-                            Sudah Dibayar
+                            Paid
                         </Typography>
 
                         <Typography
@@ -499,23 +499,23 @@ export default function OvertimeHistory() {
                                 <TableRow>
 
                                     <TableCell>
-                                        Tanggal
+                                        Date
                                     </TableCell>
 
                                     <TableCell>
-                                        Jam
+                                        Time
                                     </TableCell>
 
                                     <TableCell>
-                                        Durasi
+                                        Duration
                                     </TableCell>
 
                                     <TableCell>
-                                        Tarif / Jam
+                                        Rate / Hour
                                     </TableCell>
 
                                     <TableCell>
-                                        Nominal
+                                        Amount
                                     </TableCell>
 
                                     <TableCell>
@@ -523,11 +523,11 @@ export default function OvertimeHistory() {
                                     </TableCell>
 
                                     <TableCell>
-                                        Pembayaran
+                                        Payment
                                     </TableCell>
 
                                     <TableCell>
-                                        Pekerjaan
+                                        Work Description
                                     </TableCell>
 
                                 </TableRow>
@@ -560,7 +560,7 @@ export default function OvertimeHistory() {
                                             <Typography
                                                 color="text.secondary"
                                             >
-                                                Belum ada riwayat lembur.
+                                                No overtime history yet.
                                             </Typography>
 
                                         </TableCell>

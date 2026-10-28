@@ -19,40 +19,29 @@ export default defineConfig({
         "pwa-192x192.png",
         "pwa-512x512.png",
       ],
-
       manifest: {
         id: "/",
-        name: "KJI Attendance",
-
-        short_name: "KATAN",
-
-        description: "Aplikasi Absensi PT KJI",
-
+        name: "So-Mak Attendance",
+        short_name: "Attend",
+        description: "Aplikasi Absensi",
         theme_color: "#0E7D63",
-
         background_color: "#ffffff",
-
         display: "standalone",
         prefer_related_applications: false,
         orientation: "portrait",
-
         scope: "/",
-
         start_url: "/",
-
         icons: [
           {
             src: "pwa-192x192.png",
             sizes: "192x192",
             type: "image/png",
           },
-
           {
             src: "pwa-512x512.png",
             sizes: "512x512",
             type: "image/png",
           },
-
           {
             src: "pwa-512x512.png",
             sizes: "512x512",
@@ -63,4 +52,13 @@ export default defineConfig({
       },
     }),
   ],
+
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+    },
+  },
 });

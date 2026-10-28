@@ -7,6 +7,10 @@ const {
   uploadToStorage,
   deleteFromStorage,
 } = require("../services/storageService");
+const {
+  invalidateEmployeePhotoCache,
+} = require("../services/faceRecognitionService");
+const { getPrivateFileUrl } = require("../services/storageService");
 
 exports.login = async (req, res) => {
   try {
@@ -94,26 +98,24 @@ exports.me = async (req, res) => {
     const result = await pool.query(
       `
 SELECT
-
-u.id,
-u.role_id,
-
-r.name AS role,
-
-u.nik,
-u.name,
-u.email,
-u.department,
-u.position,
-u.photo,
-u.status
-
+  u.id,
+  u.role_id,
+  r.name AS role,
+  u.nik,
+  u.name,
+  u.email,
+  u.department,
+  u.position,
+  u.photo,
+  u.status,
+  u.face_enrolled_at,
+  (
+    u.face_embedding IS NOT NULL
+    AND u.face_enrolled_at IS NOT NULL
+  ) AS face_enrolled
 FROM users u
-
-JOIN roles r
-ON r.id=u.role_id
-
-WHERE u.id=$1
+JOIN roles r ON r.id = u.role_id
+WHERE u.id = $1
 `,
       [req.user.id],
     );
@@ -198,6 +200,7 @@ exports.createEmployee = async (req, res) => {
       department,
       position,
       role_id,
+      job_description, // TAMBAHAN
       join_date,
       address,
       employee_type,
@@ -292,7 +295,7 @@ exports.createEmployee = async (req, res) => {
       `
   INSERT INTO users (
     role_id, nik, name, email, password,
-    phone, department, position,
+    phone, department, position, job_description,
     photo, ktp, npwp, bpjs_kesehatan, bpjs_tk, kk,
     join_date, address, status,
     employee_type, contract_start_date, contract_end_date,
@@ -300,14 +303,14 @@ exports.createEmployee = async (req, res) => {
   )
   VALUES (
     $1, $2, $3, $4, $5,
-    $6, $7, $8,
-    $9, $10, $11, $12, $13, $14,
-    $15, $16, true,
-    $17, $18, $19, $20, $21
+    $6, $7, $8, $9,
+    $10, $11, $12, $13, $14, $15,
+    $16, $17, true,
+    $18, $19, $20, $21, $22
   )
   RETURNING
     id, role_id, nik, name, email, phone,
-    department, position,
+    department, position, job_description,
     photo, ktp, npwp, bpjs_kesehatan, bpjs_tk, kk,
     join_date, address, status,
     employee_type, contract_start_date, contract_end_date
@@ -456,46 +459,120 @@ exports.createEmployee = async (req, res) => {
   }
 };
 
+// exports.getEmployees = async (req, res) => {
+//   try {
+//     const result = await pool.query(`
+//             SELECT
+//                 u.id,
+//                 u.nik,
+//                 u.name,
+//                 u.email,
+//                 u.company_email,
+//                 u.phone,
+//                 u.department,
+//                 u.nip,
+//                   u.company_id,
+//                   c.name AS company_name,
+//                   u.placement,
+//                   u.job_level,
+//                 u.position,
+//                 u.photo,
+//                 u.status,
+//                 u.employee_type,
+//                 u.contract_start_date,
+//                 u.contract_end_date,
+//                 u.join_date,
+//                 u.address,
+//                 u.office_location_id,
+//                 u.supervisor_id,
+//                 u.ktp,
+//                 u.npwp,
+//                 u.bpjs_kesehatan,
+//                 u.bpjs_tk,
+//                 u.kk
+//             FROM users u
+//             LEFT JOIN companies c ON u.company_id = c.id
+//            WHERE (u.role_id = 3 OR u.nip IS NOT NULL)
+//             ORDER BY u.name ASC
+//         `);
+
+//     return res.json({
+//       success: true,
+//       data: result.rows,
+//     });
+//   } catch (err) {
+//     console.error("GET EMPLOYEES ERROR:", err);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Gagal mengambil data karyawan",
+//     });
+//   }
+// };
+
 exports.getEmployees = async (req, res) => {
   try {
     const result = await pool.query(`
-            SELECT
-                u.id,
-                u.nik,
-                u.name,
-                u.email,
-                u.company_email,
-                u.phone,
-                u.department,
-                u.nip,
-                  u.company_id,
-                  c.name AS company_name,
-                  u.placement,
-                  u.job_level,
-                u.position,
-                u.photo,
-                u.status,
-                u.employee_type,
-                u.contract_start_date,
-                u.contract_end_date,
-                u.join_date,
-                u.address,
-                u.office_location_id,
-                u.supervisor_id,
-                u.ktp,
-                u.npwp, 
-                u.bpjs_kesehatan,
-                u.bpjs_tk, 
-                u.kk
-            FROM users u
-            LEFT JOIN companies c ON u.company_id = c.id
-           WHERE (u.role_id = 3 OR u.nip IS NOT NULL)
-            ORDER BY u.name ASC
-        `);
+      SELECT
+        u.id,
+        u.nik,
+        u.name,
+        u.email,
+        u.company_email,
+        u.phone,
+        u.department,
+        u.nip,
+        u.company_id,
+        c.name AS company_name,
+        u.placement,
+        u.job_level,
+        u.position,
+        u.job_description,
+        u.photo,
+        u.status,
+        u.employee_type,
+        u.contract_start_date,
+        u.contract_end_date,
+        u.join_date,
+        u.address,
+        u.office_location_id,
+        u.supervisor_id,
+        u.ktp,
+        u.npwp,
+        u.bpjs_kesehatan,
+        u.bpjs_tk,
+        u.kk
+      FROM users u
+      LEFT JOIN companies c ON u.company_id = c.id
+      WHERE (u.role_id = 3 OR u.nip IS NOT NULL)
+      ORDER BY u.name ASC
+    `);
+
+    const employees = await Promise.all(
+      result.rows.map(async (employee) => {
+        let photoUrl = null;
+
+        if (employee.photo) {
+          try {
+            photoUrl = await getPrivateFileUrl(employee.photo);
+          } catch (photoError) {
+            console.error(
+              `Gagal membuat URL foto karyawan ID ${employee.id}:`,
+              photoError.message,
+            );
+          }
+        }
+
+        return {
+          ...employee,
+          photoUrl,
+        };
+      }),
+    );
 
     return res.json({
       success: true,
-      data: result.rows,
+      data: employees,
     });
   } catch (err) {
     console.error("GET EMPLOYEES ERROR:", err);
@@ -535,7 +612,19 @@ exports.updateEmployee = async (req, res) => {
   let uploadedKeys = [];
   try {
     const { id } = req.params;
+    const oldPhotoResult = await pool.query(
+      `SELECT photo FROM users WHERE id = $1 AND role_id = 3`,
+      [id],
+    );
 
+    if (oldPhotoResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Karyawan tidak ditemukan",
+      });
+    }
+
+    const oldPhoto = oldPhotoResult.rows[0].photo;
     const {
       nik,
       name,
@@ -543,6 +632,7 @@ exports.updateEmployee = async (req, res) => {
       phone,
       department,
       position,
+      job_description,
       join_date,
       address,
       employee_type,
@@ -572,25 +662,34 @@ exports.updateEmployee = async (req, res) => {
     phone = $4,
     department = $5,
     position = $6,
-    join_date = $7,
-    address = $8,
-    employee_type = $9,
-    contract_start_date = $10,
-    contract_end_date = $11,
-    office_location_id = $12,
-    supervisor_id = $13,
-    photo = COALESCE($14, photo),
-    ktp = COALESCE($15, ktp),
-    npwp = COALESCE($16, npwp),
-    bpjs_kesehatan = COALESCE($17, bpjs_kesehatan),
-    bpjs_tk = COALESCE($18, bpjs_tk),
-    kk = COALESCE($19, kk),
+    job_description = $7,
+    join_date = $8,
+    address = $9,
+    employee_type = $10,
+    contract_start_date = $11
+    contract_end_date = $12
+    office_location_id = $13
+    supervisor_id = $14
+    photo = COALESCE($15 photo),
+    face_embedding = CASE
+      WHEN $15IS NOT NULL THEN NULL
+      ELSE face_embedding
+    END,
+    face_enrolled_at = CASE
+      WHEN $15IS NOT NULL THEN NULL
+      ELSE face_enrolled_at
+    END,
+    ktp = COALESCE($16 ktp),
+    npwp = COALESCE($17 npwp),
+    bpjs_kesehatan = COALESCE($18 bpjs_kesehatan),
+    bpjs_tk = COALESCE($19 bpjs_tk),
+    kk = COALESCE($20 kk),
     updated_at = NOW()
-  WHERE id = $20
+  WHERE id = $21
     AND role_id = 3
   RETURNING
     id, nik, name, email, phone,
-    department, position, join_date, address,
+    department, position, job_description, join_date, address,
     employee_type, contract_start_date,
     contract_end_date, office_location_id,
     supervisor_id, photo, ktp, npwp,
@@ -603,6 +702,7 @@ exports.updateEmployee = async (req, res) => {
         phone,
         department,
         position,
+        job_description,
         join_date || null,
         address,
         employee_type,
@@ -627,7 +727,9 @@ exports.updateEmployee = async (req, res) => {
         message: "Karyawan tidak ditemukan",
       });
     }
-
+    if (paths.photo) {
+      invalidateEmployeePhotoCache(oldPhoto);
+    }
     return res.json({
       success: true,
       message: "Data karyawan berhasil diperbarui",
@@ -949,6 +1051,39 @@ exports.resetPassword = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Gagal mengubah password.",
+    });
+  }
+};
+
+exports.getFaceEnrollmentStatus = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         (face_embedding IS NOT NULL AND face_enrolled_at IS NOT NULL)
+           AS face_enrolled,
+         (photo IS NOT NULL AND photo <> '') AS has_reference_photo
+       FROM users
+       WHERE id = $1 AND status = TRUE`,
+      [req.user.id],
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Karyawan tidak ditemukan atau akun tidak aktif.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error("FACE ENROLLMENT STATUS ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal memeriksa status registrasi wajah.",
     });
   }
 };

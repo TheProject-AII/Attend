@@ -53,7 +53,7 @@ export default function DailyFilter({
                             dateAdapter={AdapterDayjs}
                         >
                             <DatePicker
-                                label="Tanggal"
+                                label="Date"
                                 value={filters.date}
                                 onChange={(value) =>
                                     setFilters((prev) => ({
@@ -78,7 +78,7 @@ export default function DailyFilter({
                             fullWidth
                             size="small"
                             select
-                            label="Divisi"
+                            label="Department"
                             value={filters.department}
                             onChange={(e) =>
                                 setFilters((prev) => ({
@@ -89,7 +89,7 @@ export default function DailyFilter({
                         >
 
                             <MenuItem value="">
-                                Semua Divisi
+                                All Departments
                             </MenuItem>
 
                             {departments.map((item) => (
@@ -124,23 +124,23 @@ export default function DailyFilter({
                         >
 
                             <MenuItem value="">
-                                Semua Status
+                                All Statuses
                             </MenuItem>
 
                             <MenuItem value="Hadir">
-                                Hadir
+                                Present
                             </MenuItem>
 
                             <MenuItem value="Terlambat">
-                                Terlambat
+                                Late
                             </MenuItem>
 
                             <MenuItem value="Belum Pulang">
-                                Belum Pulang
+                                Not Checked Out
                             </MenuItem>
 
                             <MenuItem value="Belum Check In">
-                                Belum Check In
+                                Not Checked In
                             </MenuItem>
 
                         </TextField>
@@ -152,7 +152,7 @@ export default function DailyFilter({
                         <TextField
                             fullWidth
                             size="small"
-                            label="Cari Karyawan"
+                            label="Search Employees"
                             value={filters.search}
                             onChange={(e) =>
                                 setFilters((prev) => ({
@@ -205,7 +205,7 @@ export default function DailyFilter({
                             startIcon={<SearchIcon />}
                             onClick={() => onSearch(filters)}
                         >
-                            Cari
+                            Search
                         </Button>
 
 
