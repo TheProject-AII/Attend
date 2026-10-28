@@ -1,322 +1,212 @@
 import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Button,
-    Typography,
-    Box,
-    Chip,
-    Divider,
-    Stack
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+  Box,
+  Chip,
+  Divider,
+  Stack,
 } from "@mui/material";
 
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 
 const getStatusLabel = (status) => {
+  switch (status) {
+    case "PENDING":
+    case "PENDING_SUPERVISOR":
+    case "PENDING_MANAGER":
+      return "Pending";
 
-    switch (status) {
+    case "APPROVED":
+      return "Approved";
 
-        case "PENDING":
-        case "PENDING_SUPERVISOR":
-        case "PENDING_MANAGER":
-            return "Menunggu";
+    case "REJECTED":
+      return "Rejected";
 
-        case "APPROVED":
-            return "Disetujui";
+    case "CANCELLED":
+      return "Cancelled";
 
-        case "REJECTED":
-            return "Ditolak";
-
-        case "CANCELLED":
-            return "Dibatalkan";
-
-        default:
-            return status || "-";
-    }
+    default:
+      return status || "-";
+  }
 };
 
 const getStatusColor = (status) => {
+  switch (status) {
+    case "APPROVED":
+      return "success";
 
-    switch (status) {
+    case "REJECTED":
+      return "error";
 
-        case "APPROVED":
-            return "success";
+    case "CANCELLED":
+      return "default";
 
-        case "REJECTED":
-            return "error";
-
-        case "CANCELLED":
-            return "default";
-
-        default:
-            return "warning";
-    }
+    default:
+      return "warning";
+  }
 };
 
-export default function OvertimeDetailDialog({
-    open,
-    onClose,
-    data
-}) {
+export default function OvertimeDetailDialog({ open, onClose, data }) {
+  if (!data) {
+    return null;
+  }
 
-    if (!data) {
-        return null;
+  const formatDate = (date) => {
+    if (!date) {
+      return "-";
     }
 
-    const formatDate = (date) => {
+    return new Date(date).toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
 
-        if (!date) {
-            return "-";
-        }
+  const formatTime = (time) => {
+    if (!time) {
+      return "-";
+    }
 
-        return new Date(date).toLocaleDateString(
-            "id-ID",
-            {
-                day: "numeric",
-                month: "long",
-                year: "numeric"
-            }
-        );
-    };
+    return time.substring(0, 5);
+  };
 
-    const formatTime = (time) => {
+  const formatDuration = (minutes) => {
+    if (minutes === undefined || minutes === null) {
+      return "-";
+    }
 
-        if (!time) {
-            return "-";
-        }
+    const hours = Math.floor(minutes / 60);
 
-        return time.substring(0, 5);
-    };
+    const remainingMinutes = minutes % 60;
 
-    const formatDuration = (minutes) => {
+    if (hours === 0) {
+      return `${remainingMinutes} min`;
+    }
 
-        if (
-            minutes === undefined ||
-            minutes === null
-        ) {
-            return "-";
-        }
+    if (remainingMinutes === 0) {
+      return `${hours} hr`;
+    }
 
-        const hours = Math.floor(
-            minutes / 60
-        );
+    return `${hours} hr ${remainingMinutes} min`;
+  };
 
-        const remainingMinutes =
-            minutes % 60;
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <AccessTimeRoundedIcon color="primary" />
 
-        if (hours === 0) {
-            return `${remainingMinutes} menit`;
-        }
+          <Typography fontWeight={700}>Overtime Request Details</Typography>
+        </Stack>
+      </DialogTitle>
 
-        if (remainingMinutes === 0) {
-            return `${hours} jam`;
-        }
+      <DialogContent>
+        <Stack spacing={2.5}>
+          {/* STATUS */}
 
-        return `${hours} jam ${remainingMinutes} menit`;
-    };
+          <Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+              Status
+            </Typography>
 
-    return (
-        <Dialog
-            open={open}
-            onClose={onClose}
-            fullWidth
-            maxWidth="sm"
-        >
+            <Chip
+              label={getStatusLabel(data.status)}
+              color={getStatusColor(data.status)}
+              size="small"
+            />
+          </Box>
 
-            <DialogTitle>
-                <Stack
-                    direction="row"
-                    alignItems="center"
-                    spacing={1}
-                >
+          <Divider />
 
-                    <AccessTimeRoundedIcon
-                        color="primary"
-                    />
+          {/* DATE */}
 
-                    <Typography
-                        fontWeight={700}
-                    >
-                        Detail Pengajuan Lembur
-                    </Typography>
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              Overtime Date
+            </Typography>
 
-                </Stack>
-            </DialogTitle>
+            <Typography fontWeight={600}>
+              {formatDate(data.overtime_date)}
+            </Typography>
+          </Box>
 
-            <DialogContent>
+          {/* TIME */}
 
-                <Stack spacing={2.5}>
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              Overtime Hours
+            </Typography>
 
-                    {/* STATUS */}
+            <Typography fontWeight={600}>
+              {formatTime(data.start_time)}
+              {" - "}
+              {formatTime(data.end_time)}
+            </Typography>
+          </Box>
 
-                    <Box>
-                        <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ mb: 0.5 }}
-                        >
-                            Status
-                        </Typography>
+          {/* DURATION */}
 
-                        <Chip
-                            label={getStatusLabel(
-                                data.status
-                            )}
-                            color={getStatusColor(
-                                data.status
-                            )}
-                            size="small"
-                        />
-                    </Box>
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              Duration
+            </Typography>
 
-                    <Divider />
+            <Typography fontWeight={600}>
+              {formatDuration(data.duration_minutes)}
+            </Typography>
+          </Box>
 
-                    {/* TANGGAL */}
+          {/* REASON */}
 
-                    <Box>
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              Work / Reason
+            </Typography>
 
-                        <Typography
-                            variant="body2"
-                            color="text.secondary"
-                        >
-                            Tanggal Lembur
-                        </Typography>
+            <Typography
+              fontWeight={500}
+              sx={{
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {data.reason || "-"}
+            </Typography>
+          </Box>
 
-                        <Typography
-                            fontWeight={600}
-                        >
-                            {formatDate(
-                                data.overtime_date
-                            )}
-                        </Typography>
+          {/* CATATAN SUPERVISOR */}
 
-                    </Box>
+          {data.supervisor_note && (
+            <Box>
+              <Typography variant="body2" color="text.secondary">
+                Catatan Supervisor
+              </Typography>
 
-                    {/* JAM */}
+              <Typography>{data.supervisor_note}</Typography>
+            </Box>
+          )}
 
-                    <Box>
+          {/* CATATAN MANAGER */}
 
-                        <Typography
-                            variant="body2"
-                            color="text.secondary"
-                        >
-                            Jam Lembur
-                        </Typography>
+          {data.manager_note && (
+            <Box>
+              <Typography variant="body2" color="text.secondary">
+                Catatan Manager
+              </Typography>
 
-                        <Typography
-                            fontWeight={600}
-                        >
-                            {formatTime(
-                                data.start_time
-                            )}
-                            {" - "}
-                            {formatTime(
-                                data.end_time
-                            )}
-                        </Typography>
+              <Typography>{data.manager_note}</Typography>
+            </Box>
+          )}
+        </Stack>
+      </DialogContent>
 
-                    </Box>
-
-                    {/* DURASI */}
-
-                    <Box>
-
-                        <Typography
-                            variant="body2"
-                            color="text.secondary"
-                        >
-                            Durasi
-                        </Typography>
-
-                        <Typography
-                            fontWeight={600}
-                        >
-                            {formatDuration(
-                                data.duration_minutes
-                            )}
-                        </Typography>
-
-                    </Box>
-
-                    {/* ALASAN */}
-
-                    <Box>
-
-                        <Typography
-                            variant="body2"
-                            color="text.secondary"
-                        >
-                            Pekerjaan / Alasan
-                        </Typography>
-
-                        <Typography
-                            fontWeight={500}
-                            sx={{
-                                whiteSpace: "pre-wrap"
-                            }}
-                        >
-                            {data.reason || "-"}
-                        </Typography>
-
-                    </Box>
-
-                    {/* CATATAN SUPERVISOR */}
-
-                    {data.supervisor_note && (
-
-                        <Box>
-
-                            <Typography
-                                variant="body2"
-                                color="text.secondary"
-                            >
-                                Catatan Supervisor
-                            </Typography>
-
-                            <Typography>
-                                {data.supervisor_note}
-                            </Typography>
-
-                        </Box>
-
-                    )}
-
-                    {/* CATATAN MANAGER */}
-
-                    {data.manager_note && (
-
-                        <Box>
-
-                            <Typography
-                                variant="body2"
-                                color="text.secondary"
-                            >
-                                Catatan Manager
-                            </Typography>
-
-                            <Typography>
-                                {data.manager_note}
-                            </Typography>
-
-                        </Box>
-
-                    )}
-
-                </Stack>
-
-            </DialogContent>
-
-            <DialogActions>
-
-                <Button
-                    onClick={onClose}
-                >
-                    Tutup
-                </Button>
-
-            </DialogActions>
-
-        </Dialog>
-    );
+      <DialogActions>
+        <Button onClick={onClose}>Tutup</Button>
+      </DialogActions>
+    </Dialog>
+  );
 }

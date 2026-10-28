@@ -11,54 +11,53 @@ import {
     Divider,
     InputAdornment
 } from "@mui/material";
-
+                    Overtime Settings
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import SaveIcon from "@mui/icons-material/Save";
 
 import Swal from "sweetalert2";
 
 import api from "../../services/api";
-
+                Set overtime rates by workday.
 const formatNumber = (value) => {
     if (
         value === null ||
         value === undefined ||
         value === ""
     ) {
-        return "";
+                        Overtime Rates
     }
 
     return new Intl.NumberFormat("id-ID", {
         maximumFractionDigits: 0
     }).format(Number(value));
 };
-
-const parseNumber = (value) => {
-    return Number(
+                        Overtime pay is calculated proportionally based on the
+                        duration of overtime.
         String(value)
             .replace(/\./g, "")
             .replace(",", ".")
     );
 };
 
-export default function OvertimeSettings() {
+                                Monday - Friday
 
     const [weekdayRate, setWeekdayRate] =
         useState("");
 
-    const [weekendRate, setWeekendRate] =
+                                            / hour
         useState("");
 
     const [loading, setLoading] =
         useState(true);
 
     const [saving, setSaving] =
-        useState(false);
+                                Saturday - Sunday
 
 
     // =====================================
     // LOAD SETTINGS
-    // =====================================
+                                            / hour
 
     const loadSettings = async () => {
 
@@ -74,9 +73,9 @@ export default function OvertimeSettings() {
             setWeekdayRate(
                 formatNumber(data?.weekday_rate)
             );
-
-            setWeekendRate(
-                formatNumber(data?.weekend_rate)
+                                {saving
+                                    ? "Saving..."
+                                    : "Save Settings"
             );
 
         } catch (err) {
@@ -88,10 +87,10 @@ export default function OvertimeSettings() {
 
             Swal.fire({
                 icon: "error",
-                title: "Gagal",
+                title: "Failed",
                 text:
                     err.response?.data?.message ||
-                    "Gagal mengambil pengaturan tarif lembur."
+                    "Failed to load overtime rate settings."
             });
 
         } finally {
@@ -129,9 +128,9 @@ export default function OvertimeSettings() {
 
             Swal.fire({
                 icon: "warning",
-                title: "Periksa Data",
+                title: "Check the Data",
                 text:
-                    "Tarif lembur harus berupa angka."
+                    "Overtime rates must be numbers."
             });
 
             return;
@@ -146,9 +145,9 @@ export default function OvertimeSettings() {
 
             Swal.fire({
                 icon: "warning",
-                title: "Periksa Data",
+                title: "Check the Data",
                 text:
-                    "Tarif lembur tidak boleh kurang dari 0."
+                    "Overtime rates cannot be less than 0."
             });
 
             return;
@@ -172,10 +171,10 @@ export default function OvertimeSettings() {
 
             await Swal.fire({
                 icon: "success",
-                title: "Berhasil",
+                title: "Success",
                 text:
                     response.data?.message ||
-                    "Pengaturan tarif lembur berhasil disimpan.",
+                    "Overtime rate settings saved successfully.",
                 timer: 1500,
                 showConfirmButton: false
             });
@@ -192,10 +191,10 @@ export default function OvertimeSettings() {
 
             Swal.fire({
                 icon: "error",
-                title: "Gagal",
+                title: "Failed",
                 text:
                     err.response?.data?.message ||
-                    "Gagal menyimpan pengaturan tarif lembur."
+                    "Failed to save overtime rate settings."
             });
 
         } finally {
@@ -230,7 +229,7 @@ export default function OvertimeSettings() {
                     variant="h5"
                     fontWeight={700}
                 >
-                    Pengaturan Overtime
+                    Overtime Settings
                 </Typography>
 
             </Box>
@@ -241,7 +240,7 @@ export default function OvertimeSettings() {
                 color="text.secondary"
                 sx={{ mb: 3 }}
             >
-                Atur tarif lembur berdasarkan hari kerja.
+                Set overtime rates by workday.
             </Typography>
 
 
@@ -267,7 +266,7 @@ export default function OvertimeSettings() {
                         fontWeight={600}
                         sx={{ mb: 0.5 }}
                     >
-                        Tarif Lembur
+                        Overtime Rates
                     </Typography>
 
                     <Typography
@@ -275,9 +274,8 @@ export default function OvertimeSettings() {
                         color="text.secondary"
                         sx={{ mb: 3 }}
                     >
-                        Tarif digunakan untuk menghitung
-                        nominal lembur secara proporsional
-                        berdasarkan durasi lembur.
+                        Overtime pay is calculated proportionally based on the
+                        duration of overtime.
                     </Typography>
 
 
@@ -299,7 +297,7 @@ export default function OvertimeSettings() {
                                 fontWeight={600}
                                 sx={{ mb: 1 }}
                             >
-                                Senin - Jumat
+                                Monday - Friday
                             </Typography>
 
                             <TextField
@@ -325,7 +323,7 @@ export default function OvertimeSettings() {
                                         <InputAdornment
                                             position="end"
                                         >
-                                            / jam
+                                            / hour
                                         </InputAdornment>
                                     )
                                 }}
@@ -343,7 +341,7 @@ export default function OvertimeSettings() {
                                 fontWeight={600}
                                 sx={{ mb: 1 }}
                             >
-                                Sabtu - Minggu
+                                Saturday - Sunday
                             </Typography>
 
                             <TextField
@@ -369,7 +367,7 @@ export default function OvertimeSettings() {
                                         <InputAdornment
                                             position="end"
                                         >
-                                            / jam
+                                            / hour
                                         </InputAdornment>
                                     )
                                 }}
@@ -402,8 +400,8 @@ export default function OvertimeSettings() {
                                 }
                             >
                                 {saving
-                                    ? "Menyimpan..."
-                                    : "Simpan Pengaturan"
+                                    ? "Saving..."
+                                    : "Save Settings"
                                 }
                             </Button>
 

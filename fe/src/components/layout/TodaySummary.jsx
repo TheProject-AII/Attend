@@ -1,12 +1,12 @@
 import {
-    Card,
-    CardContent,
-    Typography,
-    List,
-    ListItem,
-    ListItemIcon,
-    ListItemText,
-    Divider,
+  Card,
+  CardContent,
+  Typography,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
 } from "@mui/material";
 
 import TodayIcon from "@mui/icons-material/Today";
@@ -17,95 +17,82 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import PersonOffIcon from "@mui/icons-material/PersonOff";
 import WorkHistoryIcon from "@mui/icons-material/WorkHistory";
 export default function TodaySummary({ data }) {
+  const today = new Date().toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  return (
+    <Card
+      elevation={2}
+      sx={{
+        borderRadius: 1,
+        height: "100%",
+      }}
+    >
+      <CardContent>
+        <Typography variant="h6" fontWeight={700} gutterBottom>
+          Today's Summary
+        </Typography>
 
-    const today = new Date().toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric"
-    });
-    return (
-        <Card
-            elevation={2}
-            sx={{
-                borderRadius: 1,
-                height: "100%",
-            }}
-        >
-            <CardContent>
+        <List disablePadding>
+          <ListItem disableGutters>
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <TodayIcon color="primary" />
+            </ListItemIcon>
 
-                <Typography
-                    variant="h6"
-                    fontWeight={700}
-                    gutterBottom
-                >
-                    Ringkasan Hari Ini
-                </Typography>
+            <ListItemText primary="Date" secondary={today} />
+          </ListItem>
 
-                <List disablePadding>
+          <Divider />
 
-                    <ListItem disableGutters>
-                        <ListItemIcon sx={{ minWidth: 40 }}>
-                            <TodayIcon color="primary" />
-                        </ListItemIcon>
+          <ListItem disableGutters>
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <WorkHistoryIcon color="primary" />
+            </ListItemIcon>
 
-                        <ListItemText
-                            primary="Tanggal"
-                            secondary={today}
-                        />
-                    </ListItem>
+            <ListItemText
+              primary="Working Hours"
+              secondary="09:00 - 18:00 WIB"
+            />
+          </ListItem>
+          <Divider />
+          <ListItem disableGutters>
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <GroupsIcon color="success" />
+            </ListItemIcon>
 
-                    <Divider />
+            <ListItemText
+              primary="Present"
+              secondary={`${data.present} employees`}
+            />
+          </ListItem>
+          <Divider />
+          <ListItem disableGutters>
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <PersonOffIcon color="error" />
+            </ListItemIcon>
 
+            <ListItemText
+              primary="Not Checked In"
+              secondary={`${data.notCheckIn} employees`}
+            />
+          </ListItem>
 
-                    <ListItem disableGutters>
-                        <ListItemIcon sx={{ minWidth: 40 }}>
-                            <WorkHistoryIcon color="primary" />
-                        </ListItemIcon>
+          <Divider />
 
-                        <ListItemText
-                            primary="Jam Kerja"
-                            secondary="09:00 - 18:00 WIB"
-                        />
-                    </ListItem>
-                    <Divider />
-                    <ListItem disableGutters>
-                        <ListItemIcon sx={{ minWidth: 40 }}>
-                            <GroupsIcon color="success" />
-                        </ListItemIcon>
+          <ListItem disableGutters>
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <EventBusyIcon color="warning" />
+            </ListItemIcon>
 
-                        <ListItemText
-                            primary="Hadir"
-                            secondary={`${data.present} Orang`}
-                        />
-                    </ListItem>
-                    <Divider />
-                    <ListItem disableGutters>
-                        <ListItemIcon sx={{ minWidth: 40 }}>
-                            <PersonOffIcon color="error" />
-                        </ListItemIcon>
-
-                        <ListItemText
-                            primary="Belum Check In"
-                            secondary={`${data.notCheckIn} Orang`}
-                        />
-                    </ListItem>
-
-                    <Divider />
-
-                    <ListItem disableGutters>
-                        <ListItemIcon sx={{ minWidth: 40 }}>
-                            <EventBusyIcon color="warning" />
-                        </ListItemIcon>
-
-                        <ListItemText
-                            primary="Cuti & Izin"
-                            secondary={`${data.leave} Orang`}
-                        />
-                    </ListItem>
-
-                </List>
-
-            </CardContent>
-        </Card>
-    );
+            <ListItemText
+              primary="Leave & Permission"
+              secondary={`${data.leave} employees`}
+            />
+          </ListItem>
+        </List>
+      </CardContent>
+    </Card>
+  );
 }

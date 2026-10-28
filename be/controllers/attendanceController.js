@@ -342,7 +342,7 @@ exports.checkIn = async (req, res) => {
       SELECT o.*
       FROM users u
       JOIN office_locations o
-        ON u.office_location_id = o.id
+        ON u.company_id = o.id
       WHERE u.id = $1
       `,
       [userId],
@@ -417,6 +417,14 @@ exports.checkIn = async (req, res) => {
     try {
       verification = await verifyAttendanceFace(userId, req.file.path);
     } catch (error) {
+      if (error.code === "FACE_NOT_ENROLLED") {
+        return res.status(409).json({
+          success: false,
+          code: "FACE_NOT_ENROLLED",
+          message:
+            "Registrasi wajah belum dilakukan. Silakan registrasi wajah terlebih dahulu.",
+        });
+      }
       const causeCode = error.cause?.code || error.code;
 
       if (
@@ -452,13 +460,6 @@ exports.checkIn = async (req, res) => {
         1000
       ).toFixed(2)} detik`,
     );
-
-    if (!verification.matched) {
-      return res.status(403).json({
-        success: false,
-        message: "Wajah tidak sesuai dengan pas foto karyawan.",
-      });
-    }
 
     const uploadStart = performance.now();
 
@@ -722,7 +723,14 @@ exports.checkOut = async (req, res) => {
         console.error("CHECK OUT ROLLBACK ERROR:", rollbackError);
       }
     }
-
+    if (err.code === "FACE_NOT_ENROLLED") {
+      return res.status(409).json({
+        success: false,
+        code: "FACE_NOT_ENROLLED",
+        message:
+          "Registrasi wajah belum dilakukan. Silakan registrasi wajah terlebih dahulu.",
+      });
+    }
     console.error("CHECK OUT ERROR:", err);
 
     const isFaceDetectionError = /face|wajah|detect|deteksi|pencahayaan/i.test(

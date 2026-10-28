@@ -1,11 +1,11 @@
 import {
-    Card,
-    CardContent,
-    Grid,
-    TextField,
-    MenuItem,
-    Button,
-    Stack
+  Card,
+  CardContent,
+  Grid,
+  TextField,
+  MenuItem,
+  Button,
+  Stack,
 } from "@mui/material";
 
 import SearchIcon from "@mui/icons-material/Search";
@@ -17,207 +17,157 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 
 export default function DailyFilter({
+  filters,
 
-    filters,
+  setFilters,
 
-    setFilters,
+  onSearch,
 
-    onSearch,
-
-    departments
-
+  departments,
 }) {
-    return (
-
-        <Card
-            elevation={0}
-            sx={{
-                borderRadius: 3,
-                border: "1px solid #E5E7EB",
-                mb: 3
-            }}
-        >
-
-            <CardContent sx={{
-                py: 2,
-                "&:last-child": {
-                    pb: 2
+  return (
+    <Card
+      elevation={0}
+      sx={{
+        borderRadius: 3,
+        border: "1px solid #E5E7EB",
+        mb: 3,
+      }}
+    >
+      <CardContent
+        sx={{
+          py: 2,
+          "&:last-child": {
+            pb: 2,
+          },
+        }}
+      >
+        <Grid container spacing={2} alignItems="center">
+          <Grid size={{ xs: 12, md: 2.5 }}>
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DatePicker
+                label="Date"
+                value={filters.date}
+                onChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    date: value,
+                  }))
                 }
-            }}>
+                format="DD/MM/YYYY"
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    size: "small",
+                  },
+                }}
+              />
+            </LocalizationProvider>
+          </Grid>
 
-                <Grid container spacing={2} alignItems="center">
+          <Grid size={{ xs: 12, md: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              select
+              label="Department"
+              value={filters.department}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  department: e.target.value,
+                }))
+              }
+            >
+              <MenuItem value="">All Departments</MenuItem>
 
-                    <Grid size={{ xs: 12, md: 2.5 }}>
+              {departments.map((item) => (
+                <MenuItem key={item.department} value={item.department}>
+                  {item.department}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
 
-                        <LocalizationProvider
-                            dateAdapter={AdapterDayjs}
-                        >
-                            <DatePicker
-                                label="Tanggal"
-                                value={filters.date}
-                                onChange={(value) =>
-                                    setFilters((prev) => ({
-                                        ...prev,
-                                        date: value
-                                    }))
-                                }
-                                format="DD/MM/YYYY"
-                                slotProps={{
-                                    textField: {
-                                        fullWidth: true,
-                                        size: "small"
-                                    }
-                                }}
-                            />
-                        </LocalizationProvider>
-                    </Grid>
+          <Grid size={{ xs: 12, md: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              select
+              label="Status"
+              value={filters.status}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  status: e.target.value,
+                }))
+              }
+            >
+              <MenuItem value="">All Statuses</MenuItem>
 
-                    <Grid size={{ xs: 12, md: 2 }}>
+              <MenuItem value="Hadir">Present</MenuItem>
 
-                        <TextField
-                            fullWidth
-                            size="small"
-                            select
-                            label="Divisi"
-                            value={filters.department}
-                            onChange={(e) =>
-                                setFilters((prev) => ({
-                                    ...prev,
-                                    department: e.target.value
-                                }))
-                            }
-                        >
+              <MenuItem value="Terlambat">Late</MenuItem>
 
-                            <MenuItem value="">
-                                Semua Divisi
-                            </MenuItem>
+              <MenuItem value="Belum Pulang">Not Checked Out</MenuItem>
 
-                            {departments.map((item) => (
+              <MenuItem value="Belum Check In">Not Checked In</MenuItem>
+            </TextField>
+          </Grid>
 
-                                <MenuItem
-                                    key={item.department}
-                                    value={item.department}
-                                >
-                                    {item.department}
-                                </MenuItem>
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Search Employees"
+              value={filters.search}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  search: e.target.value,
+                }))
+              }
+            />
+          </Grid>
+          <Grid
+            size={{ xs: 12, md: 2.5 }}
+            sx={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 1,
+            }}
+          >
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={() => {
+                const reset = {
+                  date: dayjs(),
 
-                            ))}
+                  department: "",
 
-                        </TextField>
+                  status: "",
 
-                    </Grid>
+                  search: "",
+                };
 
-                    <Grid size={{ xs: 12, md: 2 }}>
+                setFilters(reset);
 
-                        <TextField
-                            fullWidth
-                            size="small"
-                            select
-                            label="Status"
-                            value={filters.status}
-                            onChange={(e) =>
-                                setFilters((prev) => ({
-                                    ...prev,
-                                    status: e.target.value
-                                }))
-                            }
-                        >
-
-                            <MenuItem value="">
-                                Semua Status
-                            </MenuItem>
-
-                            <MenuItem value="Hadir">
-                                Hadir
-                            </MenuItem>
-
-                            <MenuItem value="Terlambat">
-                                Terlambat
-                            </MenuItem>
-
-                            <MenuItem value="Belum Pulang">
-                                Belum Pulang
-                            </MenuItem>
-
-                            <MenuItem value="Belum Check In">
-                                Belum Check In
-                            </MenuItem>
-
-                        </TextField>
-
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 3 }}>
-
-                        <TextField
-                            fullWidth
-                            size="small"
-                            label="Cari Karyawan"
-                            value={filters.search}
-                            onChange={(e) =>
-                                setFilters((prev) => ({
-                                    ...prev,
-                                    search: e.target.value
-                                }))
-                            }
-                        />
-
-                    </Grid>
-                    <Grid
-                        size={{ xs: 12, md: 2.5 }}
-                        sx={{
-                            display: "flex",
-                            justifyContent: "flex-end",
-                            gap: 1
-                        }}
-                    >
-
-
-                        <Button
-                            variant="outlined"
-                            startIcon={<RefreshIcon />}
-                            onClick={() => {
-
-                                const reset = {
-
-                                    date: dayjs(),
-
-                                    department: "",
-
-                                    status: "",
-
-                                    search: ""
-
-                                };
-
-                                setFilters(reset);
-
-                                onSearch(reset);
-
-                            }}
-                        >
-
-                            Reset
-
-                        </Button>
-                        <Button
-                            variant="contained"
-                            startIcon={<SearchIcon />}
-                            onClick={() => onSearch(filters)}
-                        >
-                            Cari
-                        </Button>
-
-
-                    </Grid>
-
-                </Grid>
-
-
-            </CardContent>
-
-        </Card>
-
-    );
-
+                onSearch(reset);
+              }}
+            >
+              Reset
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<SearchIcon />}
+              onClick={() => onSearch(filters)}
+            >
+              Search
+            </Button>
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
+  );
 }

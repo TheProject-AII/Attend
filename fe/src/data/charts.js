@@ -1,10 +1,10 @@
 const attendanceChart = [
-    { day: "Sen", hadir: 18 },
-    { day: "Sel", hadir: 20 },
-    { day: "Rab", hadir: 19 },
-    { day: "Kam", hadir: 21 },
-    { day: "Jum", hadir: 20 },
-    { day: "Sab", hadir: 15 },
+  { day: "Mon", hadir: 18 },
+  { day: "Tue", hadir: 20 },
+  { day: "Wed", hadir: 19 },
+  { day: "Thu", hadir: 21 },
+  { day: "Fri", hadir: 20 },
+  { day: "Sat", hadir: 15 },
 ];
 
 export default attendanceChart;

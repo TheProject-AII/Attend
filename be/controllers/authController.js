@@ -2,11 +2,14 @@ const pool = require("../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const { sendEmail } = require("../services/googleMailService");
 const {
   uploadToStorage,
   deleteFromStorage,
 } = require("../services/storageService");
+const {
+  invalidateEmployeePhotoCache,
+} = require("../services/faceRecognitionService");
+const { getPrivateFileUrl } = require("../services/storageService");
 
 exports.login = async (req, res) => {
   try {
@@ -94,26 +97,24 @@ exports.me = async (req, res) => {
     const result = await pool.query(
       `
 SELECT
-
-u.id,
-u.role_id,
-
-r.name AS role,
-
-u.nik,
-u.name,
-u.email,
-u.department,
-u.position,
-u.photo,
-u.status
-
+  u.id,
+  u.role_id,
+  r.name AS role,
+  u.nik,
+  u.name,
+  u.email,
+  u.department,
+  u.position,
+  u.photo,
+  u.status,
+  u.face_enrolled_at,
+  (
+    u.face_embedding IS NOT NULL
+    AND u.face_enrolled_at IS NOT NULL
+  ) AS face_enrolled
 FROM users u
-
-JOIN roles r
-ON r.id=u.role_id
-
-WHERE u.id=$1
+JOIN roles r ON r.id = u.role_id
+WHERE u.id = $1
 `,
       [req.user.id],
     );
@@ -198,12 +199,13 @@ exports.createEmployee = async (req, res) => {
       department,
       position,
       role_id,
+      job_description, // TAMBAHAN
       join_date,
       address,
       employee_type,
       contract_start_date,
       contract_end_date,
-      office_location_id,
+      company_id,
       supervisor_id,
     } = req.body;
 
@@ -269,7 +271,7 @@ exports.createEmployee = async (req, res) => {
     // kji + 4 digit terakhir NIK
     // =========================
 
-    const defaultPassword = `kancha${nik.slice(-4)}`;
+    const defaultPassword = `so-mak${nik.slice(-4)}`;
 
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
@@ -292,22 +294,22 @@ exports.createEmployee = async (req, res) => {
       `
   INSERT INTO users (
     role_id, nik, name, email, password,
-    phone, department, position,
+    phone, department, position, job_description,
     photo, ktp, npwp, bpjs_kesehatan, bpjs_tk, kk,
     join_date, address, status,
     employee_type, contract_start_date, contract_end_date,
-    office_location_id, supervisor_id
+    company_id, supervisor_id
   )
   VALUES (
     $1, $2, $3, $4, $5,
-    $6, $7, $8,
-    $9, $10, $11, $12, $13, $14,
-    $15, $16, true,
-    $17, $18, $19, $20, $21
+    $6, $7, $8, $9,
+    $10, $11, $12, $13, $14, $15,
+    $16, $17, true,
+    $18, $19, $20, $21, $22
   )
   RETURNING
     id, role_id, nik, name, email, phone,
-    department, position,
+    department, position, job_description,
     photo, ktp, npwp, bpjs_kesehatan, bpjs_tk, kk,
     join_date, address, status,
     employee_type, contract_start_date, contract_end_date
@@ -332,7 +334,7 @@ exports.createEmployee = async (req, res) => {
         employee_type || "TETAP",
         contract_start_date || null,
         contract_end_date || null,
-        office_location_id || null,
+        company_id || null,
         supervisor_id || null,
       ],
     );
@@ -387,7 +389,7 @@ exports.createEmployee = async (req, res) => {
 
         <p>
           Silakan gunakan email dan password sementara tersebut
-          untuk login ke Aplikasi Kancha Attendance.
+          untuk login ke Aplikasi Attend.
         </p>
 
         <p>
@@ -456,46 +458,120 @@ exports.createEmployee = async (req, res) => {
   }
 };
 
+// exports.getEmployees = async (req, res) => {
+//   try {
+//     const result = await pool.query(`
+//             SELECT
+//                 u.id,
+//                 u.nik,
+//                 u.name,
+//                 u.email,
+//                 u.company_email,
+//                 u.phone,
+//                 u.department,
+//                 u.nip,
+//                   u.company_id,
+//                   c.name AS company_name,
+//                   u.placement,
+//                   u.job_level,
+//                 u.position,
+//                 u.photo,
+//                 u.status,
+//                 u.employee_type,
+//                 u.contract_start_date,
+//                 u.contract_end_date,
+//                 u.join_date,
+//                 u.address,
+//                 u.office_location_id,
+//                 u.supervisor_id,
+//                 u.ktp,
+//                 u.npwp,
+//                 u.bpjs_kesehatan,
+//                 u.bpjs_tk,
+//                 u.kk
+//             FROM users u
+//             LEFT JOIN companies c ON u.company_id = c.id
+//            WHERE (u.role_id = 3 OR u.nip IS NOT NULL)
+//             ORDER BY u.name ASC
+//         `);
+
+//     return res.json({
+//       success: true,
+//       data: result.rows,
+//     });
+//   } catch (err) {
+//     console.error("GET EMPLOYEES ERROR:", err);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Gagal mengambil data karyawan",
+//     });
+//   }
+// };
+
 exports.getEmployees = async (req, res) => {
   try {
     const result = await pool.query(`
-            SELECT
-                u.id,
-                u.nik,
-                u.name,
-                u.email,
-                u.company_email,
-                u.phone,
-                u.department,
-                u.nip,
-                  u.company_id,
-                  c.name AS company_name,
-                  u.placement,
-                  u.job_level,
-                u.position,
-                u.photo,
-                u.status,
-                u.employee_type,
-                u.contract_start_date,
-                u.contract_end_date,
-                u.join_date,
-                u.address,
-                u.office_location_id,
-                u.supervisor_id,
-                u.ktp,
-                u.npwp, 
-                u.bpjs_kesehatan,
-                u.bpjs_tk, 
-                u.kk
-            FROM users u
-            LEFT JOIN companies c ON u.company_id = c.id
-           WHERE (u.role_id = 3 OR u.nip IS NOT NULL)
-            ORDER BY u.name ASC
-        `);
+      SELECT
+        u.id,
+        u.nik,
+        u.name,
+        u.email,
+        u.company_email,
+        u.phone,
+        u.department,
+        u.nip,
+        u.company_id,
+        c.name AS company_name,
+        u.placement,
+        u.job_level,
+        u.position,
+        u.job_description,
+        u.photo,
+        u.status,
+        u.employee_type,
+        u.contract_start_date,
+        u.contract_end_date,
+        u.join_date,
+        u.address,
+        u.company_id,
+        u.supervisor_id,
+        u.ktp,
+        u.npwp,
+        u.bpjs_kesehatan,
+        u.bpjs_tk,
+        u.kk
+      FROM users u
+      LEFT JOIN companies c ON u.company_id = c.id
+      WHERE (u.role_id = 3 OR u.nip IS NOT NULL)
+      ORDER BY u.name ASC
+    `);
+
+    const employees = await Promise.all(
+      result.rows.map(async (employee) => {
+        let photoUrl = null;
+
+        if (employee.photo) {
+          try {
+            photoUrl = await getPrivateFileUrl(employee.photo);
+          } catch (photoError) {
+            console.error(
+              `Gagal membuat URL foto karyawan ID ${employee.id}:`,
+              photoError.message,
+            );
+          }
+        }
+
+        return {
+          ...employee,
+          photoUrl,
+        };
+      }),
+    );
 
     return res.json({
       success: true,
-      data: result.rows,
+      data: employees,
     });
   } catch (err) {
     console.error("GET EMPLOYEES ERROR:", err);
@@ -535,7 +611,21 @@ exports.updateEmployee = async (req, res) => {
   let uploadedKeys = [];
   try {
     const { id } = req.params;
+    const oldPhotoResult = await pool.query(
+      `SELECT photo
+FROM users
+WHERE id = $1`,
+      [id],
+    );
 
+    if (oldPhotoResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee Not Found",
+      });
+    }
+
+    const oldPhoto = oldPhotoResult.rows[0].photo;
     const {
       nik,
       name,
@@ -543,12 +633,13 @@ exports.updateEmployee = async (req, res) => {
       phone,
       department,
       position,
+      job_description,
       join_date,
       address,
       employee_type,
       contract_start_date,
       contract_end_date,
-      office_location_id,
+      company_id,
       supervisor_id,
     } = req.body;
 
@@ -566,6 +657,9 @@ exports.updateEmployee = async (req, res) => {
       `
   UPDATE users
   SET
+    role_id = (
+    SELECT id FROM roles WHERE name = 'Employee'
+  ),
     nik = $1,
     name = $2,
     email = $3,
@@ -577,57 +671,63 @@ exports.updateEmployee = async (req, res) => {
     employee_type = $9,
     contract_start_date = $10,
     contract_end_date = $11,
-    office_location_id = $12,
+    company_id = $12,
     supervisor_id = $13,
-    photo = COALESCE($14, photo),
-    ktp = COALESCE($15, ktp),
-    npwp = COALESCE($16, npwp),
-    bpjs_kesehatan = COALESCE($17, bpjs_kesehatan),
-    bpjs_tk = COALESCE($18, bpjs_tk),
-    kk = COALESCE($19, kk),
+    job_description = $14,
+    photo = COALESCE($15, photo),
+    face_embedding = CASE
+      WHEN $15 IS NOT NULL THEN NULL
+      ELSE face_embedding
+    END,
+    face_enrolled_at = CASE
+      WHEN $15 IS NOT NULL THEN NULL
+      ELSE face_enrolled_at
+    END,
+    ktp = COALESCE($16, ktp),
+    npwp = COALESCE($17, npwp),
+    bpjs_kesehatan = COALESCE($18, bpjs_kesehatan),
+    bpjs_tk = COALESCE($19, bpjs_tk),
+    kk = COALESCE($20, kk),
     updated_at = NOW()
-  WHERE id = $20
-    AND role_id = 3
-  RETURNING
-    id, nik, name, email, phone,
-    department, position, join_date, address,
-    employee_type, contract_start_date,
-    contract_end_date, office_location_id,
-    supervisor_id, photo, ktp, npwp,
-    bpjs_kesehatan, bpjs_tk, kk, status
+  WHERE id = $21
+  RETURNING *;
   `,
       [
-        nik,
-        name,
-        email,
-        phone,
-        department,
-        position,
-        join_date || null,
-        address,
-        employee_type,
-        employee_type === "KONTRAK" ? contract_start_date || null : null,
-        employee_type === "KONTRAK" ? contract_end_date || null : null,
-        office_location_id || null,
-        supervisor_id || null,
-        paths.photo,
-        paths.ktp,
-        paths.npwp,
-        paths.bpjs_kesehatan,
-        paths.bpjs_tk,
-        paths.kk,
-        id,
+        nik, // $1
+        name, // $2
+        email, // $3
+        phone, // $4
+        department, // $5
+        position, // $6
+        join_date || null, // $7
+        address, // $8
+        employee_type, // $9
+        employee_type === "KONTRAK" ? contract_start_date || null : null, // $10
+        employee_type === "KONTRAK" ? contract_end_date || null : null, // $11
+        office_location_id || null, // $12
+        supervisor_id || null, // $13
+        job_description || null, // $14
+        paths.photo, // $15
+        paths.ktp, // $16
+        paths.npwp, // $17
+        paths.bpjs_kesehatan, // $18
+        paths.bpjs_tk, // $19
+        paths.kk, // $20
+        id, // $21
       ],
     );
+
     if (result.rows.length === 0) {
       await cleanupUploadedDocuments(uploadedKeys);
 
       return res.status(404).json({
         success: false,
-        message: "Karyawan tidak ditemukan",
+        message: "Employee Not Found",
       });
     }
-
+    if (paths.photo) {
+      invalidateEmployeePhotoCache(oldPhoto);
+    }
     return res.json({
       success: true,
       message: "Data karyawan berhasil diperbarui",
@@ -638,7 +738,9 @@ exports.updateEmployee = async (req, res) => {
       await cleanupUploadedDocuments(uploadedKeys);
     }
 
-    console.error("UPDATE EMPLOYEE ERROR:", err);
+    console.error("UPDATE EMPLOYEE ERROR:", err.message);
+    console.error("ERROR CODE:", err.code);
+    console.error("ERROR DETAIL:", err.detail);
 
     return res.status(500).json({
       success: false,
@@ -671,7 +773,7 @@ exports.deactivateEmployee = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Karyawan tidak ditemukan",
+        message: "Employee Not Found",
       });
     }
 
@@ -700,6 +802,7 @@ exports.activateEmployee = async (req, res) => {
             SET
                 status = true,
                 updated_at = NOW()
+                
             WHERE id = $1
               AND role_id = 3
             RETURNING
@@ -714,7 +817,7 @@ exports.activateEmployee = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Karyawan tidak ditemukan",
+        message: "Employee Not Found",
       });
     }
 
@@ -735,138 +838,57 @@ exports.activateEmployee = async (req, res) => {
 
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, nik_last4 } = req.body;
 
-    if (!email) {
+    if (
+      typeof email !== "string" ||
+      typeof nik_last4 !== "string" ||
+      !email.trim() ||
+      !/^\d{4}$/.test(nik_last4)
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Email wajib diisi.",
+        message: "Email dan 4 digit terakhir NIK wajib diisi.",
       });
     }
 
     const result = await pool.query(
       `
-      SELECT id, name, email
+      SELECT id
       FROM users
-      WHERE email = $1
-        AND status = true
+      WHERE LOWER(email) = LOWER($1)
+        AND RIGHT(nik, 4) = $2
+        AND status = TRUE
       LIMIT 1
       `,
-      [email],
+      [email.trim(), nik_last4],
     );
 
-    /*
-     * Demi keamanan, jangan kasih tahu apakah
-     * email tersebut terdaftar atau tidak.
-     */
     if (result.rows.length === 0) {
-      return res.json({
-        success: true,
-        message: "Jika email terdaftar, link reset password akan dikirim.",
+      return res.status(400).json({
+        success: false,
+        message: "Verifikasi gagal. Periksa kembali data Anda.",
       });
     }
 
-    const user = result.rows[0];
-
-    // Generate token random
     const resetToken = crypto.randomBytes(32).toString("hex");
-
-    // Berlaku 15 menit
     const expires = new Date(Date.now() + 15 * 60 * 1000);
 
     await pool.query(
       `
       UPDATE users
-      SET
-        reset_password_token = $1,
-        reset_password_expires = $2,
-        updated_at = NOW()
+      SET reset_password_token = $1,
+          reset_password_expires = $2,
+          updated_at = NOW()
       WHERE id = $3
       `,
-      [resetToken, expires, user.id],
+      [resetToken, expires, result.rows[0].id],
     );
-
-    // URL frontend Vercel
-    const resetUrl = `https://kji-attendance-fe.vercel.app/reset-password?token=${resetToken}`;
-
-    await sendEmail({
-      to: user.email,
-
-      subject: "Reset Password - KJI Attendance",
-
-      html: `
-        <div style="
-          font-family: Arial, sans-serif;
-          max-width: 600px;
-          margin: auto;
-          padding: 24px;
-          color: #333;
-        ">
-
-          <h2 style="color:#16A34A;">
-            Reset Password
-          </h2>
-
-          <p>
-            Halo <strong>${user.name}</strong>,
-          </p>
-
-          <p>
-            Kami menerima permintaan untuk mengatur ulang
-            password akun KJI Attendance Anda.
-          </p>
-
-          <div style="margin: 30px 0; text-align:center;">
-
-            <a
-              href="${resetUrl}"
-              style="
-                display:inline-block;
-                background:#16A34A;
-                color:white;
-                padding:12px 24px;
-                text-decoration:none;
-                border-radius:8px;
-                font-weight:bold;
-              "
-            >
-              Reset Password
-            </a>
-
-          </div>
-
-          <p>
-            Link ini berlaku selama <strong>15 menit</strong>.
-          </p>
-
-          <p>
-            Jika Anda tidak meminta reset password,
-            abaikan email ini.
-          </p>
-
-          <hr
-            style="
-              border:0;
-              border-top:1px solid #ddd;
-              margin:30px 0;
-            "
-          >
-
-          <p style="
-            font-size:12px;
-            color:#888;
-          ">
-            Email ini dikirim otomatis oleh
-            KJI Attendance.
-          </p>
-
-        </div>
-      `,
-    });
 
     return res.json({
       success: true,
-      message: "Jika email terdaftar, link reset password akan dikirim.",
+      message: "Verifikasi berhasil.",
+      resetToken,
     });
   } catch (err) {
     console.error("FORGOT PASSWORD ERROR:", err);
@@ -882,7 +904,12 @@ exports.resetPassword = async (req, res) => {
   try {
     const { token, password, password_confirmation } = req.body;
 
-    if (!token || !password || !password_confirmation) {
+    if (
+      typeof token !== "string" ||
+      !token ||
+      typeof password !== "string" ||
+      typeof password_confirmation !== "string"
+    ) {
       return res.status(400).json({
         success: false,
         message: "Data reset password tidak lengkap.",
@@ -903,41 +930,29 @@ exports.resetPassword = async (req, res) => {
       });
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const result = await pool.query(
       `
-      SELECT id
-      FROM users
-      WHERE reset_password_token = $1
+      UPDATE users
+      SET password = $1,
+          reset_password_token = NULL,
+          reset_password_expires = NULL,
+          updated_at = NOW()
+      WHERE reset_password_token = $2
         AND reset_password_expires > NOW()
-        AND status = true
-      LIMIT 1
+        AND status = TRUE
+      RETURNING id
       `,
-      [token],
+      [hashedPassword, token],
     );
 
     if (result.rows.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Link reset password tidak valid atau sudah kedaluwarsa.",
+        message: "Token reset tidak valid atau sudah kedaluwarsa.",
       });
     }
-
-    const userId = result.rows[0].id;
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    await pool.query(
-      `
-      UPDATE users
-      SET
-        password = $1,
-        reset_password_token = NULL,
-        reset_password_expires = NULL,
-        updated_at = NOW()
-      WHERE id = $2
-      `,
-      [hashedPassword, userId],
-    );
 
     return res.json({
       success: true,
@@ -949,6 +964,39 @@ exports.resetPassword = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Gagal mengubah password.",
+    });
+  }
+};
+
+exports.getFaceEnrollmentStatus = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         (face_embedding IS NOT NULL AND face_enrolled_at IS NOT NULL)
+           AS face_enrolled,
+         (photo IS NOT NULL AND photo <> '') AS has_reference_photo
+       FROM users
+       WHERE id = $1 AND status = TRUE`,
+      [req.user.id],
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee Not Found Or Account Deactive.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error("FACE ENROLLMENT STATUS ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal memeriksa status registrasi wajah.",
     });
   }
 };

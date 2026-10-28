@@ -86,7 +86,7 @@ export default function EmployeeList() {
         : await attendanceService.activateEmployee(deactivateEmployee.id);
 
       if (!result.success) {
-        throw new Error(result.message || "Gagal mengubah status karyawan");
+        throw new Error(result.message || "Failed to change employee status.");
       }
 
       setOpenDeactivate(false);
@@ -99,7 +99,7 @@ export default function EmployeeList() {
       alert(
         err.response?.data?.message ||
           err.message ||
-          "Gagal mengubah status karyawan",
+          "Failed to change employee status.",
       );
     } finally {
       setDeactivating(false);
@@ -174,30 +174,31 @@ export default function EmployeeList() {
   );
   const handleExportExcel = () => {
     if (sortedEmployees.length === 0) {
-      alert("Tidak ada data untuk diexport.");
+      alert("There is no data to export.");
       return;
     }
 
     const exportData = sortedEmployees.map((item, index) => ({
       No: index + 1,
-      "Nama Karyawan": item.name || "-",
+      "Employee Name": item.name || "-",
       NIK: item.nik || "-",
       Email: item.company_email || "-",
-      Departemen: item.department || "-",
-      Jabatan: item.position || "-",
-      Status: item.status ? "Aktif" : "Nonaktif",
-      "Tipe Karyawan": item.employee_type === "KONTRAK" ? "Kontrak" : "Tetap",
+      Department: item.department || "-",
+      Position: item.position || "-",
+      Status: item.status ? "Active" : "Inactive",
+      "Employee Type":
+        item.employee_type === "KONTRAK" ? "Contract" : "Permanent",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
 
     const workbook = XLSX.utils.book_new();
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Data Karyawan");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Employees");
 
     XLSX.writeFile(
       workbook,
-      `Data_Karyawan_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      `Employees_${new Date().toISOString().slice(0, 10)}.xlsx`,
     );
   };
 
@@ -230,7 +231,7 @@ export default function EmployeeList() {
 
             <TextField
               size="small"
-              placeholder="Cari nama, NIK, atau email..."
+              placeholder="Search by name, ID number, or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               sx={{
@@ -248,7 +249,7 @@ export default function EmployeeList() {
               }}
             />
 
-            {/* DEPARTEMEN */}
+            {/* DEPARTMENT */}
 
             <FormControl
               size="small"
@@ -256,14 +257,14 @@ export default function EmployeeList() {
                 minWidth: 180,
               }}
             >
-              <InputLabel>Departemen</InputLabel>
+              <InputLabel>Company</InputLabel>
 
               <Select
                 value={departmentFilter}
-                label="Departemen"
+                label="Position"
                 onChange={(e) => setDepartmentFilter(e.target.value)}
               >
-                <MenuItem value="ALL">Semua Departemen</MenuItem>
+                <MenuItem value="ALL">All Position</MenuItem>
 
                 {departments.map((department) => (
                   <MenuItem key={department} value={department}>
@@ -288,15 +289,15 @@ export default function EmployeeList() {
                 label="Status"
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
-                <MenuItem value="ALL">Semua Status</MenuItem>
+                <MenuItem value="ALL">All Statuses</MenuItem>
 
-                <MenuItem value="ACTIVE">Aktif</MenuItem>
+                <MenuItem value="ACTIVE">Active</MenuItem>
 
-                <MenuItem value="INACTIVE">Nonaktif</MenuItem>
+                <MenuItem value="INACTIVE">Inactive</MenuItem>
               </Select>
             </FormControl>
 
-            {/* TIPE KARYAWAN */}
+            {/* EMPLOYEE TYPE */}
 
             <FormControl
               size="small"
@@ -304,18 +305,18 @@ export default function EmployeeList() {
                 minWidth: 140,
               }}
             >
-              <InputLabel>Tipe</InputLabel>
+              <InputLabel>Type</InputLabel>
 
               <Select
                 value={typeFilter}
-                label="Tipe"
+                label="Type"
                 onChange={(e) => setTypeFilter(e.target.value)}
               >
-                <MenuItem value="ALL">Semua Tipe</MenuItem>
+                <MenuItem value="ALL">All Types</MenuItem>
 
-                <MenuItem value="TETAP">Tetap</MenuItem>
+                <MenuItem value="TETAP">Permanent</MenuItem>
 
-                <MenuItem value="KONTRAK">Kontrak</MenuItem>
+                <MenuItem value="KONTRAK">Contract</MenuItem>
               </Select>
             </FormControl>
             <Button
@@ -342,7 +343,7 @@ export default function EmployeeList() {
                 fontWeight: 600,
               }}
             >
-              Tambah Karyawan
+              Add Employee
             </Button>
           </Stack>
 
@@ -372,7 +373,7 @@ export default function EmployeeList() {
                         },
                       }}
                     >
-                      Karyawan
+                      Employee
                     </TableSortLabel>
                   </TableCell>
 
@@ -408,7 +409,7 @@ export default function EmployeeList() {
                         },
                       }}
                     >
-                      Departemen
+                      Department
                     </TableSortLabel>
                   </TableCell>
 
@@ -426,7 +427,7 @@ export default function EmployeeList() {
                         },
                       }}
                     >
-                      Jabatan
+                      Position
                     </TableSortLabel>
                   </TableCell>
 
@@ -446,11 +447,11 @@ export default function EmployeeList() {
                         },
                       }}
                     >
-                      Tipe
+                      Type
                     </TableSortLabel>
                   </TableCell>
 
-                  <TableCell align="center">Aksi</TableCell>
+                  <TableCell align="center">Actions</TableCell>
                 </TableRow>
               </TableHead>
 
@@ -562,12 +563,11 @@ export default function EmployeeList() {
                             alignItems="center"
                           >
                             <Avatar
-                              sx={{
-                                width: 38,
-                                height: 38,
-                              }}
+                              src={item.photoUrl || undefined}
+                              alt={item.name}
+                              imgProps={{ loading: "lazy" }}
                             >
-                              {item.name.charAt(0).toUpperCase()}
+                              {item.name?.charAt(0)?.toUpperCase()}
                             </Avatar>
 
                             <Box>
@@ -613,7 +613,7 @@ export default function EmployeeList() {
                         {/* STATUS */}
                         <TableCell>
                           <Chip
-                            label={item.status ? "Aktif" : "Nonaktif"}
+                            label={item.status ? "Active" : "Inactive"}
                             color={item.status ? "success" : "default"}
                             size="small"
                           />
@@ -624,8 +624,8 @@ export default function EmployeeList() {
                           <Chip
                             label={
                               item.employee_type === "KONTRAK"
-                                ? "Kontrak"
-                                : "Tetap"
+                                ? "Contract"
+                                : "Permanent"
                             }
                             size="small"
                             variant="outlined"
@@ -674,7 +674,7 @@ export default function EmployeeList() {
                   <TableRow>
                     <TableCell colSpan={8} align="center">
                       <Typography color="text.secondary" py={4}>
-                        Data karyawan tidak ditemukan
+                        No employees found.
                       </Typography>
                     </TableCell>
                   </TableRow>
@@ -693,14 +693,14 @@ export default function EmployeeList() {
             }}
           >
             <Typography variant="body2" color="text.secondary">
-              Total data: {sortedEmployees.length}
+              Total employees: {sortedEmployees.length}
             </Typography>
 
             <Stack direction="row" spacing={2} alignItems="center">
               <TextField
                 select
                 size="small"
-                label="Per halaman"
+                label="Rows per page"
                 value={rowsPerPage}
                 onChange={(e) => {
                   setRowsPerPage(Number(e.target.value));
@@ -771,21 +771,21 @@ export default function EmployeeList() {
       >
         <DialogTitle>
           {deactivateEmployee?.status
-            ? "Nonaktifkan Karyawan"
-            : "Aktifkan Karyawan"}
+            ? "Deactivate Employee"
+            : "Activate Employee"}
         </DialogTitle>
 
         <DialogContent>
           <Typography>
-            Apakah kamu yakin ingin{" "}
-            {deactivateEmployee?.status ? "menonaktifkan" : "mengaktifkan"}{" "}
-            karyawan <strong>{deactivateEmployee?.name}</strong>?
+            Are you sure you want to{" "}
+            {deactivateEmployee?.status ? "deactivate" : "activate"}{" "}
+            <strong>{deactivateEmployee?.name}</strong>?
           </Typography>
 
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             {deactivateEmployee?.status
-              ? "Karyawan tidak akan dapat digunakan sebagai karyawan aktif, tetapi seluruh data dan riwayat absensinya tetap tersimpan."
-              : "Karyawan akan kembali menjadi karyawan aktif dan dapat menggunakan akun login."}
+              ? "This employee will be inactive, but all employee data and attendance history will remain saved."
+              : "This employee will become active again and will be able to use their login account."}
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -796,7 +796,7 @@ export default function EmployeeList() {
             }}
             disabled={deactivating}
           >
-            Batal
+            Cancel
           </Button>
 
           <Button
@@ -806,10 +806,10 @@ export default function EmployeeList() {
             disabled={deactivating}
           >
             {deactivating
-              ? "Memproses..."
+              ? "Processing..."
               : deactivateEmployee?.status
-                ? "Nonaktifkan"
-                : "Aktifkan"}
+                ? "Deactivate"
+                : "Activate"}
           </Button>
         </DialogActions>
       </Dialog>

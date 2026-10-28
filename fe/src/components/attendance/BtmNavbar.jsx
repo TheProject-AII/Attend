@@ -10,7 +10,6 @@ import Badge from "@mui/material/Badge";
 import { useEffect, useState } from "react";
 import notificationService from "../../services/notificationService";
 
-
 export default function BottomNav() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -18,15 +17,10 @@ export default function BottomNav() {
   const role = user?.role?.toUpperCase() || "";
   const [badge, setBadge] = useState(0);
 
-
-
-  const canApproval = [
-    "SUPERVISOR",
-    "MANAGER",
-  ].includes(role);
+  const canApproval = ["SUPERVISOR", "MANAGER"].includes(role);
   const menus = [
     {
-      label: "Absen",
+      label: "Attendance",
       value: "/employee/attendance",
       icon: <AccessTimeRoundedIcon />,
     },
@@ -39,42 +33,32 @@ export default function BottomNav() {
       label: "Request",
       value: "/employee/leave",
       icon: <DescriptionRoundedIcon />,
-    }
+    },
   ];
   if (canApproval) {
-
     menus.push({
       label: "Approval",
       value: "/employee/approval",
-      icon: <FactCheckRoundedIcon />
+      icon: <FactCheckRoundedIcon />,
     });
-
   }
   menus.push({
-    label: "Profil",
+    label: "Profile",
     value: "/employee/profile",
     icon: <PersonRoundedIcon />,
   });
   useEffect(() => {
-
     loadBadge();
-
   }, [location.pathname]);
 
   const loadBadge = async () => {
-
     try {
-
       const { data } = await notificationService.getBadge();
 
       setBadge(data.badge);
-
     } catch (err) {
-
       console.error(err);
-
     }
-
   };
 
   return (
@@ -87,7 +71,7 @@ export default function BottomNav() {
         right: 12,
         borderRadius: "18px",
         overflow: "hidden",
-        zIndex: (theme) => theme.zIndex.appBar
+        zIndex: (theme) => theme.zIndex.appBar,
       }}
     >
       <BottomNavigation
@@ -118,40 +102,36 @@ export default function BottomNav() {
           },
         }}
       >
-        {
-          menus.map((item) => {
+        {menus.map((item) => {
+          const role = user?.role?.toLowerCase();
 
-            const role = user?.role?.toLowerCase();
+          const isLeader = ["supervisor", "manager"].includes(role);
 
-            const isLeader = ["supervisor", "manager"].includes(role);
+          const showBadge =
+            (isLeader && item.value === "/employee/approval") ||
+            (role === "employee" && item.value === "/employee/leave");
 
-            const showBadge =
-              (isLeader && item.value === "/employee/approval") ||
-              (role === "employee" && item.value === "/employee/leave");
-
-            return (
-              <BottomNavigationAction
-                key={item.value}
-                value={item.value}
-                label={item.label}
-                icon={
-                  showBadge ? (
-                    <Badge
-                      badgeContent={badge > 99 ? "99+" : badge}
-                      color="error"
-                      invisible={badge === 0}
-                    >
-                      {item.icon}
-                    </Badge>
-                  ) : (
-                    item.icon
-                  )
-                }
-              />
-            );
-
-          })
-        }
+          return (
+            <BottomNavigationAction
+              key={item.value}
+              value={item.value}
+              label={item.label}
+              icon={
+                showBadge ? (
+                  <Badge
+                    badgeContent={badge > 99 ? "99+" : badge}
+                    color="error"
+                    invisible={badge === 0}
+                  >
+                    {item.icon}
+                  </Badge>
+                ) : (
+                  item.icon
+                )
+              }
+            />
+          );
+        })}
       </BottomNavigation>
     </Paper>
   );

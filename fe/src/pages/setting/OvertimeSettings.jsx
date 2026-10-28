@@ -139,8 +139,8 @@ export default function OvertimeSettings() {
     } catch (err) {
       console.error("LOAD OVERTIME SETTINGS ERROR:", err);
       Swal.fire(
-        "Gagal",
-        errMessage(err, "Gagal mengambil tarif lembur."),
+        "Failed",
+        errMessage(err, "Failed to load overtime rates."),
         "error",
       );
     } finally {
@@ -173,8 +173,8 @@ export default function OvertimeSettings() {
     } catch (err) {
       console.error("LOAD LATE SETTINGS ERROR:", err);
       Swal.fire(
-        "Gagal",
-        errMessage(err, "Gagal mengambil pengaturan keterlambatan."),
+        "Failed",
+        errMessage(err, "Failed to load late-arrival settings."),
         "error",
       );
     } finally {
@@ -211,8 +211,8 @@ export default function OvertimeSettings() {
     const weekend = parseNumber(weekendRate);
     if (![weekday, weekend].every((n) => Number.isFinite(n) && n >= 0)) {
       return Swal.fire(
-        "Periksa Data",
-        "Tarif lembur harus berupa angka minimal 0.",
+        "Check the Data",
+        "Overtime rates must be numbers greater than or equal to 0.",
         "warning",
       );
     }
@@ -224,16 +224,16 @@ export default function OvertimeSettings() {
       });
       await Swal.fire({
         icon: "success",
-        title: "Berhasil",
-        text: response.data?.message || "Tarif lembur tersimpan.",
+        title: "Success",
+        text: response.data?.message || "Overtime rates saved.",
         timer: 1500,
         showConfirmButton: false,
       });
       await loadOvertime();
     } catch (err) {
       Swal.fire(
-        "Gagal",
-        errMessage(err, "Gagal menyimpan tarif lembur."),
+        "Failed",
+        errMessage(err, "Failed to save overtime rates."),
         "error",
       );
     } finally {
@@ -249,15 +249,15 @@ export default function OvertimeSettings() {
       policy.office_start_time >= policy.office_end_time
     ) {
       return Swal.fire(
-        "Periksa Jam",
-        "Jam pulang harus setelah jam masuk dan berformat HH:mm.",
+        "Check the Times",
+        "End time must be later than start time and use HH:mm format.",
         "warning",
       );
     }
     if (!Number.isInteger(tolerance) || tolerance < 0 || tolerance > 1440) {
       return Swal.fire(
-        "Periksa Toleransi",
-        "Toleransi harus bilangan bulat 0–1440 menit.",
+        "Check the Tolerance",
+        "Tolerance must be a whole number from 0 to 1440 minutes.",
         "warning",
       );
     }
@@ -267,18 +267,18 @@ export default function OvertimeSettings() {
       (latestVersionDate && policy.effective_date <= latestVersionDate)
     ) {
       return Swal.fire(
-        "Periksa Tanggal",
-        "Tanggal efektif harus setelah hari ini dan setelah tanggal versi kebijakan terakhir.",
+        "Check the Date",
+        "The effective date must be after today and after the latest policy version date.",
         "warning",
       );
     }
     const confirm = await Swal.fire({
-      title: "Jadwalkan kebijakan baru?",
+      title: "Schedule a new policy?",
       icon: "question",
       showCancelButton: true,
-      confirmButtonText: "Ya, simpan",
-      cancelButtonText: "Batal",
-      text: `Kebijakan akan mulai berlaku ${displayDate(policy.effective_date)}. Kebijakan sebelumnya tetap disimpan.`,
+      confirmButtonText: "Yes, save",
+      cancelButtonText: "Cancel",
+      text: `The policy will take effect on ${displayDate(policy.effective_date)}. The previous policy will remain saved.`,
     });
     if (!confirm.isConfirmed) return;
     setPolicySaving(true);
@@ -294,16 +294,16 @@ export default function OvertimeSettings() {
       const response = await api.put("/late-compensation/settings", payload);
       await Swal.fire({
         icon: "success",
-        title: "Berhasil",
-        text: response.data?.message || "Kebijakan berhasil dijadwalkan.",
+        title: "Success",
+        text: response.data?.message || "Policy scheduled successfully.",
         timer: 1700,
         showConfirmButton: false,
       });
       await loadPolicy();
     } catch (err) {
       Swal.fire(
-        "Gagal",
-        errMessage(err, "Gagal menyimpan kebijakan."),
+        "Failed",
+        errMessage(err, "Failed to save the policy."),
         "error",
       );
     } finally {
@@ -324,7 +324,7 @@ export default function OvertimeSettings() {
       }}
       InputProps={{
         startAdornment: <InputAdornment position="start">Rp</InputAdornment>,
-        endAdornment: <InputAdornment position="end">/ jam</InputAdornment>,
+        endAdornment: <InputAdornment position="end">/ hour</InputAdornment>,
       }}
     />
   );
@@ -332,15 +332,15 @@ export default function OvertimeSettings() {
   return (
     <Box>
       <Typography variant="h4" fontWeight={700} sx={{ mb: 0.5 }}>
-        Pengaturan
+        Settings
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Kelola pengaturan sistem absensi dan lembur.
+        Manage attendance and overtime system settings.
       </Typography>
 
       <Section
         icon={<AccessTimeIcon />}
-        title="Pengaturan Overtime"
+        title="Overtime Settings"
         open={openSection === "overtime"}
         onToggle={() =>
           setOpenSection(openSection === "overtime" ? null : "overtime")
@@ -348,20 +348,20 @@ export default function OvertimeSettings() {
       >
         <Box sx={{ maxWidth: 800 }}>
           <Typography variant="h6" fontWeight={600}>
-            Tarif Lembur
+            Overtime Rates
           </Typography>
           <Typography
             variant="body2"
             color="text.secondary"
             sx={{ mt: 0.5, mb: 2 }}
           >
-            Tarif digunakan untuk menghitung nominal lembur berdasarkan durasi
-            lembur.
+            Rates are used to calculate overtime pay based on the duration of
+            overtime.
           </Typography>
           <Divider sx={{ mb: 3 }} />
           <Stack spacing={2.5}>
-            {currencyInput("Senin – Jumat", weekdayRate, setWeekdayRate)}
-            {currencyInput("Sabtu – Minggu", weekendRate, setWeekendRate)}
+            {currencyInput("Monday – Friday", weekdayRate, setWeekdayRate)}
+            {currencyInput("Saturday – Sunday", weekendRate, setWeekendRate)}
             <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
               <Button
                 variant="contained"
@@ -369,7 +369,7 @@ export default function OvertimeSettings() {
                 disabled={overtimeLoading || overtimeSaving}
                 onClick={handleSaveOvertime}
               >
-                {overtimeSaving ? "Menyimpan..." : "Simpan Pengaturan"}
+                {overtimeSaving ? "Saving..." : "Save Settings"}
               </Button>
             </Box>
           </Stack>
@@ -378,7 +378,7 @@ export default function OvertimeSettings() {
 
       <Section
         icon={<WorkHistoryIcon />}
-        title="Pengaturan Jam Kerja"
+        title="Working Hours Settings"
         open={openSection === "working-hours"}
         onToggle={() =>
           setOpenSection(
@@ -387,15 +387,14 @@ export default function OvertimeSettings() {
         }
       >
         <Typography variant="body2" color="text.secondary">
-          Pengaturan jam kerja umum akan ditambahkan di sini. Jam perhitungan
-          kompensasi keterlambatan dapat diatur melalui Pengaturan Absensi di
-          bawah.
+          General working-hour settings will be added here. Late compensation
+          hours can be configured in Attendance Settings below.
         </Typography>
       </Section>
 
       <Section
         icon={<EventAvailableIcon />}
-        title="Pengaturan Absensi & Late Compensation"
+        title="Attendance & Late Compensation Settings"
         open={openSection === "attendance"}
         onToggle={() =>
           setOpenSection(openSection === "attendance" ? null : "attendance")
@@ -404,17 +403,17 @@ export default function OvertimeSettings() {
         {policyLoading ? (
           <Stack direction="row" alignItems="center" spacing={2}>
             <CircularProgress size={22} />
-            <Typography>Memuat kebijakan...</Typography>
+            <Typography>Loading policy...</Typography>
           </Stack>
         ) : (
           <Stack spacing={3}>
             <Alert severity="info">
-              Perubahan hanya dapat dijadwalkan untuk tanggal mendatang.
-              Perhitungan memakai versi kebijakan sesuai tanggal absensi.
+              Changes can only be scheduled for a future date. Calculations use
+              the policy version applicable to the attendance date.
             </Alert>
             <Box>
               <Typography variant="h6" fontWeight={600}>
-                Kebijakan yang Sedang Berlaku
+                Currently Active Policy
               </Typography>
               {activePolicy ? (
                 <Stack direction="row" gap={1} flexWrap="wrap" sx={{ mt: 1.5 }}>
@@ -422,23 +421,23 @@ export default function OvertimeSettings() {
                     label={`Sejak ${displayDate(activePolicy.effective_date)}`}
                   />
                   <Chip
-                    label={`Masuk ${timeOnly(activePolicy.office_start_time)}`}
+                    label={`Start ${timeOnly(activePolicy.office_start_time)}`}
                   />
                   <Chip
-                    label={`Pulang ${timeOnly(activePolicy.office_end_time)}`}
+                    label={`End ${timeOnly(activePolicy.office_end_time)}`}
                   />
                   <Chip
-                    label={`Toleransi ${activePolicy.late_tolerance_minutes} menit`}
+                    label={`Tolerance ${activePolicy.late_tolerance_minutes} min`}
                   />
                   <Chip
                     color={activePolicy.is_active ? "success" : "default"}
-                    label={activePolicy.is_active ? "Aktif" : "Nonaktif"}
+                    label={activePolicy.is_active ? "Active" : "Inactive"}
                   />
                 </Stack>
               ) : (
                 <Alert severity="warning" sx={{ mt: 1 }}>
-                  Belum ada versi kebijakan yang berlaku pada hari ini. Periksa
-                  tanggal versi awal.
+                  No policy version is active today. Check the initial version
+                  date.
                 </Alert>
               )}
               {scheduledVersions.length > 0 && (
@@ -447,26 +446,27 @@ export default function OvertimeSettings() {
                   color="text.secondary"
                   sx={{ mt: 1 }}
                 >
-                  Ada {scheduledVersions.length} kebijakan terjadwal yang belum
-                  berlaku.
+                  {scheduledVersions.length} scheduled policies are not yet
+                  active.
                 </Typography>
               )}
             </Box>
             <Divider />
             <Box>
               <Typography variant="h6" fontWeight={600}>
-                Jadwalkan Kebijakan Baru
+                Schedule a New Policy
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Form diisi dari versi terbaru sebagai referensi. Mengubah form
-                tidak mengubah kebijakan aktif sampai tanggal efektifnya.
+                The form is prefilled from the latest version for reference.
+                Changes will not affect the active policy until the effective
+                date.
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     size="small"
-                    label="Jam Masuk"
+                    label="Start Time"
                     type="time"
                     value={policy.office_start_time}
                     onChange={(e) =>
@@ -479,7 +479,7 @@ export default function OvertimeSettings() {
                   <TextField
                     fullWidth
                     size="small"
-                    label="Jam Pulang"
+                    label="End Time"
                     type="time"
                     value={policy.office_end_time}
                     onChange={(e) =>
@@ -492,7 +492,7 @@ export default function OvertimeSettings() {
                   <TextField
                     fullWidth
                     size="small"
-                    label="Toleransi Keterlambatan (menit)"
+                    label="Late Arrival Tolerance (minutes)"
                     type="number"
                     value={policy.late_tolerance_minutes}
                     inputProps={{ min: 0, max: 1440, step: 1 }}
@@ -505,7 +505,7 @@ export default function OvertimeSettings() {
                   <TextField
                     fullWidth
                     size="small"
-                    label="Tanggal Mulai Berlaku"
+                    label="Effective Date"
                     type="date"
                     value={policy.effective_date}
                     onChange={(e) =>
@@ -520,14 +520,14 @@ export default function OvertimeSettings() {
                     fullWidth
                     select
                     size="small"
-                    label="Pembulatan Keterlambatan"
+                    label="Late Time Rounding"
                     value={policy.late_rounding}
                     onChange={(e) =>
                       updatePolicy("late_rounding", e.target.value)
                     }
                   >
-                    <MenuItem value="CEIL">Ke atas (CEIL)</MenuItem>
-                    <MenuItem value="FLOOR">Ke bawah (FLOOR)</MenuItem>
+                    <MenuItem value="CEIL">Round Up (CEIL)</MenuItem>
+                    <MenuItem value="FLOOR">Round Down (FLOOR)</MenuItem>
                   </TextField>
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -535,22 +535,22 @@ export default function OvertimeSettings() {
                     fullWidth
                     select
                     size="small"
-                    label="Pembulatan Kompensasi"
+                    label="Compensation Rounding"
                     value={policy.compensation_rounding}
                     onChange={(e) =>
                       updatePolicy("compensation_rounding", e.target.value)
                     }
                   >
-                    <MenuItem value="FLOOR">Ke bawah (FLOOR)</MenuItem>
-                    <MenuItem value="CEIL">Ke atas (CEIL)</MenuItem>
+                    <MenuItem value="FLOOR">Round Down (FLOOR)</MenuItem>
+                    <MenuItem value="CEIL">Round Up (CEIL)</MenuItem>
                   </TextField>
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     size="small"
-                    label="Metode Pembayaran"
-                    value="FIFO — Utang tertua dahulu"
+                    label="Payment Method"
+                    value="FIFO — Oldest debt first"
                     disabled
                   />
                 </Grid>
@@ -558,7 +558,7 @@ export default function OvertimeSettings() {
                   <TextField
                     fullWidth
                     size="small"
-                    label="Jenis Absensi"
+                    label="Attendance Type"
                     value="OFFICE"
                     disabled
                   />
@@ -575,8 +575,8 @@ export default function OvertimeSettings() {
                     }
                     label={
                       policy.is_active
-                        ? "Perhitungan kompensasi aktif"
-                        : "Perhitungan kompensasi nonaktif"
+                        ? "Compensation calculation active"
+                        : "Compensation calculation inactive"
                     }
                   />
                 </Grid>
@@ -588,23 +588,23 @@ export default function OvertimeSettings() {
                   disabled={policySaving}
                   onClick={handleSavePolicy}
                 >
-                  {policySaving ? "Menyimpan..." : "Jadwalkan Kebijakan"}
+                  {policySaving ? "Saving..." : "Schedule Policy"}
                 </Button>
               </Box>
             </Box>
             <Divider />
             <Box>
               <Typography variant="h6" fontWeight={600} sx={{ mb: 1.5 }}>
-                Riwayat Versi Kebijakan
+                Policy Version History
               </Typography>
               <TableContainer sx={{ overflowX: "auto" }}>
                 <Table size="small" sx={{ minWidth: 720 }}>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Tanggal Berlaku</TableCell>
-                      <TableCell>Jam Kerja</TableCell>
-                      <TableCell>Toleransi</TableCell>
-                      <TableCell>Pembulatan</TableCell>
+                      <TableCell>Effective Date</TableCell>
+                      <TableCell>Working Hours</TableCell>
+                      <TableCell>Tolerance</TableCell>
+                      <TableCell>Rounding</TableCell>
                       <TableCell>Status</TableCell>
                     </TableRow>
                   </TableHead>
@@ -612,7 +612,7 @@ export default function OvertimeSettings() {
                     {sortedVersions.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5}>
-                          Belum ada riwayat kebijakan.
+                          No policy history yet.
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -626,10 +626,10 @@ export default function OvertimeSettings() {
                             {timeOnly(item.office_end_time)}
                           </TableCell>
                           <TableCell>
-                            {item.late_tolerance_minutes} menit
+                            {item.late_tolerance_minutes} min
                           </TableCell>
                           <TableCell>
-                            Telat: {item.late_rounding} / Kompensasi:{" "}
+                            Late: {item.late_rounding} / Compensation:{" "}
                             {item.compensation_rounding}
                           </TableCell>
                           <TableCell>
@@ -638,8 +638,8 @@ export default function OvertimeSettings() {
                                 size="small"
                                 label={
                                   dateOnly(item.effective_date) > today
-                                    ? "Terjadwal"
-                                    : "Berlaku sejak"
+                                    ? "Scheduled"
+                                    : "Effective since"
                                 }
                                 color={
                                   dateOnly(item.effective_date) > today
@@ -649,7 +649,7 @@ export default function OvertimeSettings() {
                               />
                               <Chip
                                 size="small"
-                                label={item.is_active ? "Aktif" : "Nonaktif"}
+                                label={item.is_active ? "Active" : "Inactive"}
                                 color={item.is_active ? "success" : "default"}
                               />
                             </Stack>

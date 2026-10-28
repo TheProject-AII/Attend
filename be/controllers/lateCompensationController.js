@@ -287,7 +287,7 @@ exports.employeeDetail = async (req, res) => {
     if (!employeeResult.rows.length) {
       return res.status(404).json({
         success: false,
-        message: "Karyawan tidak ditemukan.",
+        message: "Employee Not Found.",
       });
     }
 
