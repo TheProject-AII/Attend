@@ -355,7 +355,6 @@ export default function EmployeeCreate({
         <DialogContent>
           <Grid container spacing={2}>
             {/* PHOTO */}
-
             {/* EMPLOYEE PHOTO */}
             <Grid size={{ xs: 12, md: 6 }}>
               <FileUploadField
@@ -369,7 +368,6 @@ export default function EmployeeCreate({
                 onChange={handleFileChange}
               />
             </Grid>
-
             {/* NATIONAL ID PHOTO */}
             <Grid size={{ xs: 12, md: 6 }}>
               <FileUploadField
@@ -390,7 +388,6 @@ export default function EmployeeCreate({
                 onChange={handleFileChange}
               />
             </Grid>
-
             {/* TAX ID PHOTO */}
             <Grid size={{ xs: 12, md: 6 }}>
               <FileUploadField
@@ -401,7 +398,6 @@ export default function EmployeeCreate({
                 onChange={handleFileChange}
               />
             </Grid>
-
             {/* HEALTH INSURANCE PHOTO */}
             <Grid size={{ xs: 12, md: 6 }}>
               <FileUploadField
@@ -412,7 +408,6 @@ export default function EmployeeCreate({
                 onChange={handleFileChange}
               />
             </Grid>
-
             {/* EMPLOYMENT INSURANCE PHOTO */}
             <Grid size={{ xs: 12, md: 6 }}>
               <FileUploadField
@@ -423,9 +418,7 @@ export default function EmployeeCreate({
                 onChange={handleFileChange}
               />
             </Grid>
-
             {/* NIK */}
-
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
@@ -439,9 +432,7 @@ export default function EmployeeCreate({
                 }}
               />
             </Grid>
-
             {/* NAME */}
-
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
@@ -452,9 +443,7 @@ export default function EmployeeCreate({
                 onChange={handleChange}
               />
             </Grid>
-
             {/* EMAIL */}
-
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
@@ -466,7 +455,6 @@ export default function EmployeeCreate({
                 onChange={handleChange}
               />
             </Grid>
-
             <Grid size={{ xs: 12, md: 6 }}>
               {mode === "create" && (
                 <Grid size={{ xs: 12, md: 6 }}>
@@ -480,9 +468,7 @@ export default function EmployeeCreate({
                 </Grid>
               )}
             </Grid>
-
             {/* PHONE */}
-
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
@@ -492,9 +478,7 @@ export default function EmployeeCreate({
                 onChange={handleChange}
               />
             </Grid>
-
             {/* DEPARTMENT */}
-
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
@@ -505,9 +489,7 @@ export default function EmployeeCreate({
                 onChange={handleChange}
               />
             </Grid>
-
             {/* POSITION */}
-
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
@@ -537,9 +519,7 @@ export default function EmployeeCreate({
                 ))}
               </TextField>
             </Grid>
-
             {/* JOIN DATE */}
-
             <Grid size={{ xs: 12, md: 6 }}>
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
@@ -560,11 +540,8 @@ export default function EmployeeCreate({
                 />
               </LocalizationProvider>
             </Grid>
-
             {/* TYPE */}
-
             {/* EMPLOYEE TYPE */}
-
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
@@ -575,18 +552,24 @@ export default function EmployeeCreate({
                 onChange={handleChange}
               >
                 <MenuItem value="TETAP">Permanent Employee</MenuItem>
+                <MenuItem value="KONTRAK_3_BULAN">Probation</MenuItem>
+                <MenuItem value="KONTRAK_6_BULAN">Contract 6 Month</MenuItem>
 
-                <MenuItem value="KONTRAK">Contract Employee</MenuItem>
+                <MenuItem value="KONTRAK_12_BULAN">Contract 12 Month</MenuItem>
+
+                <MenuItem value="KONTRAK_INTERN">Intern</MenuItem>
               </TextField>
             </Grid>
-
             {/* RIGHT SIDE SPACER */}
-
             <Grid size={{ xs: 12, md: 6 }} />
-
             {/* CONTRACT DATES */}
 
-            {form.employee_type === "KONTRAK" && (
+            {[
+              "KONTRAK_3_BULAN",
+              "KONTRAK_6_BULAN",
+              "KONTRAK_12_BULAN",
+              "KONTRAK_INTERN",
+            ].includes(form.employee_type) && (
               <>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -614,6 +597,7 @@ export default function EmployeeCreate({
                     />
                   </LocalizationProvider>
                 </Grid>
+
                 <Grid size={{ xs: 12, md: 6 }}>
                   <LocalizationProvider dateAdapter={AdapterDayjs}>
                     <DatePicker
@@ -643,8 +627,26 @@ export default function EmployeeCreate({
               </>
             )}
 
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                select
+                label="Placement"
+                name="company_id"
+                value={form.company_id ?? ""}
+                onChange={handleChange}
+              >
+                <MenuItem value={7}>PT. Mitra Untuk Indonesia</MenuItem>
+                <MenuItem value={8}>PT. Mega Trans Indotama</MenuItem>
+                <MenuItem value={9}>PT. Asia Investment Indonesia</MenuItem>
+                <MenuItem value={10}>PT. Meraki Asa Khatulistiwa</MenuItem>
+                <MenuItem value={11}>PT. Indo Auto Service</MenuItem>
+                <MenuItem value={12}>
+                  PT. Meraki Asa Khatulistiwa GANBARU
+                </MenuItem>
+              </TextField>
+            </Grid>
             {/* ADDRESS */}
-
             <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
@@ -656,7 +658,6 @@ export default function EmployeeCreate({
                 onChange={handleChange}
               />
             </Grid>
-
             {/* JOB DESCRIPTION */}
             <Grid size={{ xs: 12 }}>
               <TextField

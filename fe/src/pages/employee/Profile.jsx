@@ -119,14 +119,27 @@ export default function Profile() {
     );
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  const handleLogout = async () => {
+    try {
+      // Minta backend menghapus sesi aktif employee
+      const token = localStorage.getItem("token");
 
-    // Paksa reload ke login
-    window.location.replace("/");
+      if (token) {
+        await authService.logout(token);
+      }
+    } catch (err) {
+      console.error("Logout API error:", err);
+    } finally {
+      // Tetap logout lokal meskipun API gagal
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setUser(null);
+
+      // Tutup dialog dan kembali ke login
+      setOpenLogout(false);
+      window.location.replace("/");
+    }
   };
-
   return (
     <Box sx={{ p: 2 }}>
       <Card

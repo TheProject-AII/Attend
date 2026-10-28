@@ -30,7 +30,7 @@ export default function EmployeeDetail({ open, employee, onClose }) {
       return "-";
     }
 
-    return d.toLocaleDateString("en-US", {
+    return d.toLocaleDateString("id-ID", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -90,21 +90,21 @@ export default function EmployeeDetail({ open, employee, onClose }) {
           <Box>
             <Typography fontSize={20} fontWeight={700}>
               {employee.name}
+              <Divider />
+              <Typography sx={{ fontWeight: 500 }}>
+                {employee.company_name || "-"}
+              </Typography>
             </Typography>
 
             <Typography color="text.secondary">
               {employee.position || "-"}
-            </Typography>
-
-            <Stack direction="row" spacing={1} mt={1}>
-              <Chip label={employee.department || "-"} size="small" />
-
               <Chip
+                sx={{ ml: 1 }}
                 label={employee.status ? "Active" : "Inactive"}
                 color={employee.status ? "success" : "default"}
                 size="small"
               />
-            </Stack>
+            </Typography>
           </Box>
         </Stack>
 
@@ -209,9 +209,11 @@ export default function EmployeeDetail({ open, employee, onClose }) {
             <DetailItem
               label="Employee Type"
               value={
-                employee.employee_type === "KONTRAK"
-                  ? "Contract Employee"
-                  : "Permanent Employee"
+                employee.employee_type?.includes("KONTRAK")
+                  ? "Contract"
+                  : employee.employee_type === "KONTRAK_INTERN"
+                    ? "Intern"
+                    : "Permanent"
               }
             />
           </Grid>
@@ -219,7 +221,7 @@ export default function EmployeeDetail({ open, employee, onClose }) {
 
         {/* KONTRAK */}
 
-        {employee.employee_type === "KONTRAK" && (
+        {employee.employee_type?.includes("KONTRAK") && (
           <>
             <Divider sx={{ mb: 3 }} />
 
@@ -236,7 +238,7 @@ export default function EmployeeDetail({ open, employee, onClose }) {
               >
                 <DetailItem
                   label="Contract Start Date"
-                  value={formatDate(employee.contract_start_date)}
+                  value={formatDate(employee.join_date)}
                 />
               </Grid>
 

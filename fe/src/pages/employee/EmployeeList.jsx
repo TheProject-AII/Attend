@@ -314,9 +314,13 @@ export default function EmployeeList() {
               >
                 <MenuItem value="ALL">All Types</MenuItem>
 
-                <MenuItem value="TETAP">Permanent</MenuItem>
+                <MenuItem value="TETAP">Permanent Employee</MenuItem>
+                <MenuItem value="KONTRAK_3_BULAN">Probation</MenuItem>
+                <MenuItem value="KONTRAK_6_BULAN">Contract 6 Month</MenuItem>
 
-                <MenuItem value="KONTRAK">Contract</MenuItem>
+                <MenuItem value="KONTRAK_12_BULAN">Contract 12 Month</MenuItem>
+
+                <MenuItem value="INTERN">Intern</MenuItem>
               </Select>
             </FormControl>
             <Button
@@ -586,7 +590,7 @@ export default function EmployeeList() {
                         </TableCell>
 
                         {/* NIK */}
-                        <TableCell>{item.nik}</TableCell>
+                        <TableCell>{item.nip}</TableCell>
 
                         {/* DEPARTMENT */}
                         <TableCell>
@@ -625,7 +629,15 @@ export default function EmployeeList() {
                             label={
                               item.employee_type === "KONTRAK"
                                 ? "Contract"
-                                : "Permanent"
+                                : item.employee_type === "KONTRAK_3_BULAN"
+                                  ? "Probation"
+                                  : item.employee_type === "KONTRAK_6_BULAN"
+                                    ? "Contract"
+                                    : item.employee_type === "KONTRAK_12_BULAN"
+                                      ? "Contract"
+                                      : item.employee_type === "INTERN"
+                                        ? "Intern"
+                                        : "Permanent"
                             }
                             size="small"
                             variant="outlined"
