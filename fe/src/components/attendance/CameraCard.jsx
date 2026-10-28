@@ -238,17 +238,21 @@ const CameraCard = forwardRef(({ photo, setPhoto, loading }, ref) => {
 
         <Box
           sx={{
-            aspectRatio: "4 / 3",
+            width: "100%",
+            aspectRatio: "3 / 4",
+            minHeight: 400,
+            maxHeight: "70dvh",
             overflow: "hidden",
-            borderRadius: 1,
+            borderRadius: 2,
             bgcolor: "#ECECEC",
           }}
         >
           {photo ? (
-            <img
+            <Box
+              component="img"
               src={photo}
               alt="Preview selfie"
-              style={{
+              sx={{
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
@@ -281,15 +285,11 @@ const CameraCard = forwardRef(({ photo, setPhoto, loading }, ref) => {
           </Alert>
         )}
 
-        {!photo && brightness !== null && (
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: "block", mt: 1 }}
-          >
+        {/* {!photo && brightness !== null && (
+          <Typography variant="body2" color="text.secondary">
             Lighting level: {brightness}/255
           </Typography>
-        )}
+        )} */}
 
         {detecting && (
           <Typography variant="body2" sx={{ mt: 1, textAlign: "center" }}>
