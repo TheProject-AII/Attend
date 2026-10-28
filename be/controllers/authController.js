@@ -699,7 +699,7 @@ WHERE id = $1`,
         employee_type, // $9
         employee_type === "KONTRAK" ? contract_start_date || null : null, // $10
         employee_type === "KONTRAK" ? contract_end_date || null : null, // $11
-        office_location_id || null, // $12
+        company_id || null, // $12
         supervisor_id || null, // $13
         job_description || null, // $14
         paths.photo, // $15

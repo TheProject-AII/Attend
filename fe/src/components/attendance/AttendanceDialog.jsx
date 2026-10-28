@@ -122,8 +122,8 @@ export default function AttendanceDialog({
           {loading
             ? "Processing..."
             : status === "checked-in"
-              ? "Konfirmasi Check Out"
-              : "Konfirmasi Check In"}
+              ? "Continue Check Out"
+              : "Continue Check In"}
         </Button>
       </DialogActions>
     </Dialog>
