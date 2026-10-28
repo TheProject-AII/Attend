@@ -46,7 +46,7 @@ export default function EmployeeCreate({
     contract_start_date: "",
     contract_end_date: "",
 
-    office_location_id: "",
+    company_id: "",
     supervisor_id: "",
 
     photo: null,
@@ -158,7 +158,7 @@ export default function EmployeeCreate({
           ? dayjs(employee.contract_end_date).format("YYYY-MM-DD")
           : "",
 
-        office_location_id: employee.office_location_id || "",
+        company_id: employee.company_id || "",
 
         supervisor_id: employee.supervisor_id || "",
 
@@ -250,8 +250,8 @@ export default function EmployeeCreate({
         formData.append("contract_end_date", form.contract_end_date);
       }
 
-      if (form.office_location_id) {
-        formData.append("office_location_id", form.office_location_id);
+      if (form.company_id) {
+        formData.append("company_id", form.company_id);
       }
 
       if (form.supervisor_id) {

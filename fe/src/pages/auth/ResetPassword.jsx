@@ -13,16 +13,19 @@ import {
 
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 
-import { useSearchParams, useNavigate } from "react-router-dom";
-
-import api from "../../services/api";
+import { useLocation, useNavigate } from "react-router-dom";
+import authService from "../../services/authService";
 
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
 
-  const token = searchParams.get("token");
+  // Token dikirim dari halaman ForgotPassword melalui navigation state.
+  // URL token lama tetap didukung untuk kompatibilitas.
+  const token =
+    location.state?.token || new URLSearchParams(location.search).get("token");
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -31,6 +34,7 @@ export default function ResetPassword() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [completed, setCompleted] = useState(false);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -41,47 +45,55 @@ export default function ResetPassword() {
     setError("");
     setSuccess("");
 
+    if (completed || loading) return;
+
     if (!token) {
-      setError("Invalid password reset link.");
+      setError(
+        "Sesi reset password tidak ditemukan. Silakan ulangi verifikasi akun.",
+      );
       return;
     }
 
     if (!password || !confirmPassword) {
-      setError("Password is required.");
+      setError("Password baru dan konfirmasi password wajib diisi.");
       return;
     }
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError("Password minimal 8 karakter.");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Password confirmation does not match.");
+      setError("Konfirmasi password tidak sama.");
       return;
     }
 
     try {
       setLoading(true);
 
-      const response = await api.post("/auth/reset-password", {
+      const response = await authService.resetPassword(
         token,
         password,
-        password_confirmation: confirmPassword,
-      });
+        confirmPassword,
+      );
 
-      setSuccess(response.data.message || "Password changed successfully.");
+      if (!response.success) {
+        setError(response.message || "Gagal mengubah password.");
+        return;
+      }
+
+      setCompleted(true);
+      setSuccess(
+        response.message || "Password berhasil diubah. Silakan login kembali.",
+      );
 
       setPassword("");
       setConfirmPassword("");
-
-      setTimeout(() => {
-        navigate("/");
-      }, 2000);
     } catch (err) {
-      console.error(err);
+      console.error("RESET PASSWORD ERROR:", err);
 
-      setError(err.response?.data?.message || "Failed to change password.");
+      setError(err.response?.data?.message || "Gagal mengubah password.");
     } finally {
       setLoading(false);
     }
@@ -95,7 +107,8 @@ export default function ResetPassword() {
         alignItems: "center",
         justifyContent: "center",
         px: 2,
-        bgcolor: "#f5f7f6",
+        py: 3,
+        bgcolor: "#F5F7F6",
       }}
     >
       <Card
@@ -106,7 +119,7 @@ export default function ResetPassword() {
           boxShadow: "0 10px 30px rgba(0,0,0,.08)",
         }}
       >
-        <CardContent sx={{ p: 4 }}>
+        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
           <Typography variant="h5" fontWeight={700} textAlign="center" mb={1}>
             Reset Password
           </Typography>
@@ -117,7 +130,7 @@ export default function ResetPassword() {
             textAlign="center"
             mb={3}
           >
-            Enter a new password for your account.
+            Buat password baru untuk akun KJI Attendance Anda.
           </Typography>
 
           {error && (
@@ -135,18 +148,26 @@ export default function ResetPassword() {
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
-              label="New Password"
+              required
+              label="Password Baru"
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               margin="normal"
-              disabled={loading}
+              autoComplete="new-password"
+              disabled={loading || completed}
+              inputProps={{ minLength: 8 }}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton
-                      onClick={() => setShowPassword(!showPassword)}
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
                       edge="end"
+                      aria-label={
+                        showPassword ? "Sembunyikan password" : "Lihat password"
+                      }
+                      disabled={loading || completed}
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
@@ -157,18 +178,28 @@ export default function ResetPassword() {
 
             <TextField
               fullWidth
-              label="Confirm Password"
+              required
+              label="Konfirmasi Password"
               type={showConfirm ? "text" : "password"}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               margin="normal"
-              disabled={loading}
+              autoComplete="new-password"
+              disabled={loading || completed}
+              inputProps={{ minLength: 8 }}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton
-                      onClick={() => setShowConfirm(!showConfirm)}
+                      type="button"
+                      onClick={() => setShowConfirm((prev) => !prev)}
                       edge="end"
+                      aria-label={
+                        showConfirm
+                          ? "Sembunyikan konfirmasi password"
+                          : "Lihat konfirmasi password"
+                      }
+                      disabled={loading || completed}
                     >
                       {showConfirm ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
@@ -181,18 +212,36 @@ export default function ResetPassword() {
               type="submit"
               fullWidth
               variant="contained"
-              disabled={loading}
+              disabled={loading || completed || !token}
               sx={{
                 mt: 3,
                 py: 1.4,
                 borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 600,
                 bgcolor: "#16A34A",
-                "&:hover": {
-                  bgcolor: "#15803D",
-                },
+                "&:hover": { bgcolor: "#15803D" },
               }}
             >
-              {loading ? "Memproses..." : "Reset Password"}
+              {loading
+                ? "Memproses..."
+                : completed
+                  ? "Password Berhasil Diubah"
+                  : "Simpan Password Baru"}
+            </Button>
+
+            <Button
+              type="button"
+              fullWidth
+              startIcon={<ArrowBackRoundedIcon />}
+              onClick={() => navigate("/", { replace: true })}
+              sx={{
+                mt: 1,
+                textTransform: "none",
+                color: "#16A34A",
+              }}
+            >
+              Kembali ke Login
             </Button>
           </Box>
         </CardContent>

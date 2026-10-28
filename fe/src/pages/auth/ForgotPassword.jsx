@@ -1,5 +1,4 @@
 import { useState } from "react";
-
 import {
   Alert,
   Box,
@@ -12,50 +11,55 @@ import {
 } from "@mui/material";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-
 import { useNavigate } from "react-router-dom";
-
-import api from "../../services/api";
+import authService from "../../services/authService";
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
-
+  const [nikLast4, setNikLast4] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const [success, setSuccess] = useState("");
-
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    setSuccess("");
     setError("");
 
-    if (!email) {
-      setError("Email is required.");
+    const normalizedEmail = email.trim().toLowerCase();
 
+    if (!normalizedEmail) {
+      setError("Email wajib diisi.");
+      return;
+    }
+
+    if (!/^\d{4}$/.test(nikLast4)) {
+      setError("Masukkan 4 digit terakhir NIK KTP.");
       return;
     }
 
     try {
       setLoading(true);
 
-      const response = await api.post("/auth/forgot-password", {
-        email,
-      });
-
-      setSuccess(
-        response.data.message || "A password reset link has been sent.",
+      const response = await authService.forgotPassword(
+        normalizedEmail,
+        nikLast4,
       );
+
+      if (response.success && response.resetToken) {
+        navigate("/reset-password", {
+          state: { token: response.resetToken },
+          replace: true,
+        });
+      } else {
+        setError(response.message || "Verifikasi gagal. Silakan coba kembali.");
+      }
     } catch (err) {
-      console.error(err);
+      console.error("FORGOT PASSWORD ERROR:", err);
 
       setError(
         err.response?.data?.message ||
-          "Failed to send the password reset link.",
+          "Verifikasi gagal. Periksa kembali data Anda.",
       );
     } finally {
       setLoading(false);
@@ -70,6 +74,7 @@ export default function ForgotPassword() {
         alignItems: "center",
         justifyContent: "center",
         px: 2,
+        py: 3,
         bgcolor: "#F5F7FB",
       }}
     >
@@ -81,11 +86,7 @@ export default function ForgotPassword() {
           borderRadius: 4,
         }}
       >
-        <CardContent
-          sx={{
-            p: 5,
-          }}
-        >
+        <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
           <Typography variant="h5" fontWeight={700} textAlign="center">
             Forgot Password?
           </Typography>
@@ -93,19 +94,11 @@ export default function ForgotPassword() {
           <Typography
             color="text.secondary"
             textAlign="center"
-            sx={{
-              mt: 1,
-              mb: 4,
-            }}
+            sx={{ mt: 1, mb: 4 }}
           >
-            Enter the email address registered with KJI Attendance.
+            Verifikasi akun KJI Attendance menggunakan email dan 4 digit
+            terakhir NIK KTP Anda.
           </Typography>
-
-          {success && (
-            <Alert severity="success" sx={{ mb: 3 }}>
-              {success}
-            </Alert>
-          )}
 
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
@@ -116,11 +109,31 @@ export default function ForgotPassword() {
           <Box component="form" onSubmit={handleSubmit}>
             <Stack spacing={3}>
               <TextField
-                label="Email"
+                label="Email terdaftar"
                 type="email"
+                autoComplete="email"
                 fullWidth
+                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+              />
+
+              <TextField
+                label="4 digit terakhir NIK KTP"
+                type="password"
+                fullWidth
+                required
+                value={nikLast4}
+                onChange={(e) =>
+                  setNikLast4(e.target.value.replace(/\D/g, "").slice(0, 4))
+                }
+                inputProps={{
+                  inputMode: "numeric",
+                  maxLength: 4,
+                  pattern: "[0-9]{4}",
+                }}
+                helperText="Masukkan empat angka terakhir NIK Anda."
                 disabled={loading}
               />
 
@@ -136,18 +149,18 @@ export default function ForgotPassword() {
                   textTransform: "none",
                   fontWeight: 600,
                   bgcolor: "#16A34A",
-                  "&:hover": {
-                    bgcolor: "#15803D",
-                  },
+                  "&:hover": { bgcolor: "#15803D" },
                 }}
               >
-                {loading ? "Sending..." : "Send Password Reset Link"}
+                {loading ? "Memverifikasi..." : "Verifikasi Akun"}
               </Button>
 
               <Button
+                type="button"
                 variant="text"
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => navigate("/")}
+                disabled={loading}
                 sx={{
                   color: "#16A34A",
                   textTransform: "none",

@@ -342,7 +342,7 @@ exports.checkIn = async (req, res) => {
       SELECT o.*
       FROM users u
       JOIN office_locations o
-        ON u.office_location_id = o.id
+        ON u.company_id = o.id
       WHERE u.id = $1
       `,
       [userId],

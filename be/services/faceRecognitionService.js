@@ -141,7 +141,7 @@ async function enrollEmployeeFace(userId, selfiePath) {
   );
 
   if (!userResult.rows.length || userResult.rows[0].status !== true) {
-    const error = new Error("Akun karyawan tidak ditemukan atau tidak aktif.");
+    const error = new Error("Akun Employee Not Found atau tidak aktif.");
     error.code = "EMPLOYEE_NOT_ACTIVE";
     throw error;
   }
