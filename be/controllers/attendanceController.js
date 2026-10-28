@@ -1071,9 +1071,8 @@ exports.getDailyAttendance = async (req, res) => {
     a.id AS attendance_id,
     u.name,
     u.department,
-    a.check_in,
-
-    a.check_out,
+      a.check_in AT TIME ZONE 'Asia/Jakarta' AS check_in,
+    a.check_out AT TIME ZONE 'Asia/Jakarta' AS check_out,
 
     COALESCE(a.status,'Belum Check In') AS status,
 
