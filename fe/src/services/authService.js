@@ -10,6 +10,20 @@ const authService = {
     return response.data;
   },
 
+  logout: async (token) => {
+    const response = await api.post(
+      "/auth/logout",
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    return response.data;
+  },
+
   getMe: async (token) => {
     const response = await api.get("/auth/me", {
       headers: {

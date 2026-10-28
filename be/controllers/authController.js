@@ -12,24 +12,17 @@ const {
 const { getPrivateFileUrl } = require("../services/storageService");
 
 exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
+  let client;
 
+  try {
     const result = await pool.query(
       `
-    SELECT
-
-        u.*,
-
-        r.name AS role_name
-
-    FROM users u
-
-    JOIN roles r
-    ON r.id = u.role_id
-
-    WHERE u.email = $1
-    `,
+      SELECT u.*, r.name AS role_name
+      FROM users u
+      JOIN roles r ON r.id = u.role_id
+      WHERE u.email = $1
+      `,
       [email],
     );
 
@@ -58,36 +51,130 @@ exports.login = async (req, res) => {
       });
     }
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        role_id: user.role_id,
-        role: user.role_name,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "1d",
-      },
-    );
+    const isEmployee = String(user.role_name).toLowerCase() === "employee";
 
-    res.json({
+    let sessionId = null;
+
+    if (isEmployee) {
+      client = await pool.connect();
+
+      await client.query("BEGIN");
+
+      // Serialisasi proses login untuk akun employee yang sama.
+      await client.query("SELECT pg_advisory_xact_lock($1::bigint)", [user.id]);
+
+      const active = await client.query(
+        `
+        SELECT session_id
+        FROM active_sessions
+        WHERE user_id = $1
+          AND expires_at > NOW()
+        `,
+        [user.id],
+      );
+
+      if (active.rows.length > 0) {
+        await client.query("ROLLBACK");
+
+        return res.status(409).json({
+          success: false,
+          message:
+            "Akun sedang login di perangkat lain. Silakan logout terlebih dahulu.",
+        });
+      }
+
+      sessionId = crypto.randomUUID();
+
+      await client.query(
+        `
+        INSERT INTO active_sessions (
+          user_id,
+          session_id,
+          expires_at
+        )
+        VALUES (
+          $1,
+          $2,
+          NOW() + INTERVAL '1 day'
+        )
+        ON CONFLICT (user_id)
+        DO UPDATE SET
+          session_id = EXCLUDED.session_id,
+          created_at = NOW(),
+          expires_at = EXCLUDED.expires_at
+        `,
+        [user.id, sessionId],
+      );
+
+      await client.query("COMMIT");
+    }
+
+    const payload = {
+      id: user.id,
+      role_id: user.role_id,
+      role: user.role_name,
+    };
+
+    if (isEmployee) {
+      payload.sessionId = sessionId;
+    }
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
+
+    return res.json({
       success: true,
       token,
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
-
         role_id: user.role_id,
         role: user.role_name,
       },
     });
   } catch (err) {
-    console.error(err);
+    if (client) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (_) {}
+    }
 
-    res.status(500).json({
+    console.error("Login error:", err);
+
+    return res.status(500).json({
       success: false,
       message: "Internal Server Error",
+    });
+  } finally {
+    if (client) client.release();
+  }
+};
+
+exports.logout = async (req, res) => {
+  try {
+    if (req.user.role?.toLowerCase() === "employee") {
+      await pool.query(
+        `
+        DELETE FROM active_sessions
+        WHERE user_id = $1
+          AND session_id = $2
+        `,
+        [req.user.id, req.user.sessionId],
+      );
+    }
+
+    return res.json({
+      success: true,
+      message: "Logout berhasil",
+    });
+  } catch (err) {
+    console.error("Logout error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal logout",
     });
   }
 };
@@ -697,8 +784,23 @@ WHERE id = $1`,
         join_date || null, // $7
         address, // $8
         employee_type, // $9
-        employee_type === "KONTRAK" ? contract_start_date || null : null, // $10
-        employee_type === "KONTRAK" ? contract_end_date || null : null, // $11
+        [
+          "PROBATION",
+          "KONTRAK_3_BULAN",
+          "KONTRAK_6_BULAN",
+          "KONTRAK_12_BULAN",
+        ].includes(employee_type)
+          ? contract_start_date || null
+          : null, // $10
+
+        [
+          "PROBATION",
+          "KONTRAK_3_BULAN",
+          "KONTRAK_6_BULAN",
+          "KONTRAK_12_BULAN",
+        ].includes(employee_type)
+          ? contract_end_date || null
+          : null, // $11
         company_id || null, // $12
         supervisor_id || null, // $13
         job_description || null, // $14

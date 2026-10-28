@@ -53,7 +53,7 @@ export default function TodaySummary({ data }) {
 
             <ListItemText
               primary="Working Hours"
-              secondary="09:00 - 18:00 WIB"
+              secondary="08:00 - 17:00 WIB"
             />
           </ListItem>
           <Divider />
