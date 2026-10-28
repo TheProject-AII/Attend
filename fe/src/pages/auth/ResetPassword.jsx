@@ -130,7 +130,7 @@ export default function ResetPassword() {
             textAlign="center"
             mb={3}
           >
-            Buat password baru untuk akun KJI Attendance Anda.
+            Create a new password for your account.
           </Typography>
 
           {error && (

@@ -7,12 +7,12 @@ exports.currentOffice = async (req, res) => {
       `
             SELECT
                 o.id,
-                o.office_name,
+                o.name,
                 o.latitude,
                 o.longitude,
                 o.radius
             FROM users u
-            JOIN office_locations o
+            JOIN companies o
                 ON u.company_id = o.id
             WHERE u.id = $1
             `,

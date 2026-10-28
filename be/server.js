@@ -26,7 +26,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -43,20 +43,13 @@ const supervisorRoutes = require("./routes/leaderRoutes");
 const notificationRoutes = require("./routes/notificationRoute");
 const testRoutes = require("./routes/testRoutes");
 const overtimeRoutes = require("./routes/overtimeRoutes");
-const announcementRoutes =
-  require("./routes/announRoute");
-app.use(
-  "/api/overtime",
-  overtimeRoutes,
-);
+const announcementRoutes = require("./routes/announRoute");
+app.use("/api/overtime", overtimeRoutes);
 
 // ==============================
 // Middleware
 // ==============================
-app.use(
-  "/api/announcements",
-  announcementRoutes
-);
+app.use("/api/announcements", announcementRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ==============================
@@ -69,17 +62,14 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/leave", leaveRoutes);
 app.use("/api/leader", supervisorRoutes);
 app.use("/api/notification", notificationRoutes);
-app.use(
-  "/api/late-compensation",
-  require("./routes/lateCompensation.routes")
-);
+app.use("/api/late-compensation", require("./routes/lateCompensation.routes"));
 // ==============================
 // Root
 // ==============================
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "KJI Attendance API Running 🚀",
+    message: "REST API Running 🚀",
   });
 });
 
@@ -89,7 +79,7 @@ app.get("/health", (req, res) => {
   res.status(200).json({
     success: true,
     status: "OK",
-    service: "KJI Attendance API",
+    service: "So-Mak REST API",
   });
 });
 
