@@ -37,6 +37,7 @@ export default function AttendanceSummaryTable({
       setOpen(true);
     }, 100);
   };
+
   return (
     <Card
       elevation={0}
