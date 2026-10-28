@@ -96,8 +96,8 @@ export default function ForgotPassword() {
             textAlign="center"
             sx={{ mt: 1, mb: 4 }}
           >
-            Verifikasi akun KJI Attendance menggunakan email dan 4 digit
-            terakhir NIK KTP Anda.
+            Verify your account using your email and the last 4 digits of your
+            KTP number.
           </Typography>
 
           {error && (

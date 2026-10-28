@@ -266,11 +266,6 @@ exports.createEmployee = async (req, res) => {
       });
     }
 
-    // =========================
-    // PASSWORD DEFAULT
-    // kji + 4 digit terakhir NIK
-    // =========================
-
     const defaultPassword = `so-mak${nik.slice(-4)}`;
 
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
@@ -346,7 +341,7 @@ exports.createEmployee = async (req, res) => {
       await sendEmail({
         to: email,
 
-        subject: "Akun KJI Attendance Berhasil Dibuat",
+        subject: "Attendance Account Successfully Created",
 
         html: `
       <div style="
