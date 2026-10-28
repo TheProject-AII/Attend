@@ -287,7 +287,9 @@ export default function EmployeeCreate({
           ? await attendanceService.updateEmployee(employee.id, formData)
           : await attendanceService.createEmployee(formData);
       if (!result?.success) {
-        throw new Error(result?.message || "Failed to save employee information.");
+        throw new Error(
+          result?.message || "Failed to save employee information.",
+        );
       }
 
       alert(

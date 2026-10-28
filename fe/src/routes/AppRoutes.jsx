@@ -110,7 +110,10 @@ export default function AppRoutes() {
           path="/admin/employees"
           element={
             <ProtectedAdminRoute>
-              <DashboardLayout title="Employees" subtitle="Manage employee records">
+              <DashboardLayout
+                title="Employees"
+                subtitle="Manage employee records"
+              >
                 <EmployeeList />
               </DashboardLayout>
             </ProtectedAdminRoute>

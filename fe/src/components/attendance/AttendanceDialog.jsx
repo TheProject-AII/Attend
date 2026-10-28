@@ -1,168 +1,131 @@
 import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Button,
-    Typography,
-    Box,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+  Box,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 
 import CameraCard from "./CameraCard";
-import {
-    TextField
-} from "@mui/material";
+import { TextField } from "@mui/material";
 
 export default function AttendanceDialog({
+  open,
+  onClose,
+  notes,
+  setNotes,
+  cameraRef,
+  photo,
+  setPhoto,
 
-    open,
-    onClose,
-    notes,
-    setNotes,
-    cameraRef,
-    photo,
-    setPhoto,
+  loading,
+  status,
 
-    loading,
-    status,
+  insideRadius,
 
-    insideRadius,
+  attendanceType,
+  setAttendanceType,
 
-    attendanceType,
-    setAttendanceType,
-
-    onConfirm
-
+  onConfirm,
 }) {
+  return (
+    <Dialog
+      open={open}
+      onClose={loading ? undefined : onClose}
+      fullWidth
+      maxWidth="sm"
+    >
+      <DialogTitle>
+        {status === "checked-in" ? "Check Out" : "Check In"}
+      </DialogTitle>
 
-    return (
+      <DialogContent>
+        <CameraCard
+          ref={cameraRef}
+          photo={photo}
+          setPhoto={setPhoto}
+          loading={loading}
+        />
 
-        <Dialog
-            open={open}
-            onClose={loading ? undefined : onClose}
-            fullWidth
-            maxWidth="sm"
-        >
+        {insideRadius === false && status !== "checked-in" && (
+          <Box sx={{ mt: 1, mb: 2 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+              }}
+            >
+              Attendance Type
+            </Typography>
 
-            <DialogTitle>
+            <FormControl fullWidth size="small">
+              <Select
+                value={attendanceType}
+                onChange={(e) => setAttendanceType(e.target.value)}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      maxHeight: 250,
+                      zIndex: 20000,
+                    },
+                  },
+                }}
+              >
+                <MenuItem value="WFH">Work From Home</MenuItem>
+                <MenuItem value="CLIENT">Client Visit</MenuItem>
+                <MenuItem value="MEETING">Meeting</MenuItem>
+                <MenuItem value="BUSINESS_TRIP">Business Trip</MenuItem>
+                <MenuItem value="OTHER">Other</MenuItem>
+              </Select>
 
-                {
-                    status === "checked-in"
-                        ? "Check Out"
-                        : "Check In"
-                }
-
-            </DialogTitle>
-
-            <DialogContent>
-
-                <CameraCard
-                    ref={cameraRef}
-                    photo={photo}
-                    setPhoto={setPhoto}
-                    loading={loading}
+              {attendanceType === "OTHER" && (
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  label="Details"
+                  placeholder="Enter an attendance reason..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  sx={{ mt: 2 }}
                 />
+              )}
+            </FormControl>
+          </Box>
+        )}
+      </DialogContent>
 
-                {insideRadius === false && status !== "checked-in" && (
+      <DialogActions>
+        <Button onClick={onClose} disabled={loading}>
+          Cancel
+        </Button>
 
-                    <Box sx={{ mt: 1, mb: 2 }}>
+        <Button
+          variant="contained"
+          disabled={loading}
+          onClick={async () => {
+            // Check-in and check-out require a selfie.
+            const image = await cameraRef.current?.capture();
 
-                        <Typography
-                            variant="subtitle2"
-                            sx={{
-                                mb: 1,
-                                fontWeight: 600
-                            }}
-                        >
-                            Attendance Type
-                        </Typography>
+            if (!image) return;
 
-                        <FormControl fullWidth size="small">
-
-                            <Select
-                                value={attendanceType}
-                                onChange={(e) =>
-                                    setAttendanceType(e.target.value)
-                                }
-                                MenuProps={{
-                                    PaperProps: {
-                                        sx: {
-                                            maxHeight: 250,
-                                            zIndex: 20000
-                                        }
-                                    }
-                                }}
-                            >
-                                <MenuItem value="WFH">Work From Home</MenuItem>
-                                <MenuItem value="CLIENT">Client Visit</MenuItem>
-                                <MenuItem value="MEETING">Meeting</MenuItem>
-                                <MenuItem value="BUSINESS_TRIP">Business Trip</MenuItem>
-                                <MenuItem value="OTHER">Other</MenuItem>
-                            </Select>
-
-                            {attendanceType === "OTHER" && (
-
-                                <TextField
-                                    fullWidth
-                                    multiline
-                                    rows={3}
-                                    label="Details"
-                                    placeholder="Enter an attendance reason..."
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    sx={{ mt: 2 }}
-                                />
-
-                            )}
-
-                        </FormControl>
-
-                    </Box>
-
-                )}
-
-
-
-            </DialogContent>
-
-            <DialogActions>
-
-                <Button
-                    onClick={onClose}
-                    disabled={loading}
-                >
-                    Cancel
-                </Button>
-
-
-                <Button
-                    variant="contained"
-                    disabled={loading}
-                    onClick={async () => {
-                        // Check-in and check-out require a selfie.
-                        const image = await cameraRef.current?.capture();
-
-                        if (!image) return;
-
-                        await onConfirm(image);
-                    }}
-                >
-                    {loading
-                        ? "Processing..."
-                        : status === "checked-in"
-                            ? "Konfirmasi Check Out"
-                            : "Konfirmasi Check In"}
-                </Button>
-
-
-            </DialogActions>
-
-        </Dialog>
-
-    );
-
+            await onConfirm(image);
+          }}
+        >
+          {loading
+            ? "Processing..."
+            : status === "checked-in"
+              ? "Konfirmasi Check Out"
+              : "Konfirmasi Check In"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 }

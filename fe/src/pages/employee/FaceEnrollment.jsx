@@ -134,9 +134,7 @@ export default function FaceEnrollment() {
         throw new Error(result.message || "Face enrollment failed.");
       }
 
-      setSuccess(
-        "Face enrollment successful. Redirecting to attendance...",
-      );
+      setSuccess("Face enrollment successful. Redirecting to attendance...");
 
       // Store only non-sensitive status; do not store face embeddings.
       const storedUser = JSON.parse(localStorage.getItem("user") || "{}");

@@ -355,8 +355,8 @@ export default function OvertimeSettings() {
             color="text.secondary"
             sx={{ mt: 0.5, mb: 2 }}
           >
-            Rates are used to calculate overtime pay based on the duration
-            of overtime.
+            Rates are used to calculate overtime pay based on the duration of
+            overtime.
           </Typography>
           <Divider sx={{ mb: 3 }} />
           <Stack spacing={2.5}>
@@ -458,7 +458,8 @@ export default function OvertimeSettings() {
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 The form is prefilled from the latest version for reference.
-                Changes will not affect the active policy until the effective date.
+                Changes will not affect the active policy until the effective
+                date.
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>

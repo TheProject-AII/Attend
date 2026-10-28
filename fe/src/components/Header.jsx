@@ -1,16 +1,16 @@
 import { useState } from "react";
 
 import {
-    Avatar,
-    Badge,
-    Box,
-    Divider,
-    IconButton,
-    ListItemIcon,
-    Button,
-    Menu,
-    MenuItem,
-    Typography,
+  Avatar,
+  Badge,
+  Box,
+  Divider,
+  IconButton,
+  ListItemIcon,
+  Button,
+  Menu,
+  MenuItem,
+  Typography,
 } from "@mui/material";
 
 import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
@@ -23,263 +23,232 @@ import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import LanguageIcon from "@mui/icons-material/Language";
 
+export default function Header({ title = "Dashboard", subtitle }) {
+  const [notifAnchor, setNotifAnchor] = useState(null);
+  const [profileAnchor, setProfileAnchor] = useState(null);
+  const navigate = useNavigate();
 
-export default function Header({
-    title = "Dashboard",
-    subtitle
-}) {
-    const [notifAnchor, setNotifAnchor] = useState(null);
-    const [profileAnchor, setProfileAnchor] = useState(null);
-    const navigate = useNavigate();
+  const { user, setUser } = useAuth();
 
-    const { user, setUser } = useAuth();
+  const { t, i18n } = useTranslation();
+  const [languageAnchor, setLanguageAnchor] = useState(null);
 
-    const { t, i18n } = useTranslation();
-    const [languageAnchor, setLanguageAnchor] = useState(null);
+  const changeLanguage = async (language) => {
+    await i18n.changeLanguage(language);
+    localStorage.setItem("aii_language", language);
+    setLanguageAnchor(null);
+  };
+  const notifications = [
+    "New leave request",
+    "3 employees have not checked in",
+    "1 overtime request",
+  ];
 
-    const changeLanguage = async (language) => {
-        await i18n.changeLanguage(language);
-        localStorage.setItem("aii_language", language);
-        setLanguageAnchor(null);
-    };
-    const notifications = [
-        "New leave request",
-        "3 employees have not checked in",
-        "1 overtime request",
-    ];
+  const initial = user?.name ? user.name.charAt(0).toUpperCase() : "?";
 
-    const initial = user?.name
-        ? user.name.charAt(0).toUpperCase()
-        : "?";
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
 
-    const handleLogout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+    setUser(null);
 
+    // Paksa reload ke login
+    window.location.replace("/");
+  };
 
-        setUser(null);
+  return (
+    <>
+      <Box
+        sx={{
+          position: "sticky",
+          top: 0,
+          zIndex: 1200,
 
-        // Paksa reload ke login
-        window.location.replace("/");
-    };
+          height: 80,
 
-    return (
-        <>
-            <Box
-                sx={{
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 1200,
+          px: 4,
 
-                    height: 80,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
 
-                    px: 4,
+          bgcolor: "rgba(255,255,255,.95)",
+          backdropFilter: "blur(10px)",
 
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
+          borderBottom: "1px solid #E5E7EB",
 
-                    bgcolor: "rgba(255,255,255,.95)",
-                    backdropFilter: "blur(10px)",
+          transition: ".25s",
+        }}
+      >
+        {/* LEFT */}
+        <Box>
+          <Typography variant="h4" fontWeight={700}>
+            {title}
+          </Typography>
 
-                    borderBottom: "1px solid #E5E7EB",
+          <Typography variant="body2" color="text.secondary">
+            {subtitle || `Welcome, ${user?.name} 👋`}
+          </Typography>
+        </Box>
+        {/* RIGHT */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
+          {/* NOTIFICATION */}
+          <IconButton onClick={(e) => setNotifAnchor(e.currentTarget)}>
+            <Badge badgeContent={notifications.length} color="error">
+              <NotificationsNoneRoundedIcon />
+            </Badge>
+          </IconButton>
 
-                    transition: ".25s",
-                }}
+          {/* PROFILE */}
+          <Box
+            onClick={(e) => setProfileAnchor(e.currentTarget)}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              px: 1.5,
+              py: 1,
+              borderRadius: 3,
+              cursor: "pointer",
+              "&:hover": {
+                bgcolor: "#F3F4F6",
+              },
+            }}
+          >
+            <Avatar
+              sx={{
+                width: 42,
+                height: 42,
+                bgcolor: "#0F766E",
+              }}
             >
-                {/* LEFT */}
-                <Box>
+              {initial}
+            </Avatar>
 
-                    <Typography
-                        variant="h4"
-                        fontWeight={700}
-                    >
-                        {title}
-                    </Typography>
+            <Box>
+              <Typography
+                sx={{
+                  fontWeight: 600,
+                  lineHeight: 1.2,
+                }}
+              >
+                {user?.name}
+              </Typography>
 
-                    <Typography
-                        variant="body2"
-                        color="text.secondary"
-                    >
-                        {subtitle || `Welcome, ${user?.name} 👋`}
-                    </Typography>
-
-                </Box>
-                {/* RIGHT */}
-                <Box
-                    sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 2,
-                    }}
-                >
-                    {/* NOTIFICATION */}
-                    <IconButton onClick={(e) => setNotifAnchor(e.currentTarget)}>
-                        <Badge badgeContent={notifications.length} color="error">
-                            <NotificationsNoneRoundedIcon />
-                        </Badge>
-                    </IconButton>
-
-                    {/* PROFILE */}
-                    <Box
-                        onClick={(e) => setProfileAnchor(e.currentTarget)}
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1.5,
-                            px: 1.5,
-                            py: 1,
-                            borderRadius: 3,
-                            cursor: "pointer",
-                            "&:hover": {
-                                bgcolor: "#F3F4F6",
-                            },
-                        }}
-                    >
-                        <Avatar
-                            sx={{
-                                width: 42,
-                                height: 42,
-                                bgcolor: "#0F766E",
-                            }}
-                        >
-                            {initial}
-                        </Avatar>
-
-                        <Box>
-                            <Typography
-                                sx={{
-                                    fontWeight: 600,
-                                    lineHeight: 1.2,
-                                }}
-                            >
-                                {user?.name}
-                            </Typography>
-
-                            <Typography
-                                variant="caption"
-                                color="text.secondary"
-                            >
-                                {user?.role}
-                            </Typography>
-                        </Box>
-
-                        <KeyboardArrowDownRoundedIcon
-                            sx={{
-                                color: "#9CA3AF",
-                            }}
-                        />
-                    </Box>
-                    <>
-                        <Button
-                            startIcon={<LanguageIcon />}
-                            onClick={(event) => setLanguageAnchor(event.currentTarget)}
-                            sx={{ textTransform: "none" }}
-                        >
-                            {i18n.language === "id" ? "Bahasa" : "English"}
-                        </Button>
-
-                        <Menu
-                            anchorEl={languageAnchor}
-                            open={Boolean(languageAnchor)}
-                            onClose={() => setLanguageAnchor(null)}
-                        >
-                            <MenuItem onClick={() => changeLanguage("id")}>
-                                🇮🇩 Bahasa Indonesia
-                            </MenuItem>
-
-                            <MenuItem onClick={() => changeLanguage("en")}>
-                                🇬🇧 English
-                            </MenuItem>
-                        </Menu>
-                    </>
-                </Box>
+              <Typography variant="caption" color="text.secondary">
+                {user?.role}
+              </Typography>
             </Box>
 
-            {/* ========================= */}
-            {/* NOTIFICATION MENU */}
-            {/* ========================= */}
+            <KeyboardArrowDownRoundedIcon
+              sx={{
+                color: "#9CA3AF",
+              }}
+            />
+          </Box>
+          <>
+            <Button
+              startIcon={<LanguageIcon />}
+              onClick={(event) => setLanguageAnchor(event.currentTarget)}
+              sx={{ textTransform: "none" }}
+            >
+              {i18n.language === "id" ? "Bahasa" : "English"}
+            </Button>
 
             <Menu
-                anchorEl={notifAnchor}
-                open={Boolean(notifAnchor)}
-                onClose={() => setNotifAnchor(null)}
-                PaperProps={{
-                    sx: {
-                        width: 280,
-                        borderRadius: 3,
-                    },
-                }}
+              anchorEl={languageAnchor}
+              open={Boolean(languageAnchor)}
+              onClose={() => setLanguageAnchor(null)}
             >
-                <Typography
-                    px={2}
-                    py={1.5}
-                    fontWeight={700}
-                >
-                    Notifications
-                </Typography>
+              <MenuItem onClick={() => changeLanguage("id")}>
+                🇮🇩 Bahasa Indonesia
+              </MenuItem>
 
-                <Divider />
-
-                {notifications.map((item, index) => (
-                    <MenuItem
-                        key={index}
-                        onClick={() => setNotifAnchor(null)}
-                    >
-                        {item}
-                    </MenuItem>
-                ))}
+              <MenuItem onClick={() => changeLanguage("en")}>
+                🇬🇧 English
+              </MenuItem>
             </Menu>
+          </>
+        </Box>
+      </Box>
 
-            {/* ========================= */}
-            {/* PROFILE MENU */}
-            {/* ========================= */}
+      {/* ========================= */}
+      {/* NOTIFICATION MENU */}
+      {/* ========================= */}
 
-            <Menu
-                anchorEl={profileAnchor}
-                open={Boolean(profileAnchor)}
-                onClose={() => setProfileAnchor(null)}
-                PaperProps={{
-                    sx: {
-                        width: 220,
-                        borderRadius: 3,
-                    },
-                }}
-            >
-                <MenuItem>
-                    <ListItemIcon>
-                        <PersonRoundedIcon fontSize="small" />
-                    </ListItemIcon>
+      <Menu
+        anchorEl={notifAnchor}
+        open={Boolean(notifAnchor)}
+        onClose={() => setNotifAnchor(null)}
+        PaperProps={{
+          sx: {
+            width: 280,
+            borderRadius: 3,
+          },
+        }}
+      >
+        <Typography px={2} py={1.5} fontWeight={700}>
+          Notifications
+        </Typography>
 
-                    Profile
-                </MenuItem>
+        <Divider />
 
-                <MenuItem>
-                    <ListItemIcon>
-                        <PasswordRoundedIcon fontSize="small" />
-                    </ListItemIcon>
+        {notifications.map((item, index) => (
+          <MenuItem key={index} onClick={() => setNotifAnchor(null)}>
+            {item}
+          </MenuItem>
+        ))}
+      </Menu>
 
-                    Change Password
-                </MenuItem>
+      {/* ========================= */}
+      {/* PROFILE MENU */}
+      {/* ========================= */}
 
-                <Divider />
+      <Menu
+        anchorEl={profileAnchor}
+        open={Boolean(profileAnchor)}
+        onClose={() => setProfileAnchor(null)}
+        PaperProps={{
+          sx: {
+            width: 220,
+            borderRadius: 3,
+          },
+        }}
+      >
+        <MenuItem>
+          <ListItemIcon>
+            <PersonRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          Profile
+        </MenuItem>
 
-                <MenuItem
-                    onClick={handleLogout}
-                    sx={{
-                        color: "error.main",
-                    }}
-                >
-                    <ListItemIcon>
-                        <LogoutRoundedIcon
-                            color="error"
-                            fontSize="small"
-                        />
-                    </ListItemIcon>
+        <MenuItem>
+          <ListItemIcon>
+            <PasswordRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          Change Password
+        </MenuItem>
 
-                    Logout
-                </MenuItem>
-            </Menu>
-        </>
-    );
+        <Divider />
+
+        <MenuItem
+          onClick={handleLogout}
+          sx={{
+            color: "error.main",
+          }}
+        >
+          <ListItemIcon>
+            <LogoutRoundedIcon color="error" fontSize="small" />
+          </ListItemIcon>
+          Logout
+        </MenuItem>
+      </Menu>
+    </>
+  );
 }

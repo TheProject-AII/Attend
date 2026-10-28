@@ -37,9 +37,7 @@ import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-const rawApiUrl = (
-  import.meta.env.VITE_API_URL || "/api"
-).replace(/\/+$/, "");
+const rawApiUrl = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
 
 const API_BASE = rawApiUrl.endsWith("/api") ? rawApiUrl : `${rawApiUrl}/api`;
 

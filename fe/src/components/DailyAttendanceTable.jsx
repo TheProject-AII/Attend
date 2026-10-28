@@ -268,13 +268,15 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
                       <TableCell>
                         <Chip
                           label={
-                            ({
+                            {
                               "Belum Check In": "Not Checked In",
                               "Belum Pulang": "Not Checked Out",
                               Hadir: "Present",
                               Terlambat: "Late",
                               Pulang: "Checked Out",
-                            })[item.status] || item.status || "-"
+                            }[item.status] ||
+                            item.status ||
+                            "-"
                           }
                           size="small"
                           color={
@@ -365,13 +367,15 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
                 </Typography>
                 <Chip
                   label={
-                    ({
+                    {
                       Hadir: "Present",
                       Terlambat: "Late",
                       Pulang: "Checked Out",
                       "Belum Check In": "Not Checked In",
                       "Belum Pulang": "Not Checked Out",
-                    })[selectedAttendance?.status] || selectedAttendance?.status || "-"
+                    }[selectedAttendance?.status] ||
+                    selectedAttendance?.status ||
+                    "-"
                   }
                   size="small"
                   color={

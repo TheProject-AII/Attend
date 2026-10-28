@@ -278,7 +278,8 @@ export default function Attendance() {
       Swal.fire({
         icon: "error",
         title: "Overtime Request Failed",
-        text: err.response?.data?.message || "Failed to submit overtime request.",
+        text:
+          err.response?.data?.message || "Failed to submit overtime request.",
       });
     } finally {
       setLoading(false);
@@ -481,7 +482,7 @@ export default function Attendance() {
 
       Swal.fire({
         icon: "success",
-            title: "Success",
+        title: "Success",
         text: result.message,
       });
     } catch (err) {
@@ -550,8 +551,7 @@ export default function Attendance() {
       switch (err.code) {
         case 1:
           title = "Location Permission Denied";
-          text =
-            "Allow location access for this app in Settings.";
+          text = "Allow location access for this app in Settings.";
           break;
 
         case 2:
@@ -567,7 +567,8 @@ export default function Attendance() {
 
         default:
           title = "Location Unavailable";
-          text = err.message || "An error occurred while retrieving your location.";
+          text =
+            err.message || "An error occurred while retrieving your location.";
       }
 
       await Swal.fire({

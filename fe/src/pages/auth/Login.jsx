@@ -215,8 +215,8 @@ export default function Login() {
               maxWidth: 440,
             }}
           >
-            One platform to manage attendance, employee information, and
-            human resources operations more efficiently.
+            One platform to manage attendance, employee information, and human
+            resources operations more efficiently.
           </Typography>
 
           <Stack spacing={2.5} sx={{ mt: 5 }}>
@@ -425,9 +425,7 @@ export default function Login() {
                             onClick={() => setShowPassword((prev) => !prev)}
                             edge="end"
                             aria-label={
-                              showPassword
-                                ? "Hide password"
-                                : "Show password"
+                              showPassword ? "Hide password" : "Show password"
                             }
                           >
                             {showPassword ? (
