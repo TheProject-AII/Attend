@@ -35,16 +35,24 @@ const configuredApi = (import.meta.env.VITE_API_URL || "/api").replace(
 const API_ROOT = configuredApi.endsWith("/api")
   ? configuredApi
   : `${configuredApi}/api`;
+
 function formatTimeWIB(value) {
   if (!value) return "-";
+
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
-  return new Intl.DateTimeFormat("en-US", {
+
+  const parts = new Intl.DateTimeFormat("id-ID", {
     timeZone: "Asia/Jakarta",
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
     hourCycle: "h23",
-  }).format(date);
+  }).formatToParts(date);
+
+  const get = (type) => parts.find((p) => p.type === type)?.value;
+
+  return `${get("hour")}:${get("minute")}`;
 }
 
 function PhotoPanel({ label, url, available, loading, error, color }) {
