@@ -16,16 +16,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy HRIS
+      - name: Test SSH and Deploy HRIS
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          script_stop: true
+          port: 22
+          timeout: 60s
           command_timeout: 30m
           script: |
             set -e
+            echo "SSH connected successfully"
             export PATH="$HOME/.docker/cli-plugins:$PATH"
             cd /home/ganbaru/hris-github
             git fetch origin main
