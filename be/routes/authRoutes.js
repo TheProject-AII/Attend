@@ -7,6 +7,7 @@ const adminMiddleware = require("../middleware/adminMiddleware");
 
 const { uploadEmployee } = require("../middleware/uploadMiddleware");
 router.post("/login", authController.login);
+router.post("/activity", authMiddleware, authController.recordActivity);
 router.post("/forgot-password", authController.forgotPassword);
 router.post("/reset-password", authController.resetPassword);
 router.get("/me", authMiddleware, authController.me);
@@ -68,6 +69,20 @@ router.get(
   "/face-enrollment-status",
   authMiddleware,
   authController.getFaceEnrollmentStatus,
+);
+
+router.get(
+  "/employees/:nip/job-descriptions",
+  authMiddleware,
+  adminMiddleware,
+  authController.getEmployeeJobDescriptions,
+);
+
+router.post(
+  "/employees/:nip/job-descriptions",
+  authMiddleware,
+  adminMiddleware,
+  authController.createEmployeeJobDescription,
 );
 
 module.exports = router;
