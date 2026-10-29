@@ -16,18 +16,20 @@ const pool = require("./config/db");
 // ==============================
 
 const allowedOrigins = [
+  "https://hris.so-mak.com",
   "http://localhost:5173",
   process.env.FRONTEND_URL,
-].filter(Boolean);
+];
 
 app.use(
   cors({
     origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
   }),
 );
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
