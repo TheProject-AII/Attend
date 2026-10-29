@@ -16,6 +16,7 @@ const pool = require("./config/db");
 // ==============================
 
 const allowedOrigins = [
+  "https://localhost",
   "https://hris.so-mak.com",
   "http://localhost:5173",
   process.env.FRONTEND_URL,
