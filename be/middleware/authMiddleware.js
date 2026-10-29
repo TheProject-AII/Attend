@@ -1,10 +1,11 @@
 const jwt = require("jsonwebtoken");
-const pool = require("../config/db"); // Sesuaikan dengan lokasi file koneksi database lo
+const pool = require("../config/db");
 
 const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
+    // Validasi header Authorization
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
@@ -21,6 +22,7 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
+    // Validasi JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET, {
       algorithms: ["HS256"],
     });
@@ -32,8 +34,13 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // Validasi sesi khusus employee
-    if (decoded.role.toLowerCase() === "employee") {
+    const role = decoded.role.toLowerCase();
+
+    // ==========================================
+    // VALIDASI SESI KHUSUS EMPLOYEE
+    // Tidak menggunakan batas idle 1 jam
+    // ==========================================
+    if (role === "employee") {
       if (!decoded.sessionId) {
         return res.status(401).json({
           success: false,
@@ -61,7 +68,42 @@ const authMiddleware = async (req, res, next) => {
       }
     }
 
+    // ==========================================
+    // AUTO LOGOUT KHUSUS ADMIN
+    // Jika tidak ada aktivitas selama 1 jam
+    // ==========================================
+    if (role === "admin") {
+      if (!decoded.sessionId) {
+        return res.status(401).json({
+          success: false,
+          message: "Sesi login tidak valid. Silakan login kembali.",
+        });
+      }
+
+      const session = await pool.query(
+        `
+        SELECT 1
+        FROM active_sessions
+        WHERE user_id = $1
+          AND session_id = $2
+          AND expires_at > NOW()
+          AND last_activity_at > NOW() - INTERVAL '1 hour'
+        `,
+        [decoded.id, decoded.sessionId],
+      );
+
+      if (session.rowCount === 0) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Sesi berakhir karena tidak ada aktivitas. Silakan login kembali.",
+        });
+      }
+    }
+
+    // Simpan data user untuk digunakan controller
     req.user = decoded;
+
     return next();
   } catch (err) {
     console.error("Auth middleware error:", err);

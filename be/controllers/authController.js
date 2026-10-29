@@ -53,14 +53,11 @@ exports.login = async (req, res) => {
 
     const isEmployee = String(user.role_name).toLowerCase() === "employee";
 
-    let sessionId = null;
+    client = await pool.connect();
+
+    await client.query("BEGIN");
 
     if (isEmployee) {
-      client = await pool.connect();
-
-      await client.query("BEGIN");
-
-      // Serialisasi proses login untuk akun employee yang sama.
       await client.query("SELECT pg_advisory_xact_lock($1::bigint)", [user.id]);
 
       const active = await client.query(
@@ -82,46 +79,44 @@ exports.login = async (req, res) => {
             "Akun sedang login di perangkat lain. Silakan logout terlebih dahulu.",
         });
       }
-
-      sessionId = crypto.randomUUID();
-
-      await client.query(
-        `
-        INSERT INTO active_sessions (
-          user_id,
-          session_id,
-          expires_at
-        )
-        VALUES (
-          $1,
-          $2,
-          NOW() + INTERVAL '1 day'
-        )
-        ON CONFLICT (user_id)
-        DO UPDATE SET
-          session_id = EXCLUDED.session_id,
-          created_at = NOW(),
-          expires_at = EXCLUDED.expires_at
-        `,
-        [user.id, sessionId],
-      );
-
-      await client.query("COMMIT");
     }
 
-    const payload = {
-      id: user.id,
-      role_id: user.role_id,
-      role: user.role_name,
-    };
+    const sessionId = crypto.randomUUID();
 
-    if (isEmployee) {
-      payload.sessionId = sessionId;
-    }
+    await client.query(
+      `
+      INSERT INTO active_sessions (
+        user_id,
+        session_id,
+        created_at,
+        last_activity_at,
+        expires_at
+      )
+      VALUES (
+        $1, $2, NOW(), NOW(), NOW() + INTERVAL '1 day'
+      )
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        session_id = EXCLUDED.session_id,
+        created_at = NOW(),
+        last_activity_at = NOW(),
+        expires_at = EXCLUDED.expires_at
+      `,
+      [user.id, sessionId],
+    );
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
+    await client.query("COMMIT");
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        role_id: user.role_id,
+        role: user.role_name,
+        sessionId,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" },
+    );
 
     return res.json({
       success: true,
@@ -152,15 +147,55 @@ exports.login = async (req, res) => {
   }
 };
 
+// controllers/authController.js
+
+exports.recordActivity = async (req, res) => {
+  try {
+    // Pencatatan aktivitas hanya untuk Admin
+    if (String(req.user.role).toLowerCase() !== "admin") {
+      return res.json({ success: true });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE active_sessions
+      SET last_activity_at = NOW()
+      WHERE user_id = $1
+        AND session_id = $2
+        AND expires_at > NOW()
+        AND last_activity_at > NOW() - INTERVAL '1 hour'
+      RETURNING session_id
+      `,
+      [req.user.id, req.user.sessionId],
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Sesi berakhir. Silakan login kembali.",
+      });
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Record activity error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mencatat aktivitas",
+    });
+  }
+};
+
 exports.logout = async (req, res) => {
   try {
     if (req.user.role?.toLowerCase() === "employee") {
       await pool.query(
         `
-        DELETE FROM active_sessions
-        WHERE user_id = $1
-          AND session_id = $2
-        `,
+  DELETE FROM active_sessions
+  WHERE user_id = $1
+    AND session_id = $2
+  `,
         [req.user.id, req.user.sessionId],
       );
     }
@@ -1094,6 +1129,184 @@ exports.getFaceEnrollmentStatus = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Gagal memeriksa status registrasi wajah.",
+    });
+  }
+};
+
+exports.getEmployeeJobDescriptions = async (req, res) => {
+  try {
+    const { nip } = req.params;
+    const { frequency } = req.query;
+
+    const allowedFrequencies = [
+      "Daily",
+      "Weekly",
+      "Monthly",
+      "Yearly",
+      "Ad-hoc",
+    ];
+
+    if (frequency && !allowedFrequencies.includes(frequency)) {
+      return res.status(400).json({
+        success: false,
+        message: "Frekuensi Job Description tidak valid.",
+      });
+    }
+
+    const values = [nip];
+
+    let sql = `
+      SELECT
+        id,
+        employee_nip,
+        frequency,
+        task_number,
+        title,
+        description,
+        minutes,
+        hours,
+        created_at,
+        updated_at
+      FROM employee_job_descriptions
+      WHERE employee_nip = $1
+    `;
+
+    if (frequency) {
+      values.push(frequency);
+      sql += ` AND frequency = $2`;
+    }
+
+    sql += `
+      ORDER BY
+        CASE frequency
+          WHEN 'Daily' THEN 1
+          WHEN 'Weekly' THEN 2
+          WHEN 'Monthly' THEN 3
+          WHEN 'Yearly' THEN 4
+          WHEN 'Ad-hoc' THEN 5
+          ELSE 6
+        END,
+        id ASC
+    `;
+
+    const result = await pool.query(sql, values);
+
+    return res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error("GET JOB DESCRIPTIONS ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil Job Description.",
+    });
+  }
+};
+
+exports.createEmployeeJobDescription = async (req, res) => {
+  try {
+    const { nip } = req.params;
+
+    const { frequency, task_number, title, description, minutes, hours } =
+      req.body;
+
+    const allowedFrequencies = [
+      "Daily",
+      "Weekly",
+      "Monthly",
+      "Yearly",
+      "Ad-hoc",
+    ];
+
+    if (!nip) {
+      return res.status(400).json({
+        success: false,
+        message: "NIP karyawan wajib diisi.",
+      });
+    }
+
+    if (
+      !allowedFrequencies.includes(frequency) ||
+      typeof title !== "string" ||
+      !title.trim()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Kategori dan judul tugas wajib diisi dengan benar.",
+      });
+    }
+
+    const parseDuration = (value) => {
+      if (value === null || value === undefined || value === "") {
+        return null;
+      }
+
+      const parsed = Number(value);
+
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : NaN;
+    };
+
+    const parsedMinutes = parseDuration(minutes);
+    const parsedHours = parseDuration(hours);
+
+    if (
+      (parsedMinutes !== null &&
+        (!Number.isInteger(parsedMinutes) || Number.isNaN(parsedMinutes))) ||
+      (parsedHours !== null &&
+        (!Number.isFinite(parsedHours) || Number.isNaN(parsedHours))) ||
+      (parsedMinutes === null && parsedHours === null)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Isi durasi menit atau jam dengan angka yang valid.",
+      });
+    }
+
+    const result = await pool.query(
+      `
+        INSERT INTO employee_job_descriptions (
+          employee_nip,
+          frequency,
+          task_number,
+          title,
+          description,
+          minutes,
+          hours
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING *
+      `,
+      [
+        nip,
+        frequency,
+        task_number?.trim() || null,
+        title.trim(),
+        description?.trim() || null,
+        parsedMinutes,
+        parsedHours,
+      ],
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Job Description berhasil ditambahkan.",
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error("CREATE JOB DESCRIPTION ERROR:", err);
+
+    if (err.code === "23503") {
+      return res.status(400).json({
+        success: false,
+        message: "NIP karyawan tidak ditemukan.",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal menambahkan Job Description.",
     });
   }
 };

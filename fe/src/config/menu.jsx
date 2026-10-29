@@ -45,13 +45,13 @@ const menu = [
   //   path: "/admin/recap",
   //   section: "management",
   // },
-  {
-    title: "Reports",
-    translationKey: "menu.reports",
-    icon: <BarChartIcon />,
-    path: "/report",
-    section: "reports",
-  },
+  // {
+  //   title: "Reports",
+  //   translationKey: "menu.reports",
+  //   icon: <BarChartIcon />,
+  //   path: "/report",
+  //   section: "reports",
+  // },
   {
     title: "Announcements",
     translationKey: "menu.announcements",
