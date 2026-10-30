@@ -209,7 +209,7 @@ export default function AnnouncementSlider({ announcements = [] }) {
               sx={{
                 mb: 1,
                 bgcolor: "#E8F5F1",
-                color: "#0E7D63",
+                color: "#0d439a",
                 fontWeight: 600,
                 fontSize: "11px",
               }}
@@ -255,7 +255,7 @@ export default function AnnouncementSlider({ announcements = [] }) {
                 mt: 0.5,
                 px: 0,
                 minWidth: 0,
-                color: "#0E7D63",
+                color: "#0d439a",
                 fontWeight: 700,
                 fontSize: "12px",
                 textTransform: "none",
@@ -291,7 +291,7 @@ export default function AnnouncementSlider({ announcements = [] }) {
                   borderRadius: 10,
                   cursor: "pointer",
                   transition: ".3s",
-                  bgcolor: active === index ? "#0E7D63" : "#D1D5DB",
+                  bgcolor: active === index ? "#0d439a" : "#D1D5DB",
                 }}
               />
             ))}

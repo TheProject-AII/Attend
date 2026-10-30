@@ -5,7 +5,6 @@ import {
   DialogActions,
   Button,
   FormControl,
-  InputLabel,
   Select,
   MenuItem,
   TextField,
@@ -22,129 +21,104 @@ export default function LeaveDialog({
   setCutiType,
   leaveType,
   setLeaveType,
-
   startDate,
   setStartDate,
-
   endDate,
   setEndDate,
-
   startTime,
   setStartTime,
-
   endTime,
   setEndTime,
-
   reason,
   setReason,
-
   attachment,
   setAttachment,
-
   loading,
   onSubmit,
 }) {
   const isOvertime = leaveType === "LEMBUR";
+
+  const labelStyle = {
+    mb: 1,
+    fontSize: 14,
+    fontWeight: 600,
+  };
+
+  const inputStyle = {
+    "& .MuiInputBase-root": {
+      minHeight: 48,
+    },
+  };
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Request</DialogTitle>
 
       <DialogContent>
-        {/* ========================= */}
         {/* REQUEST TYPE */}
-        {/* ========================= */}
+        <Box sx={{ mt: 1 }}>
+          <Typography sx={labelStyle}>Request Type</Typography>
 
-        <FormControl
-          fullWidth
-          sx={{
-            mt: 1,
-          }}
-        >
-          <InputLabel>Request Type</InputLabel>
+          <FormControl fullWidth>
+            <Select
+              value={leaveType}
+              onChange={(e) => {
+                const value = e.target.value;
 
-          <Select
-            value={leaveType}
-            label="Request Type"
-            onChange={(e) => {
-              const value = e.target.value;
+                setLeaveType(value);
+                setStartDate("");
+                setEndDate("");
+                setReason("");
+                setAttachment(null);
 
-              setLeaveType(value);
+                if (setStartTime) setStartTime("");
+                if (setEndTime) setEndTime("");
+                if (setCutiType) setCutiType("TAHUNAN");
+              }}
+            >
+              <MenuItem value="SAKIT">Sick Leave</MenuItem>
+              <MenuItem value="IZIN">Permission</MenuItem>
+              <MenuItem value="CUTI">Leave</MenuItem>
+              <MenuItem value="LEMBUR">Overtime</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
 
-              // Reset fields when the request type changes.
-              setStartDate("");
-              setEndDate("");
-              setReason("");
-              setAttachment(null);
+        {/* LEAVE TYPE - ONLY WHEN CUTI */}
+        {leaveType === "CUTI" && (
+          <Box sx={{ mt: 2 }}>
+            <Typography sx={labelStyle}>Leave Type</Typography>
 
-              if (setStartTime) {
-                setStartTime("");
-              }
+            <FormControl fullWidth>
+              <Select
+                value={cutiType}
+                onChange={(e) => setCutiType(e.target.value)}
+              >
+                <MenuItem value="TAHUNAN">Annual Leave</MenuItem>
+                <MenuItem value="MENIKAH">Marriage</MenuItem>
+                <MenuItem value="MELAHIRKAN">Maternity Leave</MenuItem>
+                <MenuItem value="KELUARGA_MENINGGAL">
+                  Bereavement Leave
+                </MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        )}
 
-              if (setEndTime) {
-                setEndTime("");
-              }
-
-              if (setCutiType) {
-                setCutiType("TAHUNAN");
-              }
-            }}
-          >
-            <MenuItem value="SAKIT">Sick Leave</MenuItem>
-
-            <MenuItem value="IZIN">Permission</MenuItem>
-
-            <MenuItem value="CUTI">Leave</MenuItem>
-
-            <MenuItem value="LEMBUR">Overtime</MenuItem>
-          </Select>
-          {leaveType === "CUTI" && (
-            <Box sx={{ mt: 2 }}>
-              <FormControl fullWidth>
-                <InputLabel>Leave Type</InputLabel>
-
-                <Select
-                  value={cutiType}
-                  label="Leave Type"
-                  onChange={(e) => setCutiType(e.target.value)}
-                >
-                  <MenuItem value="TAHUNAN">Annual Leave</MenuItem>
-
-                  <MenuItem value="MENIKAH">Marriage</MenuItem>
-
-                  <MenuItem value="MELAHIRKAN">Maternity Leave</MenuItem>
-
-                  <MenuItem value="KELUARGA_MENINGGAL">
-                    Bereavement Leave
-                  </MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-          )}
-        </FormControl>
-
-        {/* ================================= */}
         {/* OVERTIME FORM */}
-        {/* ================================= */}
-
         {isOvertime ? (
           <>
-            {/* DATE */}
-
             <Box sx={{ mt: 2 }}>
+              <Typography sx={labelStyle}>Overtime Date</Typography>
+
               <TextField
                 fullWidth
                 type="date"
-                label="Overtime Date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                InputLabelProps={{
-                  shrink: true,
-                }}
+                sx={inputStyle}
               />
             </Box>
-
-            {/* TIME */}
 
             <Box
               sx={{
@@ -157,30 +131,30 @@ export default function LeaveDialog({
                 gap: 2,
               }}
             >
-              <TextField
-                fullWidth
-                type="time"
-                label="Start Time"
-                value={startTime || ""}
-                onChange={(e) => setStartTime(e.target.value)}
-                InputLabelProps={{
-                  shrink: true,
-                }}
-              />
+              <Box>
+                <Typography sx={labelStyle}>Start Time</Typography>
 
-              <TextField
-                fullWidth
-                type="time"
-                label="End Time"
-                value={endTime || ""}
-                onChange={(e) => setEndTime(e.target.value)}
-                InputLabelProps={{
-                  shrink: true,
-                }}
-              />
+                <TextField
+                  fullWidth
+                  type="time"
+                  value={startTime || ""}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  sx={inputStyle}
+                />
+              </Box>
+
+              <Box>
+                <Typography sx={labelStyle}>End Time</Typography>
+
+                <TextField
+                  fullWidth
+                  type="time"
+                  value={endTime || ""}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  sx={inputStyle}
+                />
+              </Box>
             </Box>
-
-            {/* REASON */}
 
             <Box sx={{ mt: 2 }}>
               <TextField
@@ -195,16 +169,15 @@ export default function LeaveDialog({
             </Box>
           </>
         ) : (
-          /* ================================= */
-          /* LEAVE / PERMISSION / SICK LEAVE FORM */
-          /* ================================= */
-
           <>
+            {/* START DATE */}
             <Box sx={{ mt: 2 }}>
+              <Typography sx={labelStyle}>Start Date</Typography>
+
               <TextField
                 fullWidth
                 type="date"
-                label="Start Date"
+                variant="outlined"
                 value={startDate}
                 onChange={(e) => {
                   setStartDate(e.target.value);
@@ -213,25 +186,25 @@ export default function LeaveDialog({
                     setEndDate(e.target.value);
                   }
                 }}
-                InputLabelProps={{
-                  shrink: true,
-                }}
+                sx={inputStyle}
               />
             </Box>
 
+            {/* END DATE */}
             <Box sx={{ mt: 2 }}>
+              <Typography sx={labelStyle}>End Date</Typography>
+
               <TextField
                 fullWidth
                 type="date"
-                label="End Date"
+                variant="outlined"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                InputLabelProps={{
-                  shrink: true,
-                }}
+                sx={inputStyle}
               />
             </Box>
 
+            {/* DETAILS */}
             <Box sx={{ mt: 2 }}>
               <TextField
                 fullWidth
@@ -244,6 +217,7 @@ export default function LeaveDialog({
               />
             </Box>
 
+            {/* ATTACHMENT */}
             <Box sx={{ mt: 2 }}>
               <Button
                 fullWidth
@@ -272,9 +246,7 @@ export default function LeaveDialog({
                 <Typography
                   variant="body2"
                   color="text.secondary"
-                  sx={{
-                    mt: 1,
-                  }}
+                  sx={{ mt: 1 }}
                 >
                   {attachment.name}
                 </Typography>
@@ -284,10 +256,7 @@ export default function LeaveDialog({
         )}
       </DialogContent>
 
-      {/* ========================= */}
       {/* ACTIONS */}
-      {/* ========================= */}
-
       <DialogActions>
         <Button onClick={onClose} disabled={loading}>
           Cancel

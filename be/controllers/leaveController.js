@@ -1,7 +1,15 @@
 const pool = require("../config/db");
 const fs = require("fs");
+const {
+  uploadToStorage,
+  deleteFromStorage,
+  getPrivateFileUrl,
+} = require("../services/storageService");
 
 exports.create = async (req, res) => {
+  let uploadedAttachment = null;
+  let requestInserted = false;
+
   try {
     const userId = req.user.id;
 
@@ -15,11 +23,8 @@ exports.create = async (req, res) => {
       reason,
     } = req.body;
 
+    // VALIDATION
     if (!leave_type || !start_date || !end_date) {
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-
       return res.status(400).json({
         success: false,
         message: "Data belum lengkap.",
@@ -56,158 +61,134 @@ exports.create = async (req, res) => {
       }
     }
 
-    const attachment = req.file ? req.file.path : null;
-
-    if (req.file) {
-      console.log("EXISTS:", fs.existsSync(req.file.path), req.file.path);
-    }
     const today = new Date().toISOString().split("T")[0];
 
     if (start_date < today) {
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-
       return res.status(400).json({
         success: false,
         message: "Tanggal pengajuan tidak boleh sebelum hari ini.",
       });
     }
-    if (end_date < start_date) {
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
 
+    if (end_date < start_date) {
       return res.status(400).json({
         success: false,
         message: "Tanggal selesai tidak valid.",
       });
     }
 
-    const exists = await pool.query(
-      `
-SELECT id
-FROM leave_requests
-WHERE user_id = $1
-  AND leave_type = 'IZIN_PULANG_AWAL'
-  AND status = 'APPROVED'
-  AND start_date = $2
-  AND end_date = $2
-  AND start_time <= $3::time
-  AND end_time >= $3::time
-LIMIT 1;
-`,
-      [userId, start_date, end_date],
-    );
+    // CHECK EXISTING REQUEST
+    // CHECK EXISTING EARLY LEAVE REQUEST
+    if (leave_type === "IZIN_PULANG_AWAL") {
+      const exists = await pool.query(
+        `
+    SELECT id
+    FROM leave_requests
+    WHERE user_id = $1
+      AND leave_type = 'IZIN_PULANG_AWAL'
+      AND status = 'APPROVED'
+      AND start_date = $2
+      AND end_date = $2
+      AND start_time < $4::time
+      AND end_time > $3::time
+    LIMIT 1;
+    `,
+        [userId, start_date, start_time, end_time],
+      );
 
-    if (exists.rows.length > 0) {
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+      if (exists.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Masih ada pengajuan pada rentang waktu tersebut.",
+        });
       }
-
-      return res.status(400).json({
-        success: false,
-        message: "Masih ada pengajuan pada rentang tanggal tersebut.",
-      });
     }
 
+    // UPLOAD ATTACHMENT TO NEON STORAGE
+    if (req.file) {
+      uploadedAttachment = await uploadToStorage(req.file, "leave");
+    }
+
+    // INSERT LEAVE REQUEST
     const leaveResult = await pool.query(
       `
-  INSERT INTO leave_requests
-  (
-      user_id,
-      leave_type,
-      leave_category,
-      start_date,
-      end_date,
-      reason,
-      attachment,
-      status
-  )
-  VALUES
-  (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8
-  )
-  RETURNING id
-  `,
+      INSERT INTO leave_requests
+      (
+        user_id,
+        leave_type,
+        leave_category,
+        start_date,
+        end_date,
+        reason,
+        attachment,
+        status
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id
+      `,
       [
         userId,
-
         leave_type,
-
-        leave_type === "CUTI"
-          ? leave_category
-          : null,
-
+        leave_type === "CUTI" ? leave_category : null,
         start_date,
-
         end_date,
-
         reason,
-
-        attachment,
-
+        uploadedAttachment,
         "PENDING_SUPERVISOR",
       ],
     );
 
+    requestInserted = true;
+
+    // GET EMPLOYEE AND SUPERVISOR
     const employee = await pool.query(
       `
-  SELECT
-      name,
-      supervisor_id
-  FROM users
-  WHERE id = $1
-  `,
+      SELECT name, supervisor_id
+      FROM users
+      WHERE id = $1
+      `,
       [userId],
     );
 
     const supervisor = employee.rows[0];
 
-    await pool.query(
-      `
-  INSERT INTO notifications
-  (
-      user_id,
-      title,
-      message,
-      type,
-      reference_id
-  )
-  VALUES
-  (
-      $1,
-      $2,
-      $3,
-      $4,
-      $5
-  )
-  `,
-      [
-        supervisor.supervisor_id,
-        "Pengajuan Baru",
-        `${supervisor.name} mengajukan ${leave_type}.`,
-        "LEAVE_PENDING",
-        leaveResult.rows[0].id,
-      ],
-    );
+    if (supervisor?.supervisor_id) {
+      await pool.query(
+        `
+        INSERT INTO notifications
+        (
+          user_id,
+          title,
+          message,
+          type,
+          reference_id
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        `,
+        [
+          supervisor.supervisor_id,
+          "Pengajuan Baru",
+          `${supervisor.name} mengajukan ${leave_type}.`,
+          "LEAVE_PENDING",
+          leaveResult.rows[0].id,
+        ],
+      );
+    }
 
     return res.json({
       success: true,
       message: "Pengajuan berhasil dikirim.",
     });
   } catch (err) {
-    console.error(err);
+    console.error("LEAVE CREATE ERROR:", err);
 
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    // CLEANUP STORAGE IF DATABASE INSERT FAILED
+    if (uploadedAttachment && !requestInserted) {
+      try {
+        await deleteFromStorage(uploadedAttachment);
+      } catch (storageError) {
+        console.error("STORAGE CLEANUP ERROR:", storageError);
+      }
     }
 
     return res.status(500).json({
@@ -309,10 +290,7 @@ WHERE aer.user_id = $1
             `,
       [userId],
     );
-    const leaveBalance =
-      Number(
-        balance.rows[0]?.leave_balance || 0
-      );
+    const leaveBalance = Number(balance.rows[0]?.leave_balance || 0);
     const summaryResult = await pool.query(
       `
     SELECT
@@ -375,32 +353,40 @@ THEN (
     `,
       [userId],
     );
-    const leaveSummary =
-      summaryResult.rows[0] || {};
+    const leaveSummary = summaryResult.rows[0] || {};
+    const historyData = await Promise.all(
+      result.rows.map(async (item) => {
+        let attachment_url = null;
+
+        if (item.attachment && item.attachment.startsWith("leave/")) {
+          try {
+            attachment_url = await getPrivateFileUrl(item.attachment);
+          } catch (storageError) {
+            console.error("GET LEAVE ATTACHMENT URL ERROR:", storageError);
+          }
+        }
+
+        return {
+          ...item,
+          attachment_url,
+        };
+      }),
+    );
+
     return res.json({
       success: true,
 
       summary: {
-        leave_balance:
-          leaveBalance,
+        leave_balance: leaveBalance,
 
-        cuti_taken_days:
-          Number(
-            leaveSummary.cuti_taken_days || 0
-          ),
+        cuti_taken_days: Number(leaveSummary.cuti_taken_days || 0),
 
-        sick_deduction_days:
-          Number(
-            leaveSummary.sick_deduction_days || 0
-          ),
+        sick_deduction_days: Number(leaveSummary.sick_deduction_days || 0),
 
-        special_leave_days:
-          Number(
-            leaveSummary.special_leave_days || 0
-          )
+        special_leave_days: Number(leaveSummary.special_leave_days || 0),
       },
 
-      data: result.rows
+      data: historyData,
     });
   } catch (err) {
     console.error("LEAVE HISTORY ERROR:", err);

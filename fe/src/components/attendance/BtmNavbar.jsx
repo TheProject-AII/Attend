@@ -94,7 +94,7 @@ export default function BottomNav() {
           },
 
           "& .Mui-selected": {
-            color: "#16A34A",
+            color: "#0d439a",
           },
 
           "& .MuiSvgIcon-root": {
