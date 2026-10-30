@@ -159,7 +159,7 @@ exports.history = async (req, res) => {
                         (
                             a.check_in
                             AT TIME ZONE 'Asia/Jakarta'
-                        )::time <= TIME '09:00:00'
+                        )::time <= TIME '08:00:00'
 
                     THEN 'Tepat Waktu'
 
@@ -175,7 +175,7 @@ exports.history = async (req, res) => {
                         (
                             a.check_in
                             AT TIME ZONE 'Asia/Jakarta'
-                        )::time > TIME '09:00:00'
+                        )::time > TIME '08:00:00'
 
                     THEN FLOOR(
                         EXTRACT(
@@ -184,7 +184,7 @@ exports.history = async (req, res) => {
                                     a.check_in
                                     AT TIME ZONE 'Asia/Jakarta'
                                 )::time
-                                - TIME '09:00:00'
+                                - TIME '08:00:00'
                             )
                         ) / 60
                     )::int

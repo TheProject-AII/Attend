@@ -36,12 +36,16 @@ const getAnnouncementImageUrl = (imageUrl) => {
 export default function AnnouncementSlider({ announcements = [] }) {
   const [active, setActive] = useState(0);
   const [openDetail, setOpenDetail] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
 
   const handleOpenDetail = (e) => {
     e.stopPropagation();
+
+    if (!item) return;
+
+    setSelectedAnnouncement(item);
     setOpenDetail(true);
   };
-
   const handleCloseDetail = () => {
     setOpenDetail(false);
   };
@@ -246,10 +250,7 @@ export default function AnnouncementSlider({ announcements = [] }) {
 
             <Button
               size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenDetail(true);
-              }}
+              onClick={handleOpenDetail}
               sx={{
                 mt: 0.5,
                 px: 0,
@@ -299,105 +300,58 @@ export default function AnnouncementSlider({ announcements = [] }) {
       </Card>
       <Dialog
         open={openDetail}
-        onClose={handleCloseDetail}
+        onClose={() => setOpenDetail(false)}
         maxWidth="sm"
         fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-          },
-        }}
       >
-        <DialogTitle
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            fontWeight: 700,
-          }}
-        >
-          Announcement Details
-          <IconButton onClick={handleCloseDetail}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
+        {selectedAnnouncement && (
+          <>
+            <DialogTitle>
+              {selectedAnnouncement.title || "-"}
+              <IconButton
+                onClick={handleCloseDetail}
+                size="small"
+                sx={{
+                  position: "absolute",
+                  right: 12,
+                  top: 12,
+                  color: "text.secondary",
+                }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
 
-        <Divider />
+            <Divider />
 
-        <DialogContent>
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" color="text.secondary">
-              Judul
-            </Typography>
-
-            <Typography variant="h6" fontWeight={700}>
-              {item.title || "-"}
-            </Typography>
-          </Box>
-
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 2,
-              mb: 2,
-            }}
-          >
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Created By
+            <DialogContent>
+              <Typography variant="h6" fontWeight={700}>
+                {selectedAnnouncement.title || "-"}
               </Typography>
 
-              <Typography fontWeight={600}>
-                {item.created_by_name || "-"}
-              </Typography>
-            </Box>
-
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Date
+              <Typography variant="body2">
+                {selectedAnnouncement.created_by_name || "-"}
               </Typography>
 
-              <Typography fontWeight={600}>
-                {formatDate(item.created_at)}
+              <Typography variant="body2">
+                {formatDate(selectedAnnouncement.created_at)}
               </Typography>
-            </Box>
-          </Box>
 
-          <Divider sx={{ mb: 2 }} />
+              <Divider sx={{ my: 2 }} />
 
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              Announcement
-            </Typography>
+              <Typography
+                variant="body2"
+                sx={{ whiteSpace: "pre-line", lineHeight: 1.8 }}
+              >
+                {selectedAnnouncement.description || "-"}
+              </Typography>
+            </DialogContent>
 
-            <Typography
-              variant="body2"
-              sx={{
-                mt: 1,
-                whiteSpace: "pre-line",
-                lineHeight: 1.8,
-                color: "#374151",
-              }}
-            >
-              {item.description || "-"}
-            </Typography>
-          </Box>
-        </DialogContent>
-
-        <DialogActions sx={{ p: 2 }}>
-          <Button
-            variant="contained"
-            onClick={handleCloseDetail}
-            sx={{
-              bgcolor: "#0E7D63",
-              textTransform: "none",
-              borderRadius: 2,
-            }}
-          >
-            Tutup
-          </Button>
-        </DialogActions>
+            <DialogActions>
+              <Button onClick={() => setOpenDetail(false)}>Tutup</Button>
+            </DialogActions>
+          </>
+        )}
       </Dialog>
     </>
   );
