@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Chip,
-  MenuItem,
   Stack,
   Typography,
   Skeleton,
@@ -14,17 +13,18 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Alert,
 } from "@mui/material";
+
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import { IconButton } from "@mui/material";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import { IconButton } from "@mui/material";
 
 import attendanceService from "../../services/attService";
 
 export default function History() {
   const [editDialog, setEditDialog] = useState(null);
+
   const [editForm, setEditForm] = useState({
     check_in: "",
     check_out: "",
@@ -35,11 +35,15 @@ export default function History() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
+
   const selectedMonth = selectedDate.getMonth();
   const selectedYear = selectedDate.getFullYear();
+
   const now = new Date();
+
   const isCurrentMonth =
     selectedMonth === now.getMonth() && selectedYear === now.getFullYear();
+
   const monthNames = [
     "January",
     "February",
@@ -58,9 +62,7 @@ export default function History() {
   const prevMonth = () => {
     setSelectedDate((prev) => {
       const d = new Date(prev);
-
       d.setMonth(d.getMonth() - 1);
-
       return d;
     });
   };
@@ -68,9 +70,7 @@ export default function History() {
   const nextMonth = () => {
     setSelectedDate((prev) => {
       const d = new Date(prev);
-
       d.setMonth(d.getMonth() + 1);
-
       return d;
     });
   };
@@ -186,8 +186,6 @@ export default function History() {
     try {
       setSubmittingEdit(true);
 
-      const attendanceDate = editDialog.attendance_date;
-
       const newCheckIn = buildDateTime(
         editDialog.attendance_date,
         editForm.check_in,
@@ -197,13 +195,6 @@ export default function History() {
         editDialog.attendance_date,
         editForm.check_out,
       );
-
-      console.log("EDIT REQUEST PAYLOAD", {
-        attendance_id: editDialog.id,
-        new_check_in: newCheckIn,
-        new_check_out: newCheckOut,
-        reason: editForm.reason,
-      });
 
       await attendanceService.createEditRequest({
         attendance_id: editDialog.id,
@@ -240,7 +231,7 @@ export default function History() {
         minHeight: "100vh",
       }}
     >
-      {/* Header */}
+      {/* HEADER */}
       <Box
         sx={{
           position: "sticky",
@@ -248,55 +239,63 @@ export default function History() {
           zIndex: 1000,
           bgcolor: "#F5F7FA",
           px: 2,
-          pt: 2,
-          pb: 2,
+          pt: 1.5,
+          pb: 1.5,
           borderBottom: "1px solid #ECEFF1",
           boxShadow: "0 2px 10px rgba(0,0,0,.05)",
         }}
       >
         <Card
           sx={{
-            mb: 3,
+            mb: 1.5,
+            borderRadius: 2,
             background: "linear-gradient(135deg,#0e7d63,#17a673)",
             color: "#fff",
           }}
         >
-          <CardContent>
-            <Typography variant="h5" fontWeight={700}>
+          <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+            <Typography variant="h6" fontWeight={700}>
               Attendance History
             </Typography>
 
             <Box
               sx={{
-                mt: 2,
+                mt: 1.5,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
                 bgcolor: "#fff",
-                borderRadius: 3,
-                px: 1,
-                py: 0.5,
+                borderRadius: 2,
+                px: 0.5,
+                py: 0.25,
                 color: "#000",
-                boxShadow: "0 2px 8px rgba(0,0,0,.04)",
               }}
             >
-              <IconButton onClick={prevMonth}>
+              <IconButton size="small" onClick={prevMonth}>
                 <ChevronLeftRoundedIcon />
               </IconButton>
 
-              <Typography fontWeight={700} fontSize={18}>
+              <Typography fontWeight={700} fontSize={15}>
                 {monthNames[selectedMonth]} {selectedYear}
               </Typography>
 
-              <IconButton onClick={nextMonth} disabled={isCurrentMonth}>
+              <IconButton
+                size="small"
+                onClick={nextMonth}
+                disabled={isCurrentMonth}
+              >
                 <ChevronRightRoundedIcon />
               </IconButton>
             </Box>
 
             <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 0.5, textAlign: "center" }}
+              variant="caption"
+              sx={{
+                mt: 1,
+                display: "block",
+                textAlign: "center",
+                color: "rgba(255,255,255,.9)",
+              }}
             >
               {summary.hadir} days present | {summary.terlambat} late |{" "}
               {summary.tepatWaktu} on time
@@ -305,32 +304,27 @@ export default function History() {
         </Card>
       </Box>
 
-      <Stack spacing={2} sx={{ px: 2, pt: 2, pb: 10 }}>
+      {/* HISTORY LIST */}
+      <Stack spacing={1.25} sx={{ px: 1.5, pt: 1.5, pb: 10 }}>
         {loading ? (
           [...Array(4)].map((_, index) => (
-            <Card
-              key={index}
-              sx={{
-                borderRadius: 1,
-              }}
-            >
-              <CardContent>
-                <Skeleton width="60%" height={30} />
+            <Card key={index} sx={{ borderRadius: 2 }}>
+              <CardContent sx={{ p: 1.5 }}>
+                <Skeleton width="60%" height={25} />
 
                 <Box
                   sx={{
                     display: "grid",
                     gridTemplateColumns: "repeat(3,1fr)",
-                    gap: 2,
-                    mt: 2,
+                    gap: 1,
+                    mt: 1,
                     textAlign: "center",
                   }}
                 >
                   {[1, 2, 3].map((i) => (
                     <Box key={i}>
-                      <Skeleton width={55} height={32} sx={{ mx: "auto" }} />
-
-                      <Skeleton width={70} height={18} sx={{ mx: "auto" }} />
+                      <Skeleton width={50} height={25} sx={{ mx: "auto" }} />
+                      <Skeleton width={60} height={16} sx={{ mx: "auto" }} />
                     </Box>
                   ))}
                 </Box>
@@ -338,13 +332,9 @@ export default function History() {
             </Card>
           ))
         ) : filteredHistory.length === 0 ? (
-          <Card
-            sx={{
-              borderRadius: 1,
-            }}
-          >
-            <CardContent>
-              <Typography align="center" color="text.secondary">
+          <Card sx={{ borderRadius: 2 }}>
+            <CardContent sx={{ p: 2 }}>
+              <Typography align="center" color="text.secondary" fontSize={13}>
                 No attendance history yet.
               </Typography>
             </CardContent>
@@ -353,35 +343,42 @@ export default function History() {
           filteredHistory.map((item) => (
             <Card
               key={item.id}
-              elevation={2}
+              elevation={1}
               sx={{
-                borderRadius: 1,
+                borderRadius: 2,
               }}
             >
-              <CardContent>
+              <CardContent
+                sx={{
+                  p: 1.5,
+                  "&:last-child": { pb: 1.5 },
+                }}
+              >
+                {/* DATE AND STATUS */}
                 <Box
                   sx={{
                     display: "flex",
                     justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    mb: 2,
-                    gap: 2,
+                    alignItems: "center",
+                    mb: 1,
+                    gap: 1,
                   }}
                 >
                   <Typography
                     sx={{
                       flex: 1,
                       fontWeight: 700,
+                      fontSize: 13,
                       color: "primary.main",
-                      lineHeight: 1.4,
+                      lineHeight: 1.3,
                     }}
                   >
                     {new Date(item.attendance_date).toLocaleDateString(
                       "en-US",
                       {
-                        weekday: "long",
+                        weekday: "short",
                         day: "numeric",
-                        month: "long",
+                        month: "short",
                         year: "numeric",
                       },
                     )}
@@ -392,70 +389,82 @@ export default function History() {
                       label={`Late by ${item.late_minutes} min`}
                       color="error"
                       size="small"
+                      sx={{
+                        height: 23,
+                        fontSize: 10,
+                        fontWeight: 600,
+                      }}
                     />
                   ) : (
-                    <Chip label="On Time" color="success" size="small" />
+                    <Chip
+                      label="On Time"
+                      color="success"
+                      size="small"
+                      sx={{
+                        height: 23,
+                        fontSize: 10,
+                        fontWeight: 600,
+                      }}
+                    />
                   )}
                 </Box>
 
-                {/* <Divider sx={{ mb: 2 }} /> */}
-
+                {/* ATTENDANCE TIME */}
                 <Box
                   sx={{
                     display: "grid",
                     gridTemplateColumns: "repeat(3,1fr)",
-                    gap: 2,
+                    gap: 1,
                     textAlign: "center",
                   }}
                 >
                   <Box>
-                    {/* <LoginIcon
-                                        color="success"
-                                        sx={{ mb: .5 }}
-                                    /> */}
-
-                    <Typography fontWeight={700} fontSize={20}>
+                    <Typography fontWeight={700} fontSize={17}>
                       {formatTime(item.check_in)}
                     </Typography>
 
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      fontSize={10}
+                    >
                       Check In
                     </Typography>
                   </Box>
 
                   <Box>
-                    {/* <LogoutIcon
-                                        color="error"
-                                        sx={{ mb: .5 }}
-                                    /> */}
-
-                    <Typography fontWeight={700} fontSize={20}>
+                    <Typography fontWeight={700} fontSize={17}>
                       {formatTime(item.check_out)}
                     </Typography>
 
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      fontSize={10}
+                    >
                       Check Out
                     </Typography>
                   </Box>
 
                   <Box>
-                    {/* <ScheduleIcon
-                                        color="primary"
-                                        sx={{ mb: .5 }}
-                                    /> */}
-
-                    <Typography fontWeight={700} fontSize={20}>
+                    <Typography fontWeight={700} fontSize={17}>
                       {item.working_hours || "-"}
                     </Typography>
 
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      fontSize={10}
+                    >
                       Duration
                     </Typography>
                   </Box>
                 </Box>
+
+                {/* EDIT REQUEST */}
                 <Box
                   sx={{
-                    mt: 2,
+                    mt: 1,
                     display: "flex",
                     justifyContent: "flex-end",
                   }}
@@ -465,15 +474,27 @@ export default function History() {
                       label="Pending Approval"
                       color="warning"
                       size="small"
+                      sx={{ height: 23, fontSize: 10 }}
                     />
                   ) : item.edit_request_status === "APPROVED" ? (
-                    <Chip label="Corrected" color="success" size="small" />
+                    <Chip
+                      label="Corrected"
+                      color="success"
+                      size="small"
+                      sx={{ height: 23, fontSize: 10 }}
+                    />
                   ) : (
                     <Button
                       variant="outlined"
                       size="small"
                       startIcon={<EditRoundedIcon />}
                       onClick={() => openEditDialog(item)}
+                      sx={{
+                        fontSize: 11,
+                        py: 0.4,
+                        px: 1,
+                        minHeight: 28,
+                      }}
                     >
                       Request Change
                     </Button>
@@ -485,6 +506,7 @@ export default function History() {
         )}
       </Stack>
 
+      {/* EDIT DIALOG */}
       <Dialog
         open={Boolean(editDialog)}
         onClose={() => {
@@ -547,6 +569,7 @@ export default function History() {
                 }}
                 helperText="24-hour format, for example: 17:00"
               />
+
               <TextField
                 fullWidth
                 multiline
