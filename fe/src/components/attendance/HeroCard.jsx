@@ -102,7 +102,7 @@ export default function HeroCard({
                 color: "#fff",
                 width: 38,
                 height: 38,
-                bgcolor: "rgba(255,255,255,.10)",
+                bgcolor: "rgb(242, 235, 235)",
 
                 "&:hover": {
                   bgcolor: "rgba(255,255,255,.18)",
@@ -112,6 +112,7 @@ export default function HeroCard({
               <RefreshRoundedIcon
                 sx={{
                   fontSize: 22,
+                  color: "#FFFFFF",
                   animation: refreshingLocation
                     ? "spin .8s linear infinite"
                     : "none",
@@ -313,7 +314,7 @@ export default function HeroCard({
           borderRadius: 2,
           fontWeight: 700,
           bgcolor: "#ffffff",
-          color: "#0F766E",
+          color: "#090a0a",
           "&:hover": {
             bgcolor: "#F3F4F6",
           },
