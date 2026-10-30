@@ -249,7 +249,7 @@ export default function History() {
           sx={{
             mb: 1.5,
             borderRadius: 2,
-            background: "linear-gradient(135deg,#0e7d63,#17a673)",
+            background: "#0d439a",
             color: "#fff",
           }}
         >
