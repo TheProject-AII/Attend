@@ -33,4 +33,3 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             bash scripts/deploy.sh
-s
