@@ -248,15 +248,11 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
                           alignItems="center"
                         >
                           <Avatar
-                            sx={{
-                              width: 38,
-                              height: 38,
-                              fontSize: 16,
-                              bgcolor: "#D1D5DB",
-                              color: "#374151",
-                            }}
+                            src={item.photoUrl || undefined}
+                            alt={item.name}
+                            imgProps={{ loading: "lazy" }}
                           >
-                            {item.name?.charAt(0) || "?"}
+                            {item.name?.charAt(0)?.toUpperCase()}
                           </Avatar>
                           <Box>
                             <Typography fontWeight={600} fontSize={14}>

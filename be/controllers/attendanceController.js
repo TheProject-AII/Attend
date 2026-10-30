@@ -552,7 +552,7 @@ RETURNING
     return res.json({
       success: true,
       message: "Check In berhasil.",
-      office: office.office_name,
+      office: office.companies_name,
       distance: Math.round(distance),
       attendance_type: normalizedType,
       data: result.rows[0],
@@ -1078,6 +1078,7 @@ exports.getDailyAttendance = async (req, res) => {
     a.id AS attendance_id,
     u.name,
     u.department,
+    u.photo AS photo,
       a.check_in AT TIME ZONE 'Asia/Jakarta' AS check_in,
     a.check_out AT TIME ZONE 'Asia/Jakarta' AS check_out,
 
@@ -1130,9 +1131,31 @@ ORDER BY u.name;
       [queryDate, department, status, search],
     );
 
+    const attendance = await Promise.all(
+      result.rows.map(async (item) => {
+        let photoUrl = null;
+
+        if (item.photo) {
+          try {
+            photoUrl = await getPrivateFileUrl(item.photo);
+          } catch (photoError) {
+            console.error(
+              `Gagal membuat URL foto karyawan ID ${item.id}:`,
+              photoError.message,
+            );
+          }
+        }
+
+        return {
+          ...item,
+          photoUrl,
+        };
+      }),
+    );
+
     return res.json({
       success: true,
-      data: result.rows,
+      data: attendance,
     });
   } catch (err) {
     console.error(err);

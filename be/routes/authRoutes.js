@@ -10,7 +10,19 @@ router.post("/login", authController.login);
 router.post("/activity", authMiddleware, authController.recordActivity);
 router.post("/forgot-password", authController.forgotPassword);
 router.post("/reset-password", authController.resetPassword);
+router.post(
+  "/change-password",
+  authMiddleware,
+  adminMiddleware,
+  authController.changePassword,
+);
 router.get("/me", authMiddleware, authController.me);
+router.get(
+  "/hrga-leader",
+  authMiddleware,
+  adminMiddleware,
+  authController.getHRGALeader,
+);
 router.post("/logout", authMiddleware, authController.logout);
 router.post(
   "/employees",

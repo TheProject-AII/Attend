@@ -165,7 +165,13 @@ export default function Attendance() {
       const formData = new FormData();
 
       formData.append("photo", file);
-
+      console.log("[SELFIE DEBUG]", {
+        imageExists: !!image,
+        imageLength: image?.length,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+      });
       formData.append("latitude", currentLocation.latitude);
 
       formData.append("longitude", currentLocation.longitude);

@@ -69,25 +69,19 @@ export default function HeroCard({
   const formatTimeWIB = (dateString) => {
     if (!dateString) return "-";
 
-    const date = new Date(dateString);
+    const match = String(dateString).match(/(\d{2}):(\d{2})/);
 
-    if (Number.isNaN(date.getTime())) return "-";
+    if (!match) return "-";
 
-    return new Intl.DateTimeFormat("en-US", {
-      timeZone: "Asia/Jakarta",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    }).format(date);
+    return `${match[1]}:${match[2]}`;
   };
-
   return (
     <Paper
       elevation={0}
       sx={{
         borderRadius: "0 0 5px 5px",
         overflow: "hidden",
-        background: "#0e7d63",
+        background: "#0d439a",
         color: "#fff",
         p: 2.5,
       }}

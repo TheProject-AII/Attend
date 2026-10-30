@@ -10,7 +10,11 @@ const attendanceService = {
     const start = performance.now();
 
     try {
-      const { data } = await api.post("/attendance/checkin", formData);
+      const { data } = await api.post("/attendance/checkin", formData, {
+        headers: {
+          "Content-Type": undefined,
+        },
+      });
 
       const duration = ((performance.now() - start) / 1000).toFixed(2);
 
@@ -18,6 +22,22 @@ const attendanceService = {
 
       return data;
     } catch (error) {
+      console.error(
+        "CHECK-IN ERROR DETAIL:",
+        JSON.stringify(
+          {
+            message: error.message,
+            status: error.response?.status,
+            response: error.response?.data,
+            code: error.code,
+            url: error.config?.url,
+            method: error.config?.method,
+          },
+          null,
+          2,
+        ),
+      );
+
       const duration = ((performance.now() - start) / 1000).toFixed(2);
 
       console.error(`❌ CHECK-IN API failed after ${duration} seconds`);
@@ -29,7 +49,7 @@ const attendanceService = {
   checkOut: async (formData) => {
     const { data } = await api.post("/attendance/checkout", formData, {
       headers: {
-        "Content-Type": "multipart/form-data",
+        "Content-Type": undefined,
       },
     });
 

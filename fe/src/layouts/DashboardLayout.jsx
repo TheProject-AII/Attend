@@ -5,13 +5,14 @@ import useAdminIdleLogout from "../hooks/useAdminIdleLogout";
 
 export default function DashboardLayout({ children, title, subtitle }) {
   useAdminIdleLogout();
+
   return (
     <Box
       sx={{
         display: "flex",
         width: "100%",
         minHeight: "100vh",
-        overflowX: "hidden",
+        overflowX: "clip",
       }}
     >
       {/* SIDEBAR */}
@@ -40,14 +41,12 @@ export default function DashboardLayout({ children, title, subtitle }) {
             maxWidth: "none",
             boxSizing: "border-box",
             flexGrow: 1,
-
             px: {
               xs: 2,
               sm: 2.5,
               md: 3,
               lg: 4,
             },
-
             py: {
               xs: 2,
               md: 3,
