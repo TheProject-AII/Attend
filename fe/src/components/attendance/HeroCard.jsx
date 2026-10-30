@@ -69,25 +69,19 @@ export default function HeroCard({
   const formatTimeWIB = (dateString) => {
     if (!dateString) return "-";
 
-    const date = new Date(dateString);
+    const match = String(dateString).match(/(\d{2}):(\d{2})/);
 
-    if (Number.isNaN(date.getTime())) return "-";
+    if (!match) return "-";
 
-    return new Intl.DateTimeFormat("en-US", {
-      timeZone: "Asia/Jakarta",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    }).format(date);
+    return `${match[1]}:${match[2]}`;
   };
-
   return (
     <Paper
       elevation={0}
       sx={{
         borderRadius: "0 0 5px 5px",
         overflow: "hidden",
-        background: "#0e7d63",
+        background: "#0d439a",
         color: "#fff",
         p: 2.5,
       }}
@@ -108,7 +102,7 @@ export default function HeroCard({
                 color: "#fff",
                 width: 38,
                 height: 38,
-                bgcolor: "rgba(255,255,255,.10)",
+                bgcolor: "rgb(242, 235, 235)",
 
                 "&:hover": {
                   bgcolor: "rgba(255,255,255,.18)",
@@ -118,6 +112,7 @@ export default function HeroCard({
               <RefreshRoundedIcon
                 sx={{
                   fontSize: 22,
+                  color: "#FFFFFF",
                   animation: refreshingLocation
                     ? "spin .8s linear infinite"
                     : "none",
@@ -319,7 +314,7 @@ export default function HeroCard({
           borderRadius: 2,
           fontWeight: 700,
           bgcolor: "#ffffff",
-          color: "#0F766E",
+          color: "#090a0a",
           "&:hover": {
             bgcolor: "#F3F4F6",
           },

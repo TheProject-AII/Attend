@@ -36,12 +36,28 @@ import MyLateCompensation from "../pages/attendance/MyLateCompensation";
 import FaceEnrollment from "../pages/employee/FaceEnrollment";
 
 export default function AppRoutes() {
-  const isLogin = !!localStorage.getItem("token");
   const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user") || "null");
-  const role = user?.role?.toUpperCase();
+
+  let user = null;
+
+  try {
+    const rawUser = localStorage.getItem("user");
+
+    if (rawUser && rawUser !== "undefined") {
+      user = JSON.parse(rawUser);
+    }
+  } catch (error) {
+    console.error("Invalid user data in localStorage:", error);
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+  }
+
+  const role = String(user?.role || "")
+    .trim()
+    .toUpperCase();
+
   console.log("APP ROUTES DEBUG:", {
-    tokenExists: !!token,
+    tokenExists: !!localStorage.getItem("token"),
     user,
     role,
   });

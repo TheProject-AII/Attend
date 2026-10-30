@@ -21,7 +21,7 @@ exports.testEmail = async (req, res) => {
     const result = await sendEmail({
       to: email,
 
-      subject: "Test Email - KJI Attendance",
+      subject: "Test Email - Attendance",
 
       html: `
                 <div style="

@@ -18,7 +18,22 @@ const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(
   /\/api\/?$/,
   "",
 );
-export default function AnnouncementSlider({ announcements }) {
+
+const getAnnouncementImageUrl = (imageUrl) => {
+  if (!imageUrl) return "";
+
+  // Jika sudah berupa URL lengkap
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl;
+  }
+
+  const baseUrl = API_URL.replace(/\/$/, "");
+  const path = imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`;
+
+  return `${baseUrl}${path}`;
+};
+
+export default function AnnouncementSlider({ announcements = [] }) {
   const [active, setActive] = useState(0);
   const [openDetail, setOpenDetail] = useState(false);
 
@@ -44,17 +59,25 @@ export default function AnnouncementSlider({ announcements }) {
       year: "numeric",
     });
   };
+  // Auto slide announcement
   useEffect(() => {
-    if (!announcements.length) return;
+    if (announcements.length < 2) return;
 
     const timer = setInterval(() => {
-      setActive((prev) => (prev === announcements.length - 1 ? 0 : prev + 1));
+      setActive((prev) => (prev + 1) % announcements.length);
     }, 5000);
 
     return () => clearInterval(timer);
+  }, [announcements.length]);
+
+  // Debug announcement data
+  useEffect(() => {
+    console.log("TOTAL ANNOUNCEMENTS:", announcements.length);
+    console.log("ANNOUNCEMENT DATA:", announcements);
   }, [announcements]);
 
-  if (!announcements?.length) {
+  // Conditional return harus setelah semua Hooks
+  if (announcements.length === 0) {
     return (
       <Card sx={{ mt: 2, mx: 1.5, borderRadius: 2 }}>
         <CardContent>
@@ -66,6 +89,18 @@ export default function AnnouncementSlider({ announcements }) {
     );
   }
 
+  // if (!announcements?.length) {
+  //   return (
+  //     <Card sx={{ mt: 2, mx: 1.5, borderRadius: 2 }}>
+  //       <CardContent>
+  //         <Typography variant="body2" color="text.secondary" textAlign="center">
+  //           📢 No active announcements
+  //         </Typography>
+  //       </CardContent>
+  //     </Card>
+  //   );
+  // }
+
   const item = announcements[active] || announcements[0];
 
   const handleOpenAnnouncement = () => {
@@ -73,6 +108,7 @@ export default function AnnouncementSlider({ announcements }) {
 
     window.open(item.url, "_blank", "noopener,noreferrer");
   };
+
   return (
     <>
       <Card
@@ -135,7 +171,13 @@ export default function AnnouncementSlider({ announcements }) {
             >
               <Box
                 component="img"
-                src={`${API_URL}${item.image_url}`}
+                src={getAnnouncementImageUrl(item.image_url)}
+                onError={(e) => {
+                  console.error(
+                    "Announcement image failed:",
+                    e.currentTarget.src,
+                  );
+                }}
                 alt={item.title}
                 sx={{
                   width: "100%",

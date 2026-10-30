@@ -41,7 +41,7 @@ const employeeStorage = multer.diskStorage({
     const ext = path.extname(file.originalname).toLowerCase();
 
     const filename = `${file.fieldname}-${Date.now()}-${Math.round(
-      Math.random() * 1e9
+      Math.random() * 1e9,
     )}${ext}`;
 
     cb(null, filename);
@@ -114,21 +114,8 @@ const uploadKtp = multer({
   },
 });
 
-
-const announcementStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, announcementDir);
-  },
-
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-
-    const filename =
-      `announcement-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-
-    cb(null, filename);
-  },
-});
+// Storage Announcement - sementara di memory sebelum upload ke Neon
+const announcementStorage = multer.memoryStorage();
 
 const uploadAnnouncement = multer({
   storage: announcementStorage,

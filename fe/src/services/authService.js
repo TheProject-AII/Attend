@@ -7,6 +7,15 @@ const authService = {
       password,
     });
 
+    console.log("[LOGIN] status:", response.status);
+    console.log("[LOGIN] content-type:", response.headers["content-type"]);
+    console.log(
+      "[LOGIN] response:",
+      typeof response.data === "string"
+        ? response.data.slice(0, 300)
+        : response.data,
+    );
+
     return response.data;
   },
 
@@ -33,7 +42,10 @@ const authService = {
 
     return response.data;
   },
-
+  getHRGALeader: async () => {
+    const response = await api.get("/auth/hrga-leader");
+    return response.data;
+  },
   forgotPassword: async (email, nik_last4) => {
     const response = await api.post("/auth/forgot-password", {
       email,
@@ -48,6 +60,15 @@ const authService = {
       token,
       password,
       password_confirmation,
+    });
+
+    return response.data;
+  },
+  changePassword: async (current_password, new_password, confirm_password) => {
+    const response = await api.post("/auth/change-password", {
+      current_password,
+      new_password,
+      confirm_password,
     });
 
     return response.data;

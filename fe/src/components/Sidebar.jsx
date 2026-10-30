@@ -19,7 +19,7 @@ const drawerWidth = 250;
 
 const sections = [
   { key: "overview", label: "Overview" },
-  { key: "management", label: "Management" },
+  { key: "management", label: "Monitoring" },
   { key: "reports", label: "Reports" },
   { key: "system", label: "System" },
 ];
@@ -49,12 +49,11 @@ export default function Sidebar() {
           justifyContent: "center",
           alignItems: "center",
           px: 2,
-          py: 1,
         }}
       >
         <Box
           component="img"
-          src="/icon/logo_hris.png"
+          src="/icon/pride_dsb.png"
           alt="HRIS Logo"
           sx={{
             width: "100%",

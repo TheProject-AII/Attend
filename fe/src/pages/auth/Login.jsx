@@ -72,14 +72,48 @@ export default function Login() {
     try {
       setLoading(true);
 
-      const data = await authService.login(email.trim(), password);
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      const response = await authService.login(email.trim(), password);
+
+      console.log("[LOGIN DEBUG]", {
+        response,
+        responseType: typeof response,
+        keys: Object.keys(response || {}),
+        tokenExists: !!response?.token,
+        dataTokenExists: !!response?.data?.token,
+      });
+
+      const payload = response?.data ?? response;
+      const token = payload?.token ?? payload?.access_token;
+
+      if (!token) {
+        throw new Error(
+          `Token tidak ditemukan. Field respons: ${Object.keys(payload || {}).join(", ") || "kosong"}`,
+        );
+      }
+
+      localStorage.setItem("token", token);
+
+      // Muat profil berdasarkan token login
+      localStorage.removeItem("user");
 
       const currentUser = await loadUser();
 
-      if (!localStorage.getItem("token") || !currentUser) {
-        throw new Error("Invalid login session. Please sign in again.");
+      if (!currentUser) {
+        localStorage.removeItem("token");
+        throw new Error("Gagal memuat profil pengguna. Silakan login kembali.");
+      }
+
+      localStorage.setItem("user", JSON.stringify(currentUser));
+
+      navigate(
+        currentUser?.role
+          ? getRedirectPath(currentUser)
+          : "/employee/attendance",
+        { replace: true },
+      );
+
+      if (!currentUser) {
+        throw new Error("Gagal memuat profil pengguna. Silakan login kembali.");
       }
 
       navigate(getRedirectPath(currentUser), { replace: true });

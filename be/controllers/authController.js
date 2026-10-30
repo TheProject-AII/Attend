@@ -1310,3 +1310,129 @@ exports.createEmployeeJobDescription = async (req, res) => {
     });
   }
 };
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { current_password, new_password, confirm_password } = req.body;
+
+    if (!current_password || !new_password || !confirm_password) {
+      return res.status(400).json({
+        success: false,
+        message: "Semua kolom password wajib diisi.",
+      });
+    }
+
+    if (new_password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password baru minimal 8 karakter.",
+      });
+    }
+
+    if (new_password !== confirm_password) {
+      return res.status(400).json({
+        success: false,
+        message: "Konfirmasi password tidak sama.",
+      });
+    }
+
+    if (current_password === new_password) {
+      return res.status(400).json({
+        success: false,
+        message: "Password baru harus berbeda dari password lama.",
+      });
+    }
+
+    const result = await pool.query(
+      `SELECT password FROM users WHERE id = $1 AND status = TRUE`,
+      [req.user.id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User tidak ditemukan.",
+      });
+    }
+
+    const valid = await bcrypt.compare(
+      current_password,
+      result.rows[0].password,
+    );
+
+    if (!valid) {
+      return res.status(400).json({
+        success: false,
+        message: "Password lama salah.",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+
+    await pool.query(
+      `UPDATE users
+       SET password = $1, updated_at = NOW()
+       WHERE id = $2`,
+      [hashedPassword, req.user.id],
+    );
+
+    return res.json({
+      success: true,
+      message: "Password berhasil diubah.",
+    });
+  } catch (err) {
+    console.error("CHANGE PASSWORD ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengubah password.",
+    });
+  }
+};
+
+exports.getHRGALeader = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+        id,
+        nik,
+        name,
+        email,
+        department,
+        position,
+        job_level,
+        company_email,
+        photo,
+        status
+       FROM users
+       WHERE id = 41
+         AND position = 'HRGA'
+         AND job_level = 'Supervisor'
+       LIMIT 1`,
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Data leader HRGA tidak ditemukan.",
+      });
+    }
+
+    const leader = result.rows[0];
+
+    return res.json({
+      success: true,
+      data: {
+        ...leader,
+        photoUrl: leader.photo ? await getPrivateFileUrl(leader.photo) : null,
+      },
+    });
+  } catch (err) {
+    console.error("GET HRGA LEADER ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil data profil.",
+    });
+  }
+};
