@@ -432,13 +432,13 @@ export default function Leave() {
         <Card
           sx={{
             mb: 3,
-            background: "linear-gradient(135deg,#0e7d63,#17a673)",
+            background: "#0d439a",
             color: "#fff",
           }}
         >
           <CardContent>
             <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
-              Requests
+              Application
             </Typography>
 
             <Box
@@ -645,10 +645,10 @@ export default function Leave() {
           position: "fixed",
           bottom: 85,
           right: 20,
-          bgcolor: "#0e7d63",
+          bgcolor: "#0d439a",
 
           "&:hover": {
-            bgcolor: "#0a6a54",
+            bgcolor: "#0d439a",
           },
         }}
       >

@@ -24,7 +24,7 @@ export default defineConfig({
         name: "So-Mak Attendance",
         short_name: "Attend",
         description: "Aplikasi Absensi",
-        theme_color: "#0E7D63",
+        theme_color: "#0d439a",
         background_color: "#ffffff",
         display: "standalone",
         prefer_related_applications: false,
