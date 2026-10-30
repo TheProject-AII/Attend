@@ -313,7 +313,14 @@ exports.checkIn = async (req, res) => {
 
     const lat = Number(latitude);
     const lng = Number(longitude);
-
+    console.log("[CHECK-IN FILE DEBUG]", {
+      fileReceived: !!req.file,
+      fieldname: req.file?.fieldname,
+      originalname: req.file?.originalname,
+      mimetype: req.file?.mimetype,
+      size: req.file?.size,
+      path: req.file?.path,
+    });
     if (!req.file?.path) {
       return res.status(400).json({
         success: false,

@@ -76,7 +76,7 @@ exports.login = async (req, res) => {
         return res.status(409).json({
           success: false,
           message:
-            "Akun sedang login di perangkat lain. Silakan logout terlebih dahulu.",
+            "The account is currently logged in on another device. Please log out first.",
         });
       }
     }
@@ -532,7 +532,7 @@ exports.createEmployee = async (req, res) => {
           font-size: 12px;
           color: #888;
         ">
-          Email ini dikirim otomatis oleh sistem KJI Attendance.
+          Email ini dikirim otomatis oleh sistem Attendance.
         </p>
 
       </div>
