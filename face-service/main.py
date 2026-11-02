@@ -1,19 +1,11 @@
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Header
-import os
-
-os.environ["OMP_NUM_THREADS"] = "2"
-os.environ["TF_NUM_INTRAOP_THREADS"] = "2"
-os.environ["TF_NUM_INTEROP_THREADS"] = "1"
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-
 from deepface import DeepFace
 from pathlib import Path
 from contextlib import asynccontextmanager
 import tempfile
 import logging
-
+import os
 import secrets
 import time
 import threading
@@ -245,24 +237,13 @@ async def read_valid_image(photo: UploadFile):
     return data
 
 
-
 def extract_face_embedding(image_path: str, anti_spoofing: bool):
-    # Measure face detection + anti-spoofing
-    detection_start = time.perf_counter()
-
     faces = DeepFace.extract_faces(
         img_path=image_path,
         detector_backend="retinaface",
         enforce_detection=True,
         anti_spoofing=anti_spoofing,
         align=True,
-    )
-
-    detection_time = time.perf_counter() - detection_start
-
-    logger.info(
-        "Face detection + anti-spoofing: %.2fs",
-        detection_time,
     )
 
     if len(faces) != 1:
@@ -273,22 +254,12 @@ def extract_face_embedding(image_path: str, anti_spoofing: bool):
             "Wajah tidak valid. Gunakan wajah asli, bukan foto atau layar HP."
         )
 
-    # Measure ArcFace embedding
-    embedding_start = time.perf_counter()
-
     representations = DeepFace.represent(
         img_path=faces[0]["face"],
         model_name="ArcFace",
         detector_backend="skip",
         enforce_detection=False,
         normalization="ArcFace",
-    )
-
-    embedding_time = time.perf_counter() - embedding_start
-
-    logger.info(
-        "ArcFace embedding: %.2fs",
-        embedding_time,
     )
 
     if not representations:
@@ -448,22 +419,43 @@ async def verify_enrolled_face(
             )
             selfie_path.write_bytes(selfie_bytes)
 
-            lock_wait_start = time.perf_counter()
-
             with face_lock:
-                logger.info(
-                    "Face lock wait: %.2fs",
-                    time.perf_counter() - lock_wait_start,
-                )
-
                 start = time.perf_counter()
 
+                # Anti-spoofing tetap dilakukan pada setiap absensi.
                 selfie_embedding = extract_face_embedding(
                     str(selfie_path),
                     anti_spoofing=True,
                 )
 
-    # Lanjutkan proses comparison seperti kode sebelumnya.
+                from deepface.modules.verification import (
+                    find_distance,
+                    find_threshold,
+                )
+
+                distance = find_distance(
+                    stored_embedding,
+                    selfie_embedding,
+                    distance_metric="cosine",
+                )
+
+                threshold = find_threshold("ArcFace", "cosine")
+                matched = bool(distance <= threshold)
+
+                logger.info(
+                    "Enrolled-face verification completed in %.2fs; matched=%s",
+                    time.perf_counter() - start,
+                    matched,
+                )
+
+                return {
+                    "success": True,
+                    "matched": matched,
+                    "distance": float(distance),
+                    "threshold": float(threshold),
+                    "model": "ArcFace",
+                }
+
     except ValueError as e:
         logger.warning("Face verification validation failed: %s", e)
         raise HTTPException(status_code=422, detail=str(e))
