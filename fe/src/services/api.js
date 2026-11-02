@@ -5,7 +5,6 @@ const API_URL = import.meta.env.VITE_API_URL;
 const api = axios.create({
   baseURL: API_URL || "/api",
   headers: {
-    "Content-Type": "application/json",
     Accept: "application/json",
   },
 });
@@ -16,6 +15,13 @@ api.interceptors.request.use(
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Biarkan Axios menentukan Content-Type untuk FormData
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    } else {
+      config.headers["Content-Type"] = "application/json";
     }
 
     return config;
