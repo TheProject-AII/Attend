@@ -321,14 +321,14 @@ exports.createEmployee = async (req, res) => {
       department,
       position,
       role_id,
-      job_description, // TAMBAHAN
+      job_description,
       join_date,
       address,
       employee_type,
       contract_start_date,
       contract_end_date,
       company_id,
-      supervisor_id,
+      leader_id,
     } = req.body;
 
     // =========================
@@ -415,7 +415,7 @@ exports.createEmployee = async (req, res) => {
     photo, ktp, npwp, bpjs_kesehatan, bpjs_tk, kk,
     join_date, address, status,
     employee_type, contract_start_date, contract_end_date,
-    company_id, supervisor_id
+    company_id, leader_id
   )
   VALUES (
     $1, $2, $3, $4, $5,
@@ -440,6 +440,7 @@ exports.createEmployee = async (req, res) => {
         phone || null,
         department,
         position || null,
+        job_description || null,
         paths.photo,
         paths.ktp,
         paths.npwp,
@@ -452,7 +453,7 @@ exports.createEmployee = async (req, res) => {
         contract_start_date || null,
         contract_end_date || null,
         company_id || null,
-        supervisor_id || null,
+        leader_id || null,
       ],
     );
     await client.query("COMMIT");
@@ -600,7 +601,7 @@ exports.createEmployee = async (req, res) => {
 //                 u.join_date,
 //                 u.address,
 //                 u.office_location_id,
-//                 u.supervisor_id,
+//                 u.leader_id,
 //                 u.ktp,
 //                 u.npwp,
 //                 u.bpjs_kesehatan,
@@ -629,40 +630,45 @@ exports.createEmployee = async (req, res) => {
 exports.getEmployees = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT
-        u.id,
-        u.nik,
-        u.name,
-        u.email,
-        u.company_email,
-        u.phone,
-        u.department,
-        u.nip,
-        u.company_id,
-        c.name AS company_name,
-        u.placement,
-        u.job_level,
-        u.position,
-        u.job_description,
-        u.photo,
-        u.status,
-        u.employee_type,
-        u.contract_start_date,
-        u.contract_end_date,
-        u.join_date,
-        u.address,
-        u.company_id,
-        u.supervisor_id,
-        u.ktp,
-        u.npwp,
-        u.bpjs_kesehatan,
-        u.bpjs_tk,
-        u.kk
-      FROM users u
-      LEFT JOIN companies c ON u.company_id = c.id
-      WHERE (u.role_id = 3 OR u.nip IS NOT NULL)
-      ORDER BY u.name ASC
-    `);
+  SELECT
+    u.id,
+    u.nik,
+    u.name,
+    u.email,
+    u.company_email,
+    u.phone,
+    u.department,
+    u.nip,
+    u.company_id,
+    c.name AS company_name,
+    u.placement,
+    u.job_level,
+    u.position,
+    r.name AS role_name,
+    u.job_description,
+    u.photo,
+    u.status,
+    u.employee_type,
+    u.contract_start_date,
+    u.contract_end_date,
+    u.join_date,
+    u.address,
+    u.leader_id,
+    u.ktp,
+    u.npwp,
+    u.bpjs_kesehatan,
+    u.bpjs_tk,
+    u.kk
+  FROM users u
+  LEFT JOIN companies c ON u.company_id = c.id
+  LEFT JOIN roles r ON u.role_id = r.id
+  WHERE (
+    u.role_id = 3
+    OR u.nip IS NOT NULL
+    OR LOWER(TRIM(r.name)) = 'manager'
+  )
+  ORDER BY u.name ASC
+`);
 
     const employees = await Promise.all(
       result.rows.map(async (employee) => {
@@ -757,7 +763,7 @@ WHERE id = $1`,
       contract_start_date,
       contract_end_date,
       company_id,
-      supervisor_id,
+      leader_id,
     } = req.body;
 
     // =========================
@@ -789,7 +795,7 @@ WHERE id = $1`,
     contract_start_date = $10,
     contract_end_date = $11,
     company_id = $12,
-    supervisor_id = $13,
+    leader_id = $13,
     job_description = $14,
     photo = COALESCE($15, photo),
     face_embedding = CASE
@@ -837,7 +843,7 @@ WHERE id = $1`,
           ? contract_end_date || null
           : null, // $11
         company_id || null, // $12
-        supervisor_id || null, // $13
+        leader_id || null, // $13
         job_description || null, // $14
         paths.photo, // $15
         paths.ktp, // $16
@@ -892,7 +898,7 @@ exports.deactivateEmployee = async (req, res) => {
                 status = false,
                 updated_at = NOW()
             WHERE id = $1
-              AND role_id = 3
+             
             RETURNING
                 id,
                 name,
@@ -1406,7 +1412,7 @@ exports.getHRGALeader = async (req, res) => {
         status
        FROM users
        WHERE id = 41
-         AND position = 'HRGA'
+         AND department = 'HRGA'
          AND job_level = 'Supervisor'
        LIMIT 1`,
     );

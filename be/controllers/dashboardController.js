@@ -85,12 +85,17 @@ ORDER BY a.check_in ASC;
     `,
       [period],
     );
-    const chart = attendanceChart.rows.map((item) => ({
-      day: new Date(item.attendance_date).toLocaleDateString("id-ID", {
-        weekday: "short",
-      }),
-      total: Number(item.total),
-    }));
+    const chart = attendanceChart.rows.map((item) => {
+      const date = new Date(item.attendance_date);
+
+      return {
+        day: date.toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "short",
+        }),
+        total: Number(item.total),
+      };
+    });
 
     res.json({
       success: true,

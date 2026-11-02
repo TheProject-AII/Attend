@@ -116,8 +116,11 @@ export default function AttendanceChart({
               <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
 
               <Tooltip
-                formatter={(value) => [`${value} employees`, "Present"]}
-                labelFormatter={(label) => `Day ${label}`}
+                formatter={(value, name) => [
+                  `${value} employees`,
+                  name === "total" ? "Present" : name,
+                ]}
+                labelFormatter={(label) => `${label}`}
               />
 
               <Area

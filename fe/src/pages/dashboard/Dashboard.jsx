@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
 import { Grid, Typography } from "@mui/material";
-
-import LoginIcon from "@mui/icons-material/Login";
-import LogoutIcon from "@mui/icons-material/Logout";
-import ScheduleIcon from "@mui/icons-material/Schedule";
-import EventAvailableIcon from "@mui/icons-material/EventAvailable";
-
+import { useNavigate } from "react-router-dom";
 import StatCard from "../../components/layout/StatCard";
 import AttendanceChart from "../../components/layout/AttChart";
 import TodaySummary from "../../components/layout/TodaySummary";
@@ -23,6 +18,7 @@ export default function Dashboard() {
   const [employeeOfMonth, setEmployeeOfMonth] = useState([]);
   const [employeeLoading, setEmployeeLoading] = useState(false);
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
   const [dashboard, setDashboard] = useState({
     totalEmployee: 0,
@@ -45,6 +41,8 @@ export default function Dashboard() {
 
   const loadToday = async () => {
     try {
+      setLoadingToday(true);
+
       const result = await dashboardService.getDashboard(chartPeriod);
 
       setDashboard(result.data);
@@ -95,6 +93,7 @@ export default function Dashboard() {
             value={dashboard.totalEmployee}
             subtitle={`Year ${new Date().getFullYear()}`}
             color="#2E7D32"
+            onClick={() => navigate("/admin/employees")}
           />
         </Grid>
 
@@ -108,6 +107,7 @@ export default function Dashboard() {
               year: "numeric",
             })}
             color="#EF6C00"
+            onClick={() => navigate("/admin/attendance")}
           />
         </Grid>
 
@@ -121,6 +121,7 @@ export default function Dashboard() {
               year: "numeric",
             })}
             color="#1565C0"
+            onClick={() => navigate("/admin/leave-history")}
           />
         </Grid>
 
@@ -134,6 +135,7 @@ export default function Dashboard() {
               year: "numeric",
             })}
             color="#6A1B9A"
+            onClick={() => navigate("/admin/attendance")}
           />
         </Grid>
       </Grid>

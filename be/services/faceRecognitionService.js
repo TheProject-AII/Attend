@@ -87,9 +87,18 @@ async function parseFaceApiResponse(response) {
   }
 
   if (!response.ok) {
-    const error = new Error(
-      data.detail || data.message || `Face API error (${response.status})`,
-    );
+    let message =
+      data.detail || data.message || `Face API error (${response.status})`;
+
+    if (
+      response.status === 422 &&
+      String(message).toLowerCase().includes("face could not be detected")
+    ) {
+      message =
+        "No face detected. Make sure your face is clearly visible and in front of the camera.";
+    }
+
+    const error = new Error(message);
 
     error.status = response.status;
     error.code =
@@ -107,7 +116,7 @@ async function parseFaceApiResponse(response) {
 
 async function postFaceApi(endpoint, form) {
   if (!FACE_API_URL || !FACE_API_KEY) {
-    const error = new Error("Konfigurasi Face Recognition belum lengkap.");
+    const error = new Error("Face Recognition configuration is incomplete.");
     error.code = "FACE_API_CONFIG";
     throw error;
   }
@@ -141,7 +150,7 @@ async function enrollEmployeeFace(userId, selfiePath) {
   );
 
   if (!userResult.rows.length || userResult.rows[0].status !== true) {
-    const error = new Error("Akun Employee Not Found atau tidak aktif.");
+    const error = new Error("Employee account not found or not active.");
     error.code = "EMPLOYEE_NOT_ACTIVE";
     throw error;
   }
@@ -149,21 +158,21 @@ async function enrollEmployeeFace(userId, selfiePath) {
   const user = userResult.rows[0];
 
   if (user.face_embedding && user.face_enrolled_at) {
-    const error = new Error("Registrasi wajah sudah dilakukan.");
+    const error = new Error("Face registration has already been completed.");
     error.code = "FACE_ALREADY_ENROLLED";
     throw error;
   }
 
   if (!user.photo) {
     const error = new Error(
-      "Foto referensi belum tersedia. Hubungi HR untuk memperbarui foto profil.",
+      "Reference photo is not available. Please contact HR to update your profile photo.",
     );
     error.code = "FACE_REFERENCE_MISSING";
     throw error;
   }
 
   if (!selfiePath) {
-    throw new Error("Foto selfie registrasi tidak ditemukan.");
+    throw new Error("Selfie photo for registration not found.");
   }
 
   const referenceBuffer = await getReferencePhoto(user.photo);
@@ -200,7 +209,7 @@ async function enrollEmployeeFace(userId, selfiePath) {
       (value) => typeof value === "number" && Number.isFinite(value),
     )
   ) {
-    throw new Error("Face API mengembalikan embedding yang tidak valid.");
+    throw new Error("Face API returned an invalid embedding.");
   }
 
   // Simpan hanya jika foto referensi belum berubah saat proses berlangsung.
@@ -220,7 +229,7 @@ async function enrollEmployeeFace(userId, selfiePath) {
 
   if (!saveResult.rows.length) {
     const error = new Error(
-      "Data foto atau status registrasi berubah. Muat ulang lalu coba kembali.",
+      "If your photo or registration status has changed, please reload the page and try again.",
     );
     error.code = "FACE_ENROLLMENT_CONFLICT";
     throw error;
@@ -247,7 +256,7 @@ async function verifyAttendanceFace(userId, selfiePath) {
   );
 
   if (!userResult.rows.length) {
-    const error = new Error("Akun karyawan tidak aktif atau tidak ditemukan.");
+    const error = new Error("Employee account not found or not active.");
     error.code = "EMPLOYEE_NOT_ACTIVE";
     throw error;
   }
@@ -255,7 +264,7 @@ async function verifyAttendanceFace(userId, selfiePath) {
   const user = userResult.rows[0];
 
   if (!user.face_embedding || !user.face_enrolled_at) {
-    const error = new Error("Registrasi wajah belum dilakukan.");
+    const error = new Error("Face registration has not been completed.");
     error.code = "FACE_NOT_ENROLLED";
     throw error;
   }
