@@ -6,7 +6,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import CampaignIcon from "@mui/icons-material/Campaign";
-import SchoolIcon from "@mui/icons-material/MenuBook";
+import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 
 const menu = [
   {
@@ -36,6 +36,13 @@ const menu = [
     translationKey: "menu.lateCompensation",
     path: "/admin/attendance/late-compensation",
     icon: <CalendarMonthIcon />,
+    section: "management",
+  },
+  {
+    title: "Leave & Permission",
+    translationKey: "menu.leaveHistory",
+    icon: <AssignmentIndIcon />,
+    path: "/admin/leave-history",
     section: "management",
   },
   // {

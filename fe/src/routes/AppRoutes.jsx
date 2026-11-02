@@ -34,6 +34,7 @@ import Announcements from "../pages/dashboard/Announcements";
 import AttendanceLateCompensation from "../pages/attendance/AttendanceLateCompensation";
 import MyLateCompensation from "../pages/attendance/MyLateCompensation";
 import FaceEnrollment from "../pages/employee/FaceEnrollment";
+import LeaveHistory from "../pages/employee/LeaveHistory";
 
 export default function AppRoutes() {
   const token = localStorage.getItem("token");
@@ -135,6 +136,21 @@ export default function AppRoutes() {
             </ProtectedAdminRoute>
           }
         />
+
+        <Route
+          path="/admin/leave-history"
+          element={
+            <ProtectedAdminRoute>
+              <DashboardLayout
+                title="Leave & Permission History"
+                subtitle="Monitor employee leave and permission requests"
+              >
+                <LeaveHistory />
+              </DashboardLayout>
+            </ProtectedAdminRoute>
+          }
+        />
+
         <Route
           path="/admin/recap"
           element={

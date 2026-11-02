@@ -1441,7 +1441,7 @@ exports.createEditRequest = async (req, res) => {
                 a.check_out,
                 a.attendance_date,
 
-                u.supervisor_id
+                u.leader_id 
 
             FROM attendance a
 
@@ -1467,7 +1467,7 @@ exports.createEditRequest = async (req, res) => {
     // CEK SUPERVISOR
     // =========================
 
-    if (!attendance.supervisor_id) {
+    if (!attendance.leader_id) {
       return res.status(400).json({
         success: false,
         message: "Atasan untuk karyawan ini belum diatur.",
@@ -1598,7 +1598,7 @@ exports.createEditRequest = async (req, res) => {
             )
             `,
       [
-        attendance.supervisor_id,
+        attendance.leader_id,
 
         "Perubahan Absensi",
 

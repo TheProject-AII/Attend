@@ -127,6 +127,26 @@ const attendanceService = {
 
     return data;
   },
+  getLeaveHistory: async (params) => {
+    const { data } = await api.get("/leader/leave-history", {
+      params,
+    });
+
+    return data;
+  },
+  approveLeave: async (id, note) => {
+    const { data } = await api.patch(`/leader/leave/${id}/approve`, {
+      note,
+    });
+    return data;
+  },
+
+  rejectLeave: async (id, note) => {
+    const { data } = await api.patch(`/leader/leave/${id}/reject`, {
+      note,
+    });
+    return data;
+  },
   createEditRequest: async (payload) => {
     const { data } = await api.post("/attendance/edit-request", payload);
 

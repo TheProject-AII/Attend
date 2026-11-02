@@ -30,6 +30,7 @@ export default function EmployeeCreate({
   const [saving, setSaving] = useState(false);
   const [currentPhotoName, setCurrentPhotoName] = useState("");
   const [roles, setRoles] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [form, setForm] = useState({
     nik: "",
     name: "",
@@ -47,7 +48,7 @@ export default function EmployeeCreate({
     contract_end_date: "",
 
     company_id: "",
-    supervisor_id: "",
+    leader_id: "",
 
     photo: null,
     ktp: null,
@@ -60,6 +61,7 @@ export default function EmployeeCreate({
   useEffect(() => {
     if (open) {
       loadRoles();
+      loadEmployees();
     }
   }, [open]);
 
@@ -160,7 +162,7 @@ export default function EmployeeCreate({
 
         company_id: employee.company_id || "",
 
-        supervisor_id: employee.supervisor_id || "",
+        leader_id: employee.leader_id || "",
 
         // Existing file fields are left empty.
         photo: null,
@@ -205,6 +207,18 @@ export default function EmployeeCreate({
       }
     } catch (err) {
       console.error("GET ROLES ERROR:", err);
+    }
+  };
+
+  const loadEmployees = async () => {
+    try {
+      const result = await attendanceService.getEmployees();
+
+      if (result.success) {
+        setEmployees(result.data || []);
+      }
+    } catch (err) {
+      console.error("GET EMPLOYEES ERROR:", err);
     }
   };
 
@@ -254,8 +268,8 @@ export default function EmployeeCreate({
         formData.append("company_id", form.company_id);
       }
 
-      if (form.supervisor_id) {
-        formData.append("supervisor_id", form.supervisor_id);
+      if (form.leader_id) {
+        formData.append("leader_id", form.leader_id || "");
       }
 
       if (form.photo) {
@@ -644,6 +658,34 @@ export default function EmployeeCreate({
                 <MenuItem value={12}>
                   PT. Meraki Asa Khatulistiwa GANBARU
                 </MenuItem>
+              </TextField>
+            </Grid>
+
+            {/* DIRECT MANAGER */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                select
+                label="Direct Manager / Atasan Langsung"
+                name="leader_id"
+                value={form.leader_id ?? ""}
+                onChange={handleChange}
+              >
+                <MenuItem value="">No Manager</MenuItem>
+
+                {employees
+                  .filter(
+                    (item) =>
+                      String(item.id) !== String(employee?.id) &&
+                      String(item.job_level || "")
+                        .trim()
+                        .toLowerCase() === "manager",
+                  )
+                  .map((item) => (
+                    <MenuItem key={item.id} value={item.id}>
+                      {item.name} ({item.department || "No Department"})
+                    </MenuItem>
+                  ))}
               </TextField>
             </Grid>
             {/* ADDRESS */}

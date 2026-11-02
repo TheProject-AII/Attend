@@ -143,7 +143,7 @@ exports.create = async (req, res) => {
     // GET EMPLOYEE AND SUPERVISOR
     const employee = await pool.query(
       `
-      SELECT name, supervisor_id
+      SELECT name, leader_id
       FROM users
       WHERE id = $1
       `,
@@ -152,7 +152,7 @@ exports.create = async (req, res) => {
 
     const supervisor = employee.rows[0];
 
-    if (supervisor?.supervisor_id) {
+    if (supervisor?.leader_id) {
       await pool.query(
         `
         INSERT INTO notifications
@@ -166,7 +166,7 @@ exports.create = async (req, res) => {
         VALUES ($1, $2, $3, $4, $5)
         `,
         [
-          supervisor.supervisor_id,
+          supervisor.leader_id,
           "Pengajuan Baru",
           `${supervisor.name} mengajukan ${leave_type}.`,
           "LEAVE_PENDING",

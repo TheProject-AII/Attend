@@ -1,274 +1,104 @@
 const pool = require("../config/db");
 
-// exports.leaveRequests = async (req, res) => {
-//   try {
-//     const supervisorId = req.user.id;
-
-//     const status = req.query.status || "PENDING_SUPERVISOR";
-
-//     let sql = `
-//       SELECT
-
-//           lr.id,
-//           lr.leave_type,
-//           lr.start_date,
-//           lr.end_date,
-//           lr.reason,
-//           lr.attachment,
-//           lr.status,
-//           lr.created_at,
-//           lr.approved_at,
-
-//           u.id AS employee_id,
-//           u.name,
-//           u.email
-
-//       FROM leave_requests lr
-
-//       JOIN users u
-//       ON u.id = lr.user_id
-
-//       WHERE
-//           u.supervisor_id = $1
-//     `;
-
-//     const params = [supervisorId];
-//     if (status !== "ALL") {
-//       sql += ` AND lr.status = $2`;
-
-//       params.push(status);
-//     }
-
-//     sql += `
-//       ORDER BY lr.created_at DESC
-//     `;
-
-//     const result = await pool.query(sql, params);
-
-//     const summary = await pool.query(
-//       `
-//       SELECT
-
-//           COUNT(*) FILTER (
-//               WHERE lr.status='PENDING_SUPERVISOR'
-//           ) AS pending,
-
-//           COUNT(*) FILTER (
-//               WHERE lr.status='APPROVED'
-//           ) AS approved,
-
-//           COUNT(*) FILTER (
-//               WHERE lr.status='REJECTED'
-//           ) AS rejected,
-
-//           COUNT(*) AS total
-
-//       FROM leave_requests lr
-
-//       JOIN users u
-//       ON u.id = lr.user_id
-
-//       WHERE
-//       u.supervisor_id = $1
-//       `,
-//       [supervisorId],
-//     );
-
-//     return res.json({
-//       success: true,
-
-//       summary: summary.rows[0],
-
-//       data: result.rows,
-//     });
-//   } catch (err) {
-//     console.error(err);
-
-//     return res.status(500).json({
-//       success: false,
-//       message: err.message,
-//     });
-//   }
-// };
+const { getPrivateFileUrl } = require("../services/storageService");
 
 exports.leaveRequests = async (req, res) => {
   try {
-    const supervisorId = req.user.id;
-
+    const leaderId = Number(req.user.id);
     const status = req.query.status || "PENDING_SUPERVISOR";
 
-    let sql = `
-            SELECT
-                lr.id,
-                lr.leave_type,
-                lr.start_date,
-                lr.end_date,
-                lr.reason,
-                lr.attachment,
-                lr.status,
-                lr.created_at,
-                lr.approved_at,
-
-                u.id AS employee_id,
-                u.name,
-                u.email,
-
-                'LEAVE' AS request_type,
-
-                NULL::timestamp AS old_check_in,
-                NULL::timestamp AS new_check_in,
-                NULL::timestamp AS old_check_out,
-                NULL::timestamp AS new_check_out
-
-            FROM leave_requests lr
-
-            JOIN users u
-                ON u.id = lr.user_id
-
-            WHERE u.supervisor_id = $1
-        `;
-
-    const params = [supervisorId];
-
-    // =========================
-    // FILTER LEAVE
-    // =========================
+    const params = [leaderId];
+    let statusFilter = "";
 
     if (status !== "ALL") {
-      sql += `
-                AND lr.status = $2
-            `;
-
       params.push(status);
+      statusFilter = ` AND lr.status = $2`;
     }
 
-    // =========================
-    // ATTENDANCE EDIT
-    // =========================
+    const result = await pool.query(
+      `
+      SELECT
+        lr.id,
+        lr.leave_type,
+        lr.start_date,
+        lr.end_date,
+        lr.reason,
+        lr.attachment,
+        lr.status,
+        lr.created_at,
+        lr.approved_at,
+        u.id AS employee_id,
+        u.name,
+        u.email,
+        'LEAVE' AS request_type,
+        NULL::timestamp AS old_check_in,
+        NULL::timestamp AS new_check_in,
+        NULL::timestamp AS old_check_out,
+        NULL::timestamp AS new_check_out
+      FROM leave_requests lr
+      JOIN users u ON u.id = lr.user_id
+      WHERE u.leader_id = $1
+      ${statusFilter}
 
-    sql += `
+      UNION ALL
 
-            UNION ALL
+      SELECT
+        aer.id,
+        'PERUBAHAN ABSENSI' AS leave_type,
+        a.attendance_date AS start_date,
+        a.attendance_date AS end_date,
+        aer.reason,
+        NULL::text AS attachment,
+        aer.status,
+        aer.created_at,
+        aer.approved_at,
+        u.id AS employee_id,
+        u.name,
+        u.email,
+        'ATTENDANCE_EDIT' AS request_type,
+        aer.old_check_in,
+        aer.new_check_in,
+        aer.old_check_out,
+        aer.new_check_out
+      FROM attendance_edit_requests aer
+      JOIN users u ON u.id = aer.user_id
+      JOIN attendance a ON a.id = aer.attendance_id
+      WHERE u.leader_id = $1
+      ${status !== "ALL" ? "AND aer.status = $2" : ""}
 
-            SELECT
-                aer.id,
-
-                'PERUBAHAN ABSENSI'
-                    AS leave_type,
-
-                a.attendance_date
-                    AS start_date,
-
-                a.attendance_date
-                    AS end_date,
-
-                aer.reason,
-
-                NULL::text
-                    AS attachment,
-
-                aer.status,
-
-                aer.created_at,
-                aer.approved_at,
-
-                u.id AS employee_id,
-                u.name,
-                u.email,
-
-                'ATTENDANCE_EDIT'
-                    AS request_type,
-
-                aer.old_check_in,
-                aer.new_check_in,
-                aer.old_check_out,
-                aer.new_check_out
-
-            FROM attendance_edit_requests aer
-
-            JOIN users u
-                ON u.id = aer.user_id
-
-            JOIN attendance a
-                ON a.id = aer.attendance_id
-
-            WHERE u.supervisor_id = $1
-        `;
-
-    // =========================
-    // FILTER ATTENDANCE EDIT
-    // =========================
-
-    if (status !== "ALL") {
-      sql += `
-                AND aer.status = $2
-            `;
-    }
-
-    sql += `
-            ORDER BY created_at DESC
-        `;
-
-    const result = await pool.query(sql, params);
-
-    // =========================
-    // SUMMARY
-    // =========================
+      ORDER BY created_at DESC
+      `,
+      params,
+    );
 
     const summary = await pool.query(
       `
-            SELECT
+      SELECT
+        COUNT(*) FILTER (
+          WHERE request_status = 'PENDING_SUPERVISOR'
+        ) AS pending,
+        COUNT(*) FILTER (
+          WHERE request_status = 'APPROVED'
+        ) AS approved,
+        COUNT(*) FILTER (
+          WHERE request_status = 'REJECTED'
+        ) AS rejected,
+        COUNT(*) AS total
+      FROM (
+        SELECT lr.status AS request_status
+        FROM leave_requests lr
+        JOIN users u ON u.id = lr.user_id
+        WHERE u.leader_id = $1
 
-                COUNT(*) FILTER (
-                    WHERE request_status =
-                        'PENDING_SUPERVISOR'
-                ) AS pending,
+        UNION ALL
 
-                COUNT(*) FILTER (
-                    WHERE request_status =
-                        'APPROVED'
-                ) AS approved,
-
-                COUNT(*) FILTER (
-                    WHERE request_status =
-                        'REJECTED'
-                ) AS rejected,
-
-                COUNT(*) AS total
-
-            FROM (
-
-                -- LEAVE
-                SELECT
-                    lr.status AS request_status
-
-                FROM leave_requests lr
-
-                JOIN users u
-                    ON u.id = lr.user_id
-
-                WHERE
-                    u.supervisor_id = $1
-
-
-                UNION ALL
-
-
-                -- ATTENDANCE EDIT
-                SELECT
-                    aer.status AS request_status
-
-                FROM attendance_edit_requests aer
-
-                JOIN users u
-                    ON u.id = aer.user_id
-
-                WHERE
-                    u.supervisor_id = $1
-
-            ) requests
-            `,
-      [supervisorId],
+        SELECT aer.status AS request_status
+        FROM attendance_edit_requests aer
+        JOIN users u ON u.id = aer.user_id
+        WHERE u.leader_id = $1
+      ) requests
+      `,
+      [leaderId],
     );
 
     return res.json({
@@ -277,7 +107,7 @@ exports.leaveRequests = async (req, res) => {
       data: result.rows,
     });
   } catch (err) {
-    console.error(err);
+    console.error("LEAVE REQUESTS ERROR:", err);
 
     return res.status(500).json({
       success: false,
@@ -290,39 +120,46 @@ exports.leaveDetail = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const supervisorId = req.user.id;
+    const actorId = Number(req.user.id);
+    const role = String(req.user.role || "")
+      .trim()
+      .toLowerCase();
 
-    const result = await pool.query(
-      `
+    const isHR = ["hr", "admin hr"].includes(role);
+    const isManager = role === "manager";
+
+    if (!isHR && !isManager) {
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki akses.",
+      });
+    }
+
+    let sql = `
       SELECT
-
-          lr.*,
-
-          u.id AS employee_id,
-          u.name,
-          u.email,
-          u.department,
-          u.position,
-          u.photo,
-          u.leave_balance
-
+        lr.*,
+        u.id AS employee_id,
+        u.name,
+        u.email,
+        u.department,
+        u.position,
+        u.photo,
+        u.leave_balance
       FROM leave_requests lr
+      JOIN users u ON u.id = lr.user_id
+      WHERE lr.id = $1
+    `;
 
-      JOIN users u
-      ON u.id = lr.user_id
+    const params = [id];
 
-      WHERE
+    if (isManager) {
+      params.push(actorId);
+      sql += ` AND u.leader_id = $${params.length}`;
+    }
 
-          lr.id = $1
+    const result = await pool.query(sql, params);
 
-      AND
-
-          u.supervisor_id = $2
-      `,
-      [id, supervisorId],
-    );
-
-    if (result.rows.length === 0) {
+    if (!result.rows.length) {
       return res.status(404).json({
         success: false,
         message: "Data tidak ditemukan.",
@@ -334,7 +171,7 @@ exports.leaveDetail = async (req, res) => {
     const leaveDays =
       Math.ceil(
         (new Date(data.end_date) - new Date(data.start_date)) /
-        (1000 * 60 * 60 * 24),
+          (1000 * 60 * 60 * 24),
       ) + 1;
 
     const isAnnualLeave = data.leave_type === "CUTI";
@@ -346,16 +183,17 @@ exports.leaveDetail = async (req, res) => {
       : data.leave_balance;
 
     data.can_approve = isAnnualLeave ? data.leave_balance >= leaveDays : true;
+
     return res.json({
       success: true,
       data,
     });
   } catch (err) {
-    console.error(err);
+    console.error("LEAVE DETAIL ERROR:", err);
 
     return res.status(500).json({
       success: false,
-      message: err.message,
+      message: "Gagal mengambil detail pengajuan.",
     });
   }
 };
@@ -367,37 +205,40 @@ exports.approveLeave = async (req, res) => {
     await client.query("BEGIN");
 
     const { id } = req.params;
-    const {
-      note,
-      deduct_leave = false
-    } = req.body;
+    const { note, deduct_leave = false } = req.body;
 
-    const supervisorId = req.user.id;
+    const actorId = Number(req.user.id);
+    const role = String(req.user.role || "")
+      .trim()
+      .toLowerCase();
+
+    const isHR = ["hr", "admin hr"].includes(role);
+    const isManager = role === "manager";
+
+    if (!isHR && !isManager) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki akses approval.",
+      });
+    }
 
     const result = await client.query(
       `
-            SELECT
-
-                lr.*,
-
-                u.leave_balance,
-                u.supervisor_id
-
-            FROM leave_requests lr
-
-            JOIN users u
-            ON u.id = lr.user_id
-
-            WHERE lr.id = $1
-
-            FOR UPDATE
-            `,
+      SELECT
+        lr.*,
+        u.leave_balance,
+        u.leader_id
+      FROM leave_requests lr
+      JOIN users u ON u.id = lr.user_id
+      WHERE lr.id = $1
+      FOR UPDATE OF lr
+      `,
       [id],
     );
 
-    if (result.rows.length === 0) {
+    if (!result.rows.length) {
       await client.query("ROLLBACK");
-
       return res.status(404).json({
         success: false,
         message: "Pengajuan tidak ditemukan.",
@@ -406,18 +247,16 @@ exports.approveLeave = async (req, res) => {
 
     const leave = result.rows[0];
 
-    if (leave.supervisor_id !== supervisorId) {
+    if (isManager && Number(leave.leader_id) !== actorId) {
       await client.query("ROLLBACK");
-
       return res.status(403).json({
         success: false,
-        message: "Anda tidak memiliki akses.",
+        message: "Pengajuan ini bukan milik karyawan Anda.",
       });
     }
 
     if (leave.status !== "PENDING_SUPERVISOR") {
       await client.query("ROLLBACK");
-
       return res.status(400).json({
         success: false,
         message: "Pengajuan sudah diproses.",
@@ -427,33 +266,24 @@ exports.approveLeave = async (req, res) => {
     const leaveDays =
       Math.ceil(
         (new Date(leave.end_date) - new Date(leave.start_date)) /
-        (1000 * 60 * 60 * 24),
+          (1000 * 60 * 60 * 24),
       ) + 1;
 
-    const isAnnualLeave =
-      leave.leave_type === "CUTI";
+    const isAnnualLeave = leave.leave_type === "CUTI";
 
     const isSickLeaveDeducted =
-      leave.leave_type === "SAKIT" &&
-      deduct_leave === true;
+      leave.leave_type === "SAKIT" && deduct_leave === true;
 
-    const shouldDeductLeave =
-      isAnnualLeave ||
-      isSickLeaveDeducted;
+    const shouldDeductLeave = isAnnualLeave || isSickLeaveDeducted;
 
-    if (
-      shouldDeductLeave &&
-      leave.leave_balance < leaveDays
-    ) {
+    if (shouldDeductLeave && Number(leave.leave_balance) < leaveDays) {
       await client.query("ROLLBACK");
-
       return res.status(400).json({
         success: false,
         message: "Sisa cuti tidak mencukupi.",
       });
     }
 
-    // Kurangi saldo cuti
     if (shouldDeductLeave) {
       await client.query(
         `
@@ -465,45 +295,28 @@ exports.approveLeave = async (req, res) => {
       );
     }
 
-    // Approve
     await client.query(
       `
-    UPDATE leave_requests
-    SET
+      UPDATE leave_requests
+      SET
         status = 'APPROVED',
         approval_note = $1,
         approved_by = $2,
         approved_at = NOW(),
-        deduct_leave = $4
-    WHERE id = $3
-  `,
-      [
-        note,
-        supervisorId,
-        id,
-        deduct_leave
-      ],
+        deduct_leave = $3,
+        updated_at = NOW()
+      WHERE id = $4
+      `,
+      [note || null, actorId, shouldDeductLeave, id],
     );
 
     await client.query(
       `
-  INSERT INTO notifications
-  (
-      user_id,
-      title,
-      message,
-      type,
-      reference_id
-  )
-  VALUES
-  (
-      $1,
-      $2,
-      $3,
-      $4,
-      $5
-  )
-  `,
+      INSERT INTO notifications (
+        user_id, title, message, type, reference_id
+      )
+      VALUES ($1, $2, $3, $4, $5)
+      `,
       [
         leave.user_id,
         "Pengajuan Disetujui",
@@ -521,12 +334,11 @@ exports.approveLeave = async (req, res) => {
     });
   } catch (err) {
     await client.query("ROLLBACK");
-
-    console.error(err);
+    console.error("APPROVE LEAVE ERROR:", err);
 
     return res.status(500).json({
       success: false,
-      message: err.message,
+      message: "Gagal menyetujui pengajuan.",
     });
   } finally {
     client.release();
@@ -542,30 +354,37 @@ exports.rejectLeave = async (req, res) => {
     const { id } = req.params;
     const { note } = req.body;
 
-    const supervisorId = req.user.id;
+    const actorId = Number(req.user.id);
+    const role = String(req.user.role || "")
+      .trim()
+      .toLowerCase();
+
+    const isHR = ["hr", "admin hr"].includes(role);
+    const isManager = role === "manager";
+
+    if (!isHR && !isManager) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki akses approval.",
+      });
+    }
 
     const result = await client.query(
       `
-            SELECT
-
-                lr.*,
-                u.supervisor_id
-
-            FROM leave_requests lr
-
-            JOIN users u
-            ON u.id = lr.user_id
-
-            WHERE lr.id = $1
-
-            FOR UPDATE
-            `,
+      SELECT
+        lr.*,
+        u.leader_id
+      FROM leave_requests lr
+      JOIN users u ON u.id = lr.user_id
+      WHERE lr.id = $1
+      FOR UPDATE OF lr
+      `,
       [id],
     );
 
-    if (result.rows.length === 0) {
+    if (!result.rows.length) {
       await client.query("ROLLBACK");
-
       return res.status(404).json({
         success: false,
         message: "Pengajuan tidak ditemukan.",
@@ -574,18 +393,16 @@ exports.rejectLeave = async (req, res) => {
 
     const leave = result.rows[0];
 
-    if (leave.supervisor_id !== supervisorId) {
+    if (isManager && Number(leave.leader_id) !== actorId) {
       await client.query("ROLLBACK");
-
       return res.status(403).json({
         success: false,
-        message: "Anda tidak memiliki akses.",
+        message: "Pengajuan ini bukan milik karyawan Anda.",
       });
     }
 
     if (leave.status !== "PENDING_SUPERVISOR") {
       await client.query("ROLLBACK");
-
       return res.status(400).json({
         success: false,
         message: "Pengajuan sudah diproses.",
@@ -594,42 +411,31 @@ exports.rejectLeave = async (req, res) => {
 
     await client.query(
       `
-            UPDATE leave_requests
-            SET
-
-                status = 'REJECTED',
-                approval_note = $1,
-                approved_by = $2,
-                approved_at = NOW()
-
-            WHERE id = $3
-            `,
-      [note, supervisorId, id],
+      UPDATE leave_requests
+      SET
+        status = 'REJECTED',
+        approval_note = $1,
+        approved_by = $2,
+        approved_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $3
+      `,
+      [note || null, actorId, id],
     );
 
     await client.query(
       `
-  INSERT INTO notifications
-  (
-      user_id,
-      title,
-      message,
-      type,
-      reference_id
-  )
-  VALUES
-  (
-      $1,
-      $2,
-      $3,
-      $4,
-      $5
-  )
-  `,
+      INSERT INTO notifications (
+        user_id, title, message, type, reference_id
+      )
+      VALUES ($1, $2, $3, $4, $5)
+      `,
       [
         leave.user_id,
         "Pengajuan Ditolak",
-        `Pengajuan ${leave.leave_type} Anda ditolak.`,
+        note
+          ? `Pengajuan ${leave.leave_type} Anda ditolak. Alasan: ${note}`
+          : `Pengajuan ${leave.leave_type} Anda ditolak.`,
         "LEAVE_REJECTED",
         leave.id,
       ],
@@ -643,12 +449,11 @@ exports.rejectLeave = async (req, res) => {
     });
   } catch (err) {
     await client.query("ROLLBACK");
-
-    console.error(err);
+    console.error("REJECT LEAVE ERROR:", err);
 
     return res.status(500).json({
       success: false,
-      message: err.message,
+      message: "Gagal menolak pengajuan.",
     });
   } finally {
     client.release();
@@ -696,7 +501,7 @@ exports.attendanceEditDetail = async (req, res) => {
                 ON u.id = aer.user_id
 
             WHERE aer.id = $1
-              AND u.supervisor_id = $2
+              AND u.leader_id = $2
             `,
       [id, supervisorId],
     );
@@ -722,7 +527,6 @@ exports.attendanceEditDetail = async (req, res) => {
   }
 };
 
-
 exports.approveAttendanceEdit = async (req, res) => {
   const client = await pool.connect();
   let transactionStarted = false;
@@ -742,7 +546,7 @@ exports.approveAttendanceEdit = async (req, res) => {
         a.attendance_date,
         a.check_in,
         a.check_out,
-        u.supervisor_id,
+        u.leader_id AS supervisor_id,
         u.name
       FROM attendance_edit_requests aer
       JOIN attendance a
@@ -752,7 +556,7 @@ exports.approveAttendanceEdit = async (req, res) => {
       WHERE aer.id = $1
       FOR UPDATE OF aer
       `,
-      [id]
+      [id],
     );
 
     if (!requestResult.rows.length) {
@@ -767,9 +571,7 @@ exports.approveAttendanceEdit = async (req, res) => {
 
     const request = requestResult.rows[0];
 
-    if (
-      Number(request.supervisor_id) !== supervisorId
-    ) {
+    if (Number(request.supervisor_id) !== supervisorId) {
       await client.query("ROLLBACK");
       transactionStarted = false;
 
@@ -790,18 +592,14 @@ exports.approveAttendanceEdit = async (req, res) => {
     }
 
     // Kunci per karyawan.
-    await client.query(
-      "SELECT pg_advisory_xact_lock($1, $2)",
-      [17001, Number(request.user_id)]
-    );
+    await client.query("SELECT pg_advisory_xact_lock($1, $2)", [
+      17001,
+      Number(request.user_id),
+    ]);
 
-    const finalCheckIn =
-      request.new_check_in ??
-      request.check_in;
+    const finalCheckIn = request.new_check_in ?? request.check_in;
 
-    const finalCheckOut =
-      request.new_check_out ??
-      request.check_out;
+    const finalCheckOut = request.new_check_out ?? request.check_out;
 
     // Update jam absensi.
     // PostgreSQL menghitung keterlambatan
@@ -842,11 +640,7 @@ exports.approveAttendanceEdit = async (req, res) => {
 
       WHERE id = $3
       `,
-      [
-        finalCheckIn,
-        finalCheckOut,
-        request.attendance_id,
-      ]
+      [finalCheckIn, finalCheckOut, request.attendance_id],
     );
 
     await client.query(
@@ -860,7 +654,7 @@ exports.approveAttendanceEdit = async (req, res) => {
         updated_at = NOW()
       WHERE id = $2
       `,
-      [supervisorId, id]
+      [supervisorId, id],
     );
 
     // Rebuild saldo utang dan pembayaran FIFO.
@@ -868,11 +662,10 @@ exports.approveAttendanceEdit = async (req, res) => {
       reconcileEmployeeLateCompensation,
     } = require("../services/lateCompensationService");
 
-    const compensation =
-      await reconcileEmployeeLateCompensation(
-        client,
-        request.user_id
-      );
+    const compensation = await reconcileEmployeeLateCompensation(
+      client,
+      request.user_id,
+    );
 
     await client.query(
       `
@@ -891,7 +684,7 @@ exports.approveAttendanceEdit = async (req, res) => {
         "Pengajuan perubahan absensi Anda telah disetujui.",
         "ATTENDANCE_EDIT_APPROVED",
         request.id,
-      ]
+      ],
     );
 
     await client.query("COMMIT");
@@ -901,24 +694,17 @@ exports.approveAttendanceEdit = async (req, res) => {
       success: true,
       message: "Perubahan absensi berhasil disetujui.",
       compensation: {
-        totalLateMinutes:
-          compensation.total_late_minutes,
-        totalPaidMinutes:
-          compensation.total_paid_minutes,
-        outstandingMinutes:
-          compensation.outstanding_minutes,
+        totalLateMinutes: compensation.total_late_minutes,
+        totalPaidMinutes: compensation.total_paid_minutes,
+        outstandingMinutes: compensation.outstanding_minutes,
       },
     });
-
   } catch (err) {
     if (transactionStarted) {
       try {
         await client.query("ROLLBACK");
       } catch (rollbackError) {
-        console.error(
-          "APPROVE ATTENDANCE ROLLBACK:",
-          rollbackError
-        );
+        console.error("APPROVE ATTENDANCE ROLLBACK:", rollbackError);
       }
     }
 
@@ -926,15 +712,12 @@ exports.approveAttendanceEdit = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message:
-        "Gagal menyetujui perubahan absensi.",
+      message: "Gagal menyetujui perubahan absensi.",
     });
-
   } finally {
     client.release();
   }
 };
-
 
 exports.rejectAttendanceEdit = async (req, res) => {
   const client = await pool.connect();
@@ -951,7 +734,7 @@ exports.rejectAttendanceEdit = async (req, res) => {
       `
             SELECT
                 aer.*,
-                u.supervisor_id,
+                u.leader_id AS supervisor_id,
                 u.name
 
             FROM attendance_edit_requests aer
@@ -1057,5 +840,127 @@ exports.rejectAttendanceEdit = async (req, res) => {
     });
   } finally {
     client.release();
+  }
+};
+
+exports.adminLeaveHistory = async (req, res) => {
+  try {
+    const { start_date, end_date, employee, department, status, leave_type } =
+      req.query;
+
+    let sql = `
+      SELECT
+        lr.id,
+        lr.user_id AS employee_id,
+        u.name AS employee_name,
+        u.email,
+        u.department,
+        u.photo AS employee_photo,
+        u.position,
+
+        lr.leave_type,
+        lr.leave_category,
+        lr.start_date,
+        lr.end_date,
+        lr.reason,
+        lr.attachment,
+        lr.status,
+        lr.approval_note,
+        lr.created_at,
+        lr.approved_at,
+        lr.approved_by,
+
+        approver.name AS approved_by_name
+
+      FROM leave_requests lr
+
+      JOIN users u
+        ON u.id = lr.user_id
+
+      LEFT JOIN users approver
+        ON approver.id = lr.approved_by
+
+      WHERE 1 = 1
+    `;
+
+    const params = [];
+
+    if (start_date) {
+      params.push(start_date);
+      sql += ` AND lr.end_date >= $${params.length}`;
+    }
+
+    if (end_date) {
+      params.push(end_date);
+      sql += ` AND lr.start_date <= $${params.length}`;
+    }
+
+    if (employee) {
+      params.push(`%${employee}%`);
+      sql += ` AND u.name ILIKE $${params.length}`;
+    }
+
+    if (department) {
+      params.push(department);
+      sql += ` AND u.department = $${params.length}`;
+    }
+
+    if (status && status !== "ALL") {
+      params.push(status);
+      sql += ` AND lr.status = $${params.length}`;
+    }
+
+    if (leave_type && leave_type !== "ALL") {
+      params.push(leave_type);
+      sql += ` AND lr.leave_type = $${params.length}`;
+    }
+
+    sql += ` ORDER BY lr.created_at DESC`;
+
+    const result = await pool.query(sql, params);
+
+    // Generate private URL untuk foto setiap karyawan
+    const data = await Promise.all(
+      result.rows.map(async (request) => {
+        let employee_photo = null;
+        let attachment_url = null;
+
+        // URL foto karyawan
+        if (request.employee_photo) {
+          try {
+            employee_photo = await getPrivateFileUrl(request.employee_photo);
+          } catch (error) {
+            console.error("Gagal membuat URL foto:", error.message);
+          }
+        }
+
+        // URL attachment cuti/izin
+        if (request.attachment) {
+          try {
+            attachment_url = await getPrivateFileUrl(request.attachment);
+          } catch (error) {
+            console.error("Gagal membuat URL attachment:", error.message);
+          }
+        }
+
+        return {
+          ...request,
+          employee_photo,
+          attachment_url,
+        };
+      }),
+    );
+    return res.json({
+      success: true,
+      total: data.length,
+      data,
+    });
+  } catch (err) {
+    console.error("ADMIN LEAVE HISTORY ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil riwayat cuti dan izin.",
+    });
   }
 };
