@@ -47,3 +47,25 @@ jobs:
             -archivePath "$RUNNER_TEMP/HRIS.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
             archive
+
+      - name: Create Unsigned IPA
+        run: |
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -R "$RUNNER_TEMP/HRIS.xcarchive/Products/Applications/App.app" "$RUNNER_TEMP/Payload/"
+          cd "$RUNNER_TEMP"
+          zip -r HRIS-unsigned.ipa Payload
+
+      - name: Upload Unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: HRIS-Unsigned-IPA
+          path: ${{ runner.temp }}/HRIS-unsigned.ipa
+          retention-days: 7
+
+      - name: Upload iOS Archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: HRIS-iOS-Archive
+          path: ${{ runner.temp }}/HRIS.xcarchive
+          if-no-files-found: error
+          retention-days: 7
