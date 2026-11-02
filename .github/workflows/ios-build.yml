@@ -49,7 +49,7 @@ jobs:
             archive
 
      - name: Create Unsigned IPA
-        run: |
+       run: |
           mkdir -p "$RUNNER_TEMP/Payload"
           cp -R "$RUNNER_TEMP/HRIS.xcarchive/Products/Applications/App.app" "$RUNNER_TEMP/Payload/"
           cd "$RUNNER_TEMP"
