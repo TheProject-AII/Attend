@@ -10,6 +10,8 @@ import {
   Chip,
 } from "@mui/material";
 
+import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
+
 export default function LeaveDetailDialog({ open, onClose, data }) {
   if (!data) return null;
 
@@ -26,6 +28,12 @@ export default function LeaveDetailDialog({ open, onClose, data }) {
       (new Date(data.end_date) - new Date(data.start_date)) / 86400000,
     ) + 1,
   );
+
+  const handleViewAttachment = () => {
+    if (!data.attachment_url) return;
+
+    window.open(data.attachment_url, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -57,7 +65,7 @@ export default function LeaveDetailDialog({ open, onClose, data }) {
           <Divider />
 
           <BoxItem
-            title="🏥 Type"
+            title="Type"
             value={
               {
                 SAKIT: "Sick Leave",
@@ -71,21 +79,58 @@ export default function LeaveDetailDialog({ open, onClose, data }) {
             }
           />
 
+          {data.leave_category && (
+            <BoxItem
+              title="Leave Category"
+              value={
+                {
+                  TAHUNAN: "Annual Leave",
+                  MENIKAH: "Marriage",
+                  MELAHIRKAN: "Maternity Leave",
+                  KELUARGA_MENINGGAL: "Bereavement Leave",
+                }[data.leave_category] || data.leave_category
+              }
+            />
+          )}
+
           <BoxItem
-            title="📅 Date"
+            title="Date"
             value={`${formatDate(data.start_date)} - ${formatDate(data.end_date)}`}
           />
 
-          <BoxItem title="⏳ Duration" value={`${totalDays} days`} />
+          <BoxItem title="Duration" value={`${totalDays} days`} />
 
-          <BoxItem title="📝 Details" value={data.reason || "-"} />
+          <BoxItem title="Details" value={data.reason || "-"} />
 
-          <BoxItem
-            title="📎 Attachment"
-            value={data.attachment ? "Attached" : "-"}
-          />
+          <Divider />
 
-          <BoxItem title="💬 HR Notes" value={data.approval_note || "-"} />
+          <Stack spacing={1}>
+            <Typography variant="caption" color="text.secondary">
+              Attachment
+            </Typography>
+
+            {data.attachment ? (
+              data.attachment_url ? (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AttachFileRoundedIcon />}
+                  onClick={handleViewAttachment}
+                  sx={{ alignSelf: "flex-start" }}
+                >
+                  View Attachment
+                </Button>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Attachment URL unavailable
+                </Typography>
+              )
+            ) : (
+              <Typography fontWeight={600}>-</Typography>
+            )}
+          </Stack>
+
+          <BoxItem title="HR Notes" value={data.approval_note || "-"} />
         </Stack>
       </DialogContent>
 
