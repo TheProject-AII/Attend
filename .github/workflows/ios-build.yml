@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - production-sync
+      - main
     paths:
       - "fe/**"
       - ".github/workflows/ios-build.yml"
