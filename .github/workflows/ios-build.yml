@@ -47,3 +47,11 @@ jobs:
             -archivePath "$RUNNER_TEMP/HRIS.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
             archive
+
+      - name: Upload iOS Archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: HRIS-iOS-Archive
+          path: ${{ runner.temp }}/HRIS.xcarchive
+          if-no-files-found: error
+          retention-days: 7
