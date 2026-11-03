@@ -17,6 +17,7 @@ router.post(
   authController.changePassword,
 );
 router.get("/me", authMiddleware, authController.me);
+router.get("/positions", authMiddleware, authController.getPositions);
 router.get(
   "/hrga-leader",
   authMiddleware,

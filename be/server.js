@@ -47,6 +47,9 @@ const notificationRoutes = require("./routes/notificationRoute");
 const testRoutes = require("./routes/testRoutes");
 const overtimeRoutes = require("./routes/overtimeRoutes");
 const announcementRoutes = require("./routes/announRoute");
+const settingsRoutes = require("./routes/settingsRoutes");
+
+app.use("/api/settings", settingsRoutes);
 app.use("/api/overtime", overtimeRoutes);
 
 // ==============================

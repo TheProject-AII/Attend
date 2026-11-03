@@ -16,8 +16,8 @@ export default defineConfig({
       includeAssets: [
         "favicon.svg",
         "icons.svg",
-        "pwa-192x192.png",
-        "pwa-512x512.png",
+        "tapin.png",
+        "icon_pride.png",
       ],
       manifest: {
         id: "/",
@@ -33,20 +33,22 @@ export default defineConfig({
         start_url: "/",
         icons: [
           {
-            src: "pwa-192x192.png",
+            src: "/tapin.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any",
           },
           {
-            src: "pwa-512x512.png",
+            src: "/icon_pride.png",
             sizes: "512x512",
             type: "image/png",
+            purpose: "any",
           },
           {
-            src: "pwa-512x512.png",
+            src: "/icon_pride.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "maskable",
           },
         ],
       },

@@ -31,6 +31,8 @@ export default function EmployeeCreate({
   const [currentPhotoName, setCurrentPhotoName] = useState("");
   const [roles, setRoles] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [workingHours, setWorkingHours] = useState([]);
+  const [positions, setPositions] = useState([]);
   const [form, setForm] = useState({
     nik: "",
     name: "",
@@ -41,6 +43,7 @@ export default function EmployeeCreate({
     role_id: "",
     join_date: "",
     address: "",
+    working_hours_setting_id: "",
     job_description: "", // TAMBAHAN
     employee_type: "TETAP",
 
@@ -62,6 +65,8 @@ export default function EmployeeCreate({
     if (open) {
       loadRoles();
       loadEmployees();
+      loadWorkingHours();
+      loadPositions();
     }
   }, [open]);
 
@@ -135,6 +140,29 @@ export default function EmployeeCreate({
     </Box>
   );
 
+  const loadWorkingHours = async () => {
+    try {
+      const result = await attendanceService.getWorkingHoursSettings();
+
+      if (result.success) {
+        setWorkingHours(result.data || []);
+      }
+    } catch (err) {
+      console.error("GET WORKING HOURS ERROR:", err);
+    }
+  };
+
+  const loadPositions = async () => {
+    try {
+      const result = await attendanceService.getPositions();
+
+      if (result.success) {
+        setPositions(result.data || []);
+      }
+    } catch (err) {
+      console.error("GET POSITIONS ERROR:", err);
+    }
+  };
   useEffect(() => {
     if (mode === "edit" && employee) {
       setForm({
@@ -159,7 +187,7 @@ export default function EmployeeCreate({
         contract_end_date: employee.contract_end_date
           ? dayjs(employee.contract_end_date).format("YYYY-MM-DD")
           : "",
-
+        working_hours_setting_id: employee.working_hours_setting_id || "",
         company_id: employee.company_id || "",
 
         leader_id: employee.leader_id || "",
@@ -258,6 +286,10 @@ export default function EmployeeCreate({
       formData.append("address", form.address);
       formData.append("employee_type", form.employee_type);
       formData.append("job_description", form.job_description);
+      formData.append(
+        "working_hours_setting_id",
+        form.working_hours_setting_id,
+      );
       if (form.employee_type === "KONTRAK") {
         formData.append("contract_start_date", form.contract_start_date);
 
@@ -492,6 +524,7 @@ export default function EmployeeCreate({
                 onChange={handleChange}
               />
             </Grid>
+
             {/* DEPARTMENT */}
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
@@ -503,6 +536,7 @@ export default function EmployeeCreate({
                 onChange={handleChange}
               />
             </Grid>
+
             {/* POSITION */}
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
@@ -510,25 +544,13 @@ export default function EmployeeCreate({
                 required
                 select
                 label="Position"
-                name="role_id"
-                value={form.role_id}
-                onChange={(e) => {
-                  const selectedRoleId = e.target.value;
-
-                  const selectedRole = roles.find(
-                    (role) => String(role.id) === String(selectedRoleId),
-                  );
-
-                  setForm((prev) => ({
-                    ...prev,
-                    role_id: selectedRoleId,
-                    position: selectedRole?.name || "",
-                  }));
-                }}
+                name="position"
+                value={form.position}
+                onChange={handleChange}
               >
-                {roles.map((role) => (
-                  <MenuItem key={role.id} value={role.id}>
-                    {role.name}
+                {positions.map((item) => (
+                  <MenuItem key={item.position} value={item.position}>
+                    {item.position}
                   </MenuItem>
                 ))}
               </TextField>
@@ -684,6 +706,27 @@ export default function EmployeeCreate({
                   .map((item) => (
                     <MenuItem key={item.id} value={item.id}>
                       {item.name} ({item.department || "No Department"})
+                    </MenuItem>
+                  ))}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                required
+                select
+                label="Working Hours"
+                name="working_hours_setting_id"
+                value={form.working_hours_setting_id}
+                onChange={handleChange}
+              >
+                {workingHours
+                  .filter((item) => item.is_active)
+                  .map((item) => (
+                    <MenuItem key={item.id} value={item.id}>
+                      {item.work_schedule === "5_DAYS"
+                        ? "5 Hari Kerja (Senin–Jumat)"
+                        : "6 Hari Kerja (Senin–Sabtu)"}
                     </MenuItem>
                   ))}
               </TextField>

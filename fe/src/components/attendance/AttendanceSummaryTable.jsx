@@ -68,9 +68,9 @@ export default function AttendanceSummaryTable({
               <TableCell align="center">Permission</TableCell>
               <TableCell align="center">Sick Leave</TableCell>
 
-              <TableCell align="center">Alpha</TableCell>
+              {/* <TableCell align="center">Alpha</TableCell> */}
 
-              <TableCell>Attendance</TableCell>
+              <TableCell>% Attendance</TableCell>
 
               <TableCell align="center">Detail</TableCell>
             </TableRow>
@@ -205,14 +205,14 @@ export default function AttendanceSummaryTable({
                   <TableCell align="center">{item.sick}</TableCell>
 
                   <TableCell align="center">{item.permission}</TableCell>
-
+                  {/* 
                   <TableCell align="center">
                     <Chip
                       label={`${item.alpha} days`}
                       color={item.alpha > 0 ? "error" : "success"}
                       size="small"
                     />
-                  </TableCell>
+                  </TableCell> */}
 
                   <TableCell>
                     <LinearProgress

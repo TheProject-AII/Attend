@@ -28,7 +28,7 @@ import ResetPassword from "../pages/auth/ResetPassword";
 import Overtime from "../pages/employee/Overtime";
 import OvertimeApprovalDetail from "../pages/employee/OvertimeApprovalDetail";
 import OvertimeRecap from "../pages/dashboard/OvertimeRecap";
-import OvertimeSettings from "../pages/setting/OvertimeSettings";
+import OvertimeSettings from "../pages/setting/Settings";
 import OvertimeHistory from "../pages/employee/OvertimeHistory";
 import Announcements from "../pages/dashboard/Announcements";
 import AttendanceLateCompensation from "../pages/attendance/AttendanceLateCompensation";
