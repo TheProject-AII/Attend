@@ -1000,7 +1000,6 @@ exports.activateEmployee = async (req, res) => {
                 updated_at = NOW()
                 
             WHERE id = $1
-              AND role_id = 3
             RETURNING
                 id,
                 name,
