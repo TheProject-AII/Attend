@@ -1,7 +1,7 @@
 const fs = require("fs");
 const pool = require("../config/db");
 const haversine = require("../utils/haversine");
-const { verifyAttendanceFace } = require("../services/faceRecognitionService");
+// const { verifyAttendanceFace } = require("../services/faceRecognitionService");
 const fsPromises = require("fs/promises");
 const {
   processLateCompensation,
@@ -40,6 +40,23 @@ async function cleanupAttendanceSelfie(file) {
       console.error("Gagal menghapus selfie sementara:", err);
     }
   }
+}
+
+function validateMockLocation(req, res) {
+  const isMockLocation = String(req.body.is_mock_location ?? "").toLowerCase();
+
+  if (isMockLocation === "true") {
+    res.status(403).json({
+      success: false,
+      code: "MOCK_LOCATION_DETECTED",
+      message:
+        "Fake GPS terdeteksi. Matikan aplikasi GPS palsu sebelum melakukan absensi.",
+    });
+
+    return false;
+  }
+
+  return true;
 }
 
 /*
@@ -293,6 +310,10 @@ exports.checkIn = async (req, res) => {
 
   try {
     const userId = req.user.id;
+
+    if (!validateMockLocation(req, res)) {
+      return;
+    }
     const startedAt = performance.now();
 
     const logDuration = (label) => {
@@ -417,56 +438,6 @@ exports.checkIn = async (req, res) => {
         message: "Anda sudah Check In hari ini.",
       });
     }
-    const faceStart = performance.now();
-
-    let verification;
-
-    try {
-      verification = await verifyAttendanceFace(userId, req.file.path);
-    } catch (error) {
-      if (error.code === "FACE_NOT_ENROLLED") {
-        return res.status(409).json({
-          success: false,
-          code: "FACE_NOT_ENROLLED",
-          message:
-            "Registrasi wajah belum dilakukan. Silakan registrasi wajah terlebih dahulu.",
-        });
-      }
-      const causeCode = error.cause?.code || error.code;
-
-      if (
-        causeCode === "ECONNREFUSED" ||
-        causeCode === "ENOTFOUND" ||
-        causeCode === "ETIMEDOUT" ||
-        causeCode === "UND_ERR_CONNECT_TIMEOUT"
-      ) {
-        console.error("FACE AI SERVICE UNAVAILABLE:", error.message);
-
-        return res.status(503).json({
-          success: false,
-          code: "FACE_AI_UNAVAILABLE",
-          message:
-            "Face Recognition AI belum berjalan. Silakan hubungi administrator.",
-        });
-      }
-
-      throw error;
-    }
-
-    if (!verification.matched) {
-      return res.status(403).json({
-        success: false,
-        code: "FACE_NOT_MATCHED",
-        message: "Wajah tidak sesuai dengan pas foto karyawan.",
-      });
-    }
-
-    console.log(
-      `[CHECK-IN] Face Recognition: ${(
-        (performance.now() - faceStart) /
-        1000
-      ).toFixed(2)} detik`,
-    );
 
     const uploadStart = performance.now();
 
@@ -601,7 +572,9 @@ exports.checkOut = async (req, res) => {
 
   try {
     const { latitude, longitude } = req.body;
-
+    if (!validateMockLocation(req, res)) {
+      return;
+    }
     const lat = Number(latitude);
     const lng = Number(longitude);
 
@@ -648,27 +621,8 @@ exports.checkOut = async (req, res) => {
       });
     }
 
-    // Face Recognition tetap dijalankan sebelum
-    // mengubah data absensi.
-    const verification = await verifyAttendanceFace(userId, selfiePath);
-
-    console.log("CHECK OUT FACE RESULT:", {
-      userId,
-      matched: verification.matched,
-      distance: verification.distance,
-      threshold: verification.threshold,
-    });
-
-    if (!verification.matched) {
-      return res.status(403).json({
-        success: false,
-        message: "Wajah tidak sesuai dengan pas foto karyawan.",
-      });
-    }
-
     // Upload foto setelah wajah terverifikasi.
     uploadedPhotoKey = await uploadAttendanceSelfie(req.file);
-
     client = await pool.connect();
 
     await client.query("BEGIN");
@@ -730,25 +684,12 @@ exports.checkOut = async (req, res) => {
         console.error("CHECK OUT ROLLBACK ERROR:", rollbackError);
       }
     }
-    if (err.code === "FACE_NOT_ENROLLED") {
-      return res.status(409).json({
-        success: false,
-        code: "FACE_NOT_ENROLLED",
-        message:
-          "Registrasi wajah belum dilakukan. Silakan registrasi wajah terlebih dahulu.",
-      });
-    }
+
     console.error("CHECK OUT ERROR:", err);
 
-    const isFaceDetectionError = /face|wajah|detect|deteksi|pencahayaan/i.test(
-      err.message || "",
-    );
-
-    return res.status(isFaceDetectionError ? 422 : 500).json({
+    return res.status(500).json({
       success: false,
-      message: isFaceDetectionError
-        ? "Tampilkan satu wajah yang jelas dan cukup terang."
-        : "Check Out gagal. Silakan coba kembali.",
+      message: "Check Out gagal. Silakan coba kembali.",
     });
   } finally {
     if (client) {

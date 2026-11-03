@@ -108,6 +108,14 @@ const attendanceService = {
     const response = await api.get("/auth/roles");
     return response.data;
   },
+  getWorkingHoursSettings: async () => {
+    const { data } = await api.get("/settings/working-hours");
+    return data;
+  },
+  getPositions: async () => {
+    const { data } = await api.get("/auth/positions");
+    return data;
+  },
   createEmployee: async (formData) => {
     const { data } = await api.post("/auth/employees", formData);
     return data;

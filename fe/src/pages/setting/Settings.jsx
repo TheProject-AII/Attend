@@ -21,6 +21,10 @@ import {
   TableRow,
   TextField,
   Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import SaveIcon from "@mui/icons-material/Save";
@@ -116,48 +120,36 @@ function Section({ icon, title, open, onToggle, children }) {
   );
 }
 
-export default function OvertimeSettings() {
+export default function Settings() {
   const [openSection, setOpenSection] = useState("overtime");
-  const [weekdayRate, setWeekdayRate] = useState("");
-  const [weekendRate, setWeekendRate] = useState("");
-  const [overtimeLoading, setOvertimeLoading] = useState(true);
-  const [overtimeSaving, setOvertimeSaving] = useState(false);
   const [policyLoading, setPolicyLoading] = useState(true);
   const [policySaving, setPolicySaving] = useState(false);
   const [versions, setVersions] = useState([]);
+  const [workingHours, setWorkingHours] = useState([]);
+  const [workingHoursLoading, setWorkingHoursLoading] = useState(true);
+  const [workingHoursSaving, setWorkingHoursSaving] = useState(false);
+  const [editWorkingHours, setEditWorkingHours] = useState(null);
   const [policy, setPolicy] = useState({
     ...defaultPolicy,
     effective_date: nextJakartaDate(),
   });
 
-  const loadOvertime = useCallback(async () => {
-    setOvertimeLoading(true);
-    try {
-      const { data } = await api.get("/overtime/admin/settings");
-      setWeekdayRate(formatNumber(data?.data?.weekday_rate));
-      setWeekendRate(formatNumber(data?.data?.weekend_rate));
-    } catch (err) {
-      console.error("LOAD OVERTIME SETTINGS ERROR:", err);
-      Swal.fire(
-        "Failed",
-        errMessage(err, "Failed to load overtime rates."),
-        "error",
-      );
-    } finally {
-      setOvertimeLoading(false);
-    }
-  }, []);
-
   const loadPolicy = useCallback(async () => {
     setPolicyLoading(true);
+
     try {
       const { data } = await api.get("/late-compensation/settings");
+
       const list = Array.isArray(data?.versions) ? data.versions : [];
+
       setVersions(list);
+
       const latest = [...list].sort((a, b) =>
         dateOnly(b.effective_date).localeCompare(dateOnly(a.effective_date)),
       )[0];
+
       const source = latest || data?.data || defaultPolicy;
+
       setPolicy({
         ...defaultPolicy,
         office_start_time: timeOnly(source.office_start_time) || "08:00",
@@ -171,7 +163,8 @@ export default function OvertimeSettings() {
         effective_date: nextJakartaDate(),
       });
     } catch (err) {
-      console.error("LOAD LATE SETTINGS ERROR:", err);
+      console.error("LOAD LATE SETTINGS ERROR:", err.response?.data || err);
+
       Swal.fire(
         "Failed",
         errMessage(err, "Failed to load late-arrival settings."),
@@ -182,10 +175,30 @@ export default function OvertimeSettings() {
     }
   }, []);
 
+  const loadWorkingHours = useCallback(async () => {
+    setWorkingHoursLoading(true);
+
+    try {
+      const { data } = await api.get("/settings/working-hours");
+
+      setWorkingHours(data?.data || []);
+    } catch (err) {
+      console.error("LOAD WORKING HOURS ERROR:", err);
+
+      Swal.fire(
+        "Failed",
+        errMessage(err, "Failed to load working hours."),
+        "error",
+      );
+    } finally {
+      setWorkingHoursLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    loadOvertime();
     loadPolicy();
-  }, [loadOvertime, loadPolicy]);
+    loadWorkingHours();
+  }, [loadPolicy, loadWorkingHours]);
 
   const sortedVersions = useMemo(
     () =>
@@ -205,41 +218,6 @@ export default function OvertimeSettings() {
   const minEffectiveDate = nextJakartaDate();
   const updatePolicy = (key, value) =>
     setPolicy((prev) => ({ ...prev, [key]: value }));
-
-  const handleSaveOvertime = async () => {
-    const weekday = parseNumber(weekdayRate);
-    const weekend = parseNumber(weekendRate);
-    if (![weekday, weekend].every((n) => Number.isFinite(n) && n >= 0)) {
-      return Swal.fire(
-        "Check the Data",
-        "Overtime rates must be numbers greater than or equal to 0.",
-        "warning",
-      );
-    }
-    setOvertimeSaving(true);
-    try {
-      const response = await api.patch("/overtime/admin/settings", {
-        weekday_rate: weekday,
-        weekend_rate: weekend,
-      });
-      await Swal.fire({
-        icon: "success",
-        title: "Success",
-        text: response.data?.message || "Overtime rates saved.",
-        timer: 1500,
-        showConfirmButton: false,
-      });
-      await loadOvertime();
-    } catch (err) {
-      Swal.fire(
-        "Failed",
-        errMessage(err, "Failed to save overtime rates."),
-        "error",
-      );
-    } finally {
-      setOvertimeSaving(false);
-    }
-  };
 
   const handleSavePolicy = async () => {
     const tolerance = Number(policy.late_tolerance_minutes);
@@ -311,70 +289,63 @@ export default function OvertimeSettings() {
     }
   };
 
-  const currencyInput = (label, value, setter) => (
-    <TextField
-      fullWidth
-      size="small"
-      label={label}
-      value={value}
-      disabled={overtimeLoading || overtimeSaving}
-      onChange={(e) => {
-        const digits = e.target.value.replace(/\D/g, "");
-        setter(digits ? formatNumber(digits) : "");
-      }}
-      InputProps={{
-        startAdornment: <InputAdornment position="start">Rp</InputAdornment>,
-        endAdornment: <InputAdornment position="end">/ hour</InputAdornment>,
-      }}
-    />
-  );
+  const handleSaveWorkingHours = async () => {
+    if (!editWorkingHours) return;
 
+    const { id, office_start_time, office_end_time } = editWorkingHours;
+
+    if (!office_start_time || !office_end_time) {
+      return Swal.fire(
+        "Periksa Data",
+        "Jam masuk dan pulang wajib diisi.",
+        "warning",
+      );
+    }
+
+    if (office_start_time >= office_end_time) {
+      return Swal.fire(
+        "Periksa Jam",
+        "Jam pulang harus lebih besar dari jam masuk.",
+        "warning",
+      );
+    }
+
+    setWorkingHoursSaving(true);
+
+    try {
+      const response = await api.patch(`/settings/working-hours/${id}`, {
+        office_start_time,
+        office_end_time,
+      });
+
+      await Swal.fire({
+        icon: "success",
+        title: "Berhasil",
+        text: response.data?.message || "Jam kerja berhasil diperbarui.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+
+      setEditWorkingHours(null);
+      await loadWorkingHours();
+    } catch (err) {
+      Swal.fire(
+        "Gagal",
+        errMessage(err, "Gagal memperbarui jam kerja."),
+        "error",
+      );
+    } finally {
+      setWorkingHoursSaving(false);
+    }
+  };
   return (
     <Box>
       <Typography variant="h4" fontWeight={700} sx={{ mb: 0.5 }}>
         Settings
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Manage attendance and overtime system settings.
+        Manage attendance system settings.
       </Typography>
-
-      <Section
-        icon={<AccessTimeIcon />}
-        title="Overtime Settings"
-        open={openSection === "overtime"}
-        onToggle={() =>
-          setOpenSection(openSection === "overtime" ? null : "overtime")
-        }
-      >
-        <Box sx={{ maxWidth: 800 }}>
-          <Typography variant="h6" fontWeight={600}>
-            Overtime Rates
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mt: 0.5, mb: 2 }}
-          >
-            Rates are used to calculate overtime pay based on the duration of
-            overtime.
-          </Typography>
-          <Divider sx={{ mb: 3 }} />
-          <Stack spacing={2.5}>
-            {currencyInput("Monday – Friday", weekdayRate, setWeekdayRate)}
-            {currencyInput("Saturday – Sunday", weekendRate, setWeekendRate)}
-            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-              <Button
-                variant="contained"
-                startIcon={<SaveIcon />}
-                disabled={overtimeLoading || overtimeSaving}
-                onClick={handleSaveOvertime}
-              >
-                {overtimeSaving ? "Saving..." : "Save Settings"}
-              </Button>
-            </Box>
-          </Stack>
-        </Box>
-      </Section>
 
       <Section
         icon={<WorkHistoryIcon />}
@@ -386,10 +357,76 @@ export default function OvertimeSettings() {
           )
         }
       >
-        <Typography variant="body2" color="text.secondary">
-          General working-hour settings will be added here. Late compensation
-          hours can be configured in Attendance Settings below.
-        </Typography>
+        {workingHoursLoading ? (
+          <CircularProgress size={24} />
+        ) : (
+          <Grid container spacing={2}>
+            {["5_DAYS", "6_DAYS"].map((schedule) => {
+              const item = workingHours
+                .filter((row) => row.work_schedule === schedule)
+                .sort((a, b) =>
+                  dateOnly(b.effective_date).localeCompare(
+                    dateOnly(a.effective_date),
+                  ),
+                )[0];
+
+              return (
+                <Grid item xs={12} md={6} key={schedule}>
+                  <Card variant="outlined" sx={{ p: 2 }}>
+                    <Typography fontWeight={700}>
+                      {schedule === "5_DAYS" ? "5 Hari Kerja" : "6 Hari Kerja"}
+                    </Typography>
+
+                    <Typography variant="body2" color="text.secondary">
+                      {schedule === "5_DAYS"
+                        ? "Senin – Jumat"
+                        : "Senin – Sabtu"}
+                    </Typography>
+
+                    <Divider sx={{ my: 2 }} />
+
+                    <Typography variant="body2">
+                      Jam Masuk: {timeOnly(item?.office_start_time)}
+                    </Typography>
+
+                    <Typography variant="body2">
+                      Jam Pulang: {timeOnly(item?.office_end_time)}
+                    </Typography>
+
+                    <Typography variant="body2">
+                      Jam Kerja Mingguan: {item?.weekly_work_hours || 40} jam
+                    </Typography>
+
+                    <Typography variant="caption" color="text.secondary">
+                      Efektif: {displayDate(item?.effective_date)}
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        mt: 2,
+                      }}
+                    >
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() =>
+                          setEditWorkingHours({
+                            id: item.id,
+                            office_start_time: timeOnly(item.office_start_time),
+                            office_end_time: timeOnly(item.office_end_time),
+                          })
+                        }
+                      >
+                        Edit
+                      </Button>
+                    </Box>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
+        )}
       </Section>
 
       <Section
@@ -664,6 +701,69 @@ export default function OvertimeSettings() {
           </Stack>
         )}
       </Section>
+      <Dialog
+        open={Boolean(editWorkingHours)}
+        onClose={() => {
+          if (!workingHoursSaving) setEditWorkingHours(null);
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Edit Working Hours</DialogTitle>
+
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField
+              fullWidth
+              label="Jam Masuk"
+              type="time"
+              size="small"
+              value={editWorkingHours?.office_start_time || ""}
+              onChange={(e) =>
+                setEditWorkingHours((prev) => ({
+                  ...prev,
+                  office_start_time: e.target.value,
+                }))
+              }
+              InputLabelProps={{ shrink: true }}
+            />
+
+            <TextField
+              fullWidth
+              label="Jam Pulang"
+              type="time"
+              size="small"
+              value={editWorkingHours?.office_end_time || ""}
+              onChange={(e) =>
+                setEditWorkingHours((prev) => ({
+                  ...prev,
+                  office_end_time: e.target.value,
+                }))
+              }
+              InputLabelProps={{ shrink: true }}
+            />
+          </Stack>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            color="inherit"
+            onClick={() => setEditWorkingHours(null)}
+            disabled={workingHoursSaving}
+          >
+            Batal
+          </Button>
+
+          <Button
+            variant="contained"
+            startIcon={<SaveIcon />}
+            onClick={handleSaveWorkingHours}
+            disabled={workingHoursSaving}
+          >
+            {workingHoursSaving ? "Menyimpan..." : "Simpan"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

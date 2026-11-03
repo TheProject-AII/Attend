@@ -11,7 +11,6 @@ import * as faceapi from "@vladmandic/face-api";
 
 import {
   Box,
-  Button,
   Card,
   CardContent,
   Typography,
@@ -19,18 +18,14 @@ import {
   CircularProgress,
 } from "@mui/material";
 
-import CameraAltRoundedIcon from "@mui/icons-material/CameraAltRounded";
-import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
-
-const CameraCard = forwardRef(({ photo, setPhoto, loading }, ref) => {
+const CameraCard = forwardRef(({ photo, setPhoto }, ref) => {
   const webcamRef = useRef(null);
 
   const [modelReady, setModelReady] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState("");
-  const [brightness, setBrightness] = useState(null);
-  const [lightingWarning, setLightingWarning] = useState("");
 
+  // Load face detection model
   useEffect(() => {
     let mounted = true;
 
@@ -45,7 +40,7 @@ const CameraCard = forwardRef(({ photo, setPhoto, loading }, ref) => {
         console.error("Face model error:", err);
 
         if (mounted) {
-          setError("Failed to load the face detection model.");
+          setError("Gagal memuat model deteksi wajah.");
         }
       }
     };
@@ -57,38 +52,19 @@ const CameraCard = forwardRef(({ photo, setPhoto, loading }, ref) => {
     };
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const value = checkLighting();
-
-      if (value === null) return;
-
-      setBrightness(value);
-
-      if (value < 75) {
-        setLightingWarning(
-          "Lighting is too low. Please move to a brighter area.",
-        );
-      } else {
-        setLightingWarning("");
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
+  // Capture photo after validating face count
   const capture = async () => {
     setError("");
 
     if (!modelReady) {
-      setError("The face model is not ready yet.");
+      setError("Model deteksi wajah belum siap.");
       return null;
     }
 
     const video = webcamRef.current?.video;
 
     if (!video || video.readyState < 2) {
-      setError("The camera is not ready yet.");
+      setError("Kamera belum siap.");
       return null;
     }
 
@@ -104,31 +80,21 @@ const CameraCard = forwardRef(({ photo, setPhoto, loading }, ref) => {
       );
 
       if (faces.length === 0) {
-        setError("No face detected. Look toward the camera.");
+        setError("Wajah tidak terdeteksi. Silakan arahkan wajah ke kamera.");
         return null;
       }
 
       if (faces.length > 1) {
         setError(
-          "Multiple faces detected. Make sure you are alone in front of the camera.",
+          "Terdeteksi lebih dari satu wajah. Pastikan hanya ada satu orang di depan kamera.",
         );
         return null;
       }
 
-      const light = checkLighting();
-
-      if (light !== null && light < 75) {
-        setError(
-          "Lighting is too low. Find a brighter area before checking in.",
-        );
-        setPhoto(null);
-        return null;
-      }
-
-      const image = await webcamRef.current?.getScreenshot();
+      const image = webcamRef.current?.getScreenshot();
 
       if (!image) {
-        setError("Failed to take a photo.");
+        setError("Gagal mengambil foto. Silakan coba kembali.");
         return null;
       }
 
@@ -137,48 +103,11 @@ const CameraCard = forwardRef(({ photo, setPhoto, loading }, ref) => {
       return image;
     } catch (err) {
       console.error("Face detection error:", err);
-      setError("An error occurred while detecting your face.");
+      setError("Terjadi kesalahan saat mendeteksi wajah.");
       return null;
     } finally {
       setDetecting(false);
     }
-  };
-
-  const checkLighting = () => {
-    const video = webcamRef.current?.video;
-
-    if (!video || video.readyState < 2) {
-      return null;
-    }
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d", {
-      willReadFrequently: true,
-    });
-
-    if (!ctx) return null;
-
-    canvas.width = 160;
-    canvas.height = 120;
-
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-    let total = 0;
-    let count = 0;
-
-    // Sample every four pixels to reduce processing.
-    for (let i = 0; i < data.length; i += 16) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-
-      total += 0.2126 * r + 0.7152 * g + 0.0722 * b;
-      count++;
-    }
-
-    return Math.round(total / count);
   };
 
   useImperativeHandle(ref, () => ({
@@ -194,11 +123,6 @@ const CameraCard = forwardRef(({ photo, setPhoto, loading }, ref) => {
     },
   }));
 
-  const retake = () => {
-    setPhoto(null);
-    setError("");
-  };
-
   return (
     <Card elevation={2} sx={{ borderRadius: 2 }}>
       <CardContent>
@@ -210,7 +134,7 @@ const CameraCard = forwardRef(({ photo, setPhoto, loading }, ref) => {
             mb: 2,
           }}
         >
-          Make sure your face is clearly visible before continuing.
+          Pastikan wajah terlihat jelas di depan kamera sebelum melanjutkan.
         </Typography>
 
         {!modelReady && !error && (
@@ -225,7 +149,7 @@ const CameraCard = forwardRef(({ photo, setPhoto, loading }, ref) => {
           >
             <CircularProgress size={18} />
             <Typography variant="body2">
-              Loading face detection model...
+              Memuat model deteksi wajah...
             </Typography>
           </Box>
         )}
@@ -278,60 +202,11 @@ const CameraCard = forwardRef(({ photo, setPhoto, loading }, ref) => {
           )}
         </Box>
 
-        {/* Lighting warning */}
-        {!photo && lightingWarning && (
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            {lightingWarning}
-          </Alert>
-        )}
-
-        {/* {!photo && brightness !== null && (
-          <Typography variant="body2" color="text.secondary">
-            Lighting level: {brightness}/255
-          </Typography>
-        )} */}
-
         {detecting && (
-          <Typography variant="body2" sx={{ mt: 1, textAlign: "center" }}>
-            Checking your face...
+          <Typography variant="body2" sx={{ mt: 2, textAlign: "center" }}>
+            Memeriksa wajah...
           </Typography>
         )}
-        {detecting && (
-          <Typography variant="body2" sx={{ mt: 1, textAlign: "center" }}>
-            Checking your face...
-          </Typography>
-        )}
-
-        {/*
-                      Optional buttons.
-                      Attendance.jsx can still call
-                      cameraRef.current.capture()
-                    */}
-
-        {false &&
-          (photo ? (
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<ReplayRoundedIcon />}
-              disabled={loading}
-              onClick={retake}
-              sx={{ mt: 2 }}
-            >
-              Retake Photo
-            </Button>
-          ) : (
-            <Button
-              fullWidth
-              variant="contained"
-              startIcon={<CameraAltRoundedIcon />}
-              disabled={loading || detecting || !modelReady}
-              onClick={capture}
-              sx={{ mt: 2 }}
-            >
-              Take Photo
-            </Button>
-          ))}
       </CardContent>
     </Card>
   );
