@@ -133,7 +133,7 @@ export default function ForgotPassword() {
                   maxLength: 4,
                   pattern: "[0-9]{4}",
                 }}
-                helperText="Masukkan empat angka terakhir NIK Anda."
+                helperText="Insert the last 4 numbers of your NIK.."
                 disabled={loading}
               />
 
@@ -148,8 +148,8 @@ export default function ForgotPassword() {
                   borderRadius: 3,
                   textTransform: "none",
                   fontWeight: 600,
-                  bgcolor: "#16A34A",
-                  "&:hover": { bgcolor: "#15803D" },
+                  bgcolor: "#102E67",
+                  "&:hover": { bgcolor: "#638ef2" },
                 }}
               >
                 {loading ? "Memverifikasi..." : "Verifikasi Akun"}
@@ -162,7 +162,7 @@ export default function ForgotPassword() {
                 onClick={() => navigate("/")}
                 disabled={loading}
                 sx={{
-                  color: "#16A34A",
+                  color: "#102E67",
                   textTransform: "none",
                   fontWeight: 600,
                 }}
