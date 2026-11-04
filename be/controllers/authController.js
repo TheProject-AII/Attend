@@ -229,6 +229,7 @@ exports.me = async (req, res) => {
         u.position,
         u.photo,
         u.status,
+        u.nip,
         u.face_enrolled_at,
         (
           u.face_embedding IS NOT NULL
