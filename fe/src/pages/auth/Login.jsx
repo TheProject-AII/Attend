@@ -294,7 +294,8 @@ export default function Login() {
             color: "rgba(255,255,255,0.48)",
           }}
         >
-          © {new Date().getFullYear()} PT.xxxxx . All rights reserved.
+          ©{new Date().getFullYear()} PRIDE. All rights reserved. | Version
+          1.0.0 Beta
         </Typography>
       </Box>
 

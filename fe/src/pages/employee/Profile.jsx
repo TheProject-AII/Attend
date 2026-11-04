@@ -48,7 +48,8 @@ export default function Profile() {
       const token = localStorage.getItem("token");
 
       const result = await authService.getMe(token);
-
+      console.log("PROFILE DATA:", result.user);
+      console.log("PHOTO VALUE:", result.user?.photo);
       setUser(result.user);
     } catch (err) {
       console.error(err);
@@ -153,7 +154,7 @@ export default function Profile() {
           }}
         >
           <Avatar
-            src={user?.photo || ""}
+            src={user?.photo_url || ""}
             sx={{
               width: 90,
               height: 90,

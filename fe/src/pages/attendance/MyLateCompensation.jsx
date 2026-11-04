@@ -87,7 +87,7 @@ function MiniStat({ label, value, icon, color }) {
       variant="outlined"
       sx={{
         p: 2,
-        borderRadius: 3,
+        borderRadius: 1,
         minWidth: 0,
         height: "100%",
       }}
@@ -133,7 +133,7 @@ function HistoryCard({ item }) {
       variant="outlined"
       sx={{
         p: 2,
-        borderRadius: 3,
+        borderRadius: 1,
         bgcolor: "background.paper",
         borderColor: "divider",
         boxShadow: "none",
@@ -357,7 +357,7 @@ export default function MyLateCompensation() {
             <Card
               elevation={0}
               sx={{
-                borderRadius: 3,
+                borderRadius: 1,
                 bgcolor: "#ECFDF5",
                 border: "1px solid #BBF7D0",
               }}
@@ -370,7 +370,7 @@ export default function MyLateCompensation() {
                     alignItems="center"
                   >
                     <Typography fontSize={12} fontWeight={600} color="#166534">
-                      Sisa waktu yang perlu diganti
+                      Remaining time that needs to be replaced
                     </Typography>
 
                     <ScheduleRoundedIcon sx={{ color: "#16A34A" }} />
@@ -395,11 +395,11 @@ export default function MyLateCompensation() {
                     value={progress}
                     sx={{
                       height: 9,
-                      borderRadius: 3,
+                      borderRadius: 1,
                       bgcolor: "#BBF7D0",
                       "& .MuiLinearProgress-bar": {
                         bgcolor: "#16A34A",
-                        borderRadius: 3,
+                        borderRadius: 1,
                       },
                     }}
                   />
@@ -473,7 +473,7 @@ export default function MyLateCompensation() {
                   variant="outlined"
                   sx={{
                     p: 4,
-                    borderRadius: 3,
+                    borderRadius: 1,
                     textAlign: "center",
                   }}
                 >
