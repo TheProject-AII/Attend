@@ -195,6 +195,7 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
                   <TableCell>Employee</TableCell>
                   <TableCell>Check In</TableCell>
                   <TableCell>Check Out</TableCell>
+                  <TableCell>Auto Check Out</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Late (min)</TableCell>
                   <TableCell align="center">Detail</TableCell>
@@ -229,7 +230,7 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
                   ))
                 ) : data.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center">
+                    <TableCell colSpan={8} align="center">
                       No attendance records yet.
                     </TableCell>
                   </TableRow>
@@ -269,6 +270,18 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
                       </TableCell>
                       <TableCell>{formatTimeWIB(item.check_in)}</TableCell>
                       <TableCell>{formatTimeWIB(item.check_out)}</TableCell>
+                      <TableCell>
+                        {!item.check_out && item.auto_checkout_time ? (
+                          <Chip
+                            label={formatTimeWIB(item.auto_checkout_time)}
+                            size="small"
+                            color="warning"
+                            variant="outlined"
+                          />
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Chip
                           label={
@@ -401,6 +414,10 @@ export default function DailyAttendanceTable({ data = [], loading = false }) {
                   checkInLng={selectedAttendance.check_in_lng}
                   checkOutLat={selectedAttendance.check_out_lat}
                   checkOutLng={selectedAttendance.check_out_lng}
+                  autoCheckoutLat={selectedAttendance.auto_checkout_lat}
+                  autoCheckoutLng={selectedAttendance.auto_checkout_lng}
+                  autoCheckoutTime={selectedAttendance.auto_checkout_time}
+                  gpsCapturedAt={selectedAttendance.gps_captured_at}
                 />
               )}
             </Box>
