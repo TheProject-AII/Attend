@@ -1000,77 +1000,69 @@ exports.getEmployeeAttendance = async (req, res) => {
 };
 
 exports.getDailyAttendance = async (req, res) => {
-  const {
-    date,
+  const { date, department, status, search } = req.query;
 
-    department,
-
-    status,
-
-    search,
-  } = req.query;
   try {
-    // kalau frontend tidak kirim tanggal,
-    // otomatis pakai tanggal hari ini
     const queryDate = date || new Date().toISOString().slice(0, 10);
+
     const result = await pool.query(
       `
-    SELECT
-    u.id,
-    a.id AS attendance_id,
-    u.name,
-    u.department,
-    u.photo AS photo,
-      a.check_in AT TIME ZONE 'Asia/Jakarta' AS check_in,
-    a.check_out AT TIME ZONE 'Asia/Jakarta' AS check_out,
+      SELECT
+        u.id,
+        a.id AS attendance_id,
+        u.name,
+        u.department,
+        u.photo AS photo,
 
-    COALESCE(a.status,'Belum Check In') AS status,
+        a.check_in AT TIME ZONE 'Asia/Jakarta' AS check_in,
+        a.check_out AT TIME ZONE 'Asia/Jakarta' AS check_out,
 
-    COALESCE(a.is_late,false) AS is_late,
+        ac.auto_checkout_time AT TIME ZONE 'Asia/Jakarta' AS auto_checkout_time,
 
-    COALESCE(a.late_minutes,0) AS late_minutes,
+        COALESCE(a.status, 'Belum Check In') AS status,
+        COALESCE(a.is_late, false) AS is_late,
+        COALESCE(a.late_minutes, 0) AS late_minutes,
 
-    a.photo_path,
-    a.check_out_photo_path,
-    a.check_in_lat,
+        a.photo_path,
+        a.check_out_photo_path,
+        a.check_in_lat,
+        a.check_in_lng,
+        a.check_out_lat,
+        a.check_out_lng,
 
-    a.check_in_lng,
-    a.check_out_lat,
-    a.check_out_lng
+        ac.latitude AS auto_checkout_lat,
+        ac.longitude AS auto_checkout_lng,
+        ac.location_accuracy AS auto_checkout_accuracy,
+        ac.gps_captured_at
 
-FROM users u
+      FROM users u
 
-LEFT JOIN attendance a
-ON
-    a.user_id = u.id
-AND
-(
-    $1::date IS NULL
-    OR a.attendance_date = $1
-)
+      LEFT JOIN attendance a
+        ON a.user_id = u.id
+        AND a.attendance_date = $1
 
-WHERE
-    u.role_id = 3
+      LEFT JOIN attendance_auto_checkouts ac
+        ON ac.attendance_id = a.id
+        AND a.check_out IS NULL
 
-AND (
-    $2 = ''
-    OR u.department = $2
-)
+      WHERE
+        u.role_id = 3
 
-AND (
-    $3 = ''
-    OR COALESCE(a.status,'Belum Check In') = $3
-)
+        AND ($2 = '' OR u.department = $2)
 
-AND (
-    $4 = ''
-    OR LOWER(u.name) LIKE LOWER('%' || $4 || '%')
-)
+        AND (
+          $3 = ''
+          OR COALESCE(a.status, 'Belum Check In') = $3
+        )
 
-ORDER BY u.name;
+        AND (
+          $4 = ''
+          OR LOWER(u.name) LIKE LOWER('%' || $4 || '%')
+        )
 
-        `,
-      [queryDate, department, status, search],
+      ORDER BY u.name;
+      `,
+      [queryDate, department || "", status || "", search || ""],
     );
 
     const attendance = await Promise.all(

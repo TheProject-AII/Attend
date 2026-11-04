@@ -7,21 +7,22 @@ const createMarkerIcon = (color) =>
   L.divIcon({
     className: "attendance-marker",
     html: `
-            <div style="
-                background:${color};
-                width:20px;
-                height:20px;
-                border:3px solid white;
-                border-radius:50%;
-                box-shadow:0 2px 8px #0005;
-            "></div>
-        `,
+      <div style="
+        background:${color};
+        width:20px;
+        height:20px;
+        border:3px solid white;
+        border-radius:50%;
+        box-shadow:0 2px 8px #0005;
+      "></div>
+    `,
     iconSize: [26, 26],
     iconAnchor: [13, 13],
   });
 
 const checkInIcon = createMarkerIcon("#16a34a");
 const checkOutIcon = createMarkerIcon("#dc2626");
+const autoCheckoutIcon = createMarkerIcon("#f59e0b");
 
 function FitBounds({ positions }) {
   const map = useMap();
@@ -45,6 +46,10 @@ export default function AttendanceLocationMap({
   checkInLng,
   checkOutLat,
   checkOutLng,
+  autoCheckoutLat,
+  autoCheckoutLng,
+  autoCheckoutTime,
+  gpsCapturedAt,
 }) {
   const validCoordinate = (lat, lng) =>
     lat !== null &&
@@ -60,8 +65,9 @@ export default function AttendanceLocationMap({
 
   const hasCheckIn = validCoordinate(checkInLat, checkInLng);
   const hasCheckOut = validCoordinate(checkOutLat, checkOutLng);
+  const hasAutoCheckout = validCoordinate(autoCheckoutLat, autoCheckoutLng);
 
-  if (!hasCheckIn && !hasCheckOut) {
+  if (!hasCheckIn && !hasCheckOut && !hasAutoCheckout) {
     return <div>Attendance location is unavailable.</div>;
   }
 
@@ -73,13 +79,11 @@ export default function AttendanceLocationMap({
     ? [Number(checkOutLat), Number(checkOutLng)]
     : null;
 
-  const sameLocation =
-    hasCheckIn &&
-    hasCheckOut &&
-    inPosition[0] === outPosition[0] &&
-    inPosition[1] === outPosition[1];
+  const autoPosition = hasAutoCheckout
+    ? [Number(autoCheckoutLat), Number(autoCheckoutLng)]
+    : null;
 
-  const positions = [inPosition, outPosition].filter(Boolean);
+  const positions = [inPosition, outPosition, autoPosition].filter(Boolean);
 
   return (
     <div>
@@ -119,11 +123,30 @@ export default function AttendanceLocationMap({
             </Popup>
           </Marker>
         )}
+
+        {hasAutoCheckout && (
+          <Marker
+            position={autoPosition}
+            icon={autoCheckoutIcon}
+            zIndexOffset={200}
+          >
+            <Popup>
+              <strong>Auto Checkout</strong>
+              <br />
+              {autoPosition.join(", ")}
+              <br />
+              Waktu: {autoCheckoutTime || "-"}
+              <br />
+              GPS Captured: {gpsCapturedAt || "-"}
+            </Popup>
+          </Marker>
+        )}
       </MapContainer>
 
       <div
         style={{
           display: "flex",
+          flexWrap: "wrap",
           gap: 16,
           marginTop: 12,
           fontSize: 13,
@@ -131,7 +154,7 @@ export default function AttendanceLocationMap({
       >
         <span>🟢 Check In</span>
         <span>🔴 Check Out</span>
-        {sameLocation && <span>Same location (markers overlap)</span>}
+        <span>🟠 Auto Checkout</span>
       </div>
     </div>
   );

@@ -48,7 +48,9 @@ const testRoutes = require("./routes/testRoutes");
 const overtimeRoutes = require("./routes/overtimeRoutes");
 const announcementRoutes = require("./routes/announRoute");
 const settingsRoutes = require("./routes/settingsRoutes");
+const startAutoCheckoutJob = require("./jobs/attendanceAutoCheckout");
 
+startAutoCheckoutJob();
 app.use("/api/settings", settingsRoutes);
 app.use("/api/overtime", overtimeRoutes);
 
