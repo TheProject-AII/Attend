@@ -246,7 +246,7 @@ export default function Profile() {
       >
         <List disablePadding>
           {/* EDIT PROFILE */}
-          <ListItemButton onClick={() => navigate("/edit-profile")}>
+          <ListItemButton onClick={() => navigate("/employee/edit-profile")}>
             <ListItemIcon>
               <EditOutlinedIcon color="primary" />
             </ListItemIcon>
@@ -261,7 +261,7 @@ export default function Profile() {
 
           <Divider />
           {/* TENTANG PERUSAHAAN */}
-          <ListItemButton onClick={() => navigate("/about-company")}>
+          <ListItemButton onClick={() => navigate("/employee/about-company")}>
             <ListItemIcon>
               <BusinessOutlinedIcon color="primary" />
             </ListItemIcon>
@@ -277,7 +277,7 @@ export default function Profile() {
           <Divider />
 
           {/* BANTUAN & DUKUNGAN */}
-          <ListItemButton onClick={() => navigate("/support")}>
+          <ListItemButton>
             <ListItemIcon>
               <SupportAgentOutlinedIcon color="primary" />
             </ListItemIcon>
@@ -293,7 +293,7 @@ export default function Profile() {
           <Divider />
 
           {/* CHANGE PASSWORD */}
-          <ListItemButton>
+          <ListItemButton onClick={() => navigate("/forgot-password")}>
             <ListItemIcon>
               <LockOutlinedIcon color="primary" />
             </ListItemIcon>

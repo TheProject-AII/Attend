@@ -1515,3 +1515,103 @@ exports.getHRGALeader = async (req, res) => {
     });
   }
 };
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const {
+      name,
+      personal_email,
+      phone,
+      address,
+      place_of_birth,
+      date_of_birth,
+      gender,
+    } = req.body;
+
+    const cleanName = name?.trim();
+
+    if (!cleanName) {
+      return res.status(400).json({
+        success: false,
+        message: "Nama lengkap wajib diisi",
+      });
+    }
+
+    const cleanEmail = personal_email?.trim() || null;
+
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Format email pribadi tidak valid",
+      });
+    }
+
+    const allowedGender = ["Laki-laki", "Perempuan"];
+
+    if (gender && !allowedGender.includes(gender)) {
+      return res.status(400).json({
+        success: false,
+        message: "Jenis kelamin tidak valid",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE users
+      SET
+        name = $1,
+        personal_email = $2,
+        phone = $3,
+        address = $4,
+        place_of_birth = $5,
+        date_of_birth = $6,
+        gender = $7
+      WHERE id = $8
+      RETURNING
+        id,
+        nik,
+        name,
+        email,
+        personal_email,
+        phone,
+        address,
+        place_of_birth,
+        date_of_birth,
+        gender,
+        department,
+        position,
+        photo
+      `,
+      [
+        cleanName,
+        cleanEmail,
+        phone?.trim() || null,
+        address?.trim() || null,
+        place_of_birth?.trim() || null,
+        date_of_birth || null,
+        gender || null,
+        req.user.id,
+      ],
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "User tidak ditemukan",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Profil berhasil diperbarui",
+      user: result.rows[0],
+    });
+  } catch (err) {
+    console.error("UPDATE PROFILE ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal memperbarui profil",
+    });
+  }
+};
