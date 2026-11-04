@@ -194,33 +194,44 @@ export default function Login() {
 
         <Stack
           direction="row"
-          spacing={1.5}
+          spacing={3}
           alignItems="center"
           sx={{ zIndex: 1 }}
         >
-          <Box sx={{ zIndex: 1 }}>
-            <Box
-              component="img"
-              src="/icon/logo_hris_small.png"
-              alt="ATTEND Logo"
-              sx={{
-                width: 50,
-                height: "auto",
-                objectFit: "contain",
-                display: "block",
-                bgcolor: "#FFFFFF",
-                borderRadius: 2,
-                p: 1,
-              }}
-            />
-          </Box>
+          <Box
+            component="img"
+            src="icon/pride_dsb.png"
+            alt="PRIDE Logo"
+            sx={{
+              width: { md: 250, lg: 300 },
+              height: "auto",
+              objectFit: "contain",
+              display: "block",
+            }}
+          />
+
+          <Box
+            sx={{
+              width: "1px",
+              height: 65,
+              bgcolor: "rgba(255,255,255,0.7)",
+            }}
+          />
 
           <Box>
-            <Typography fontWeight={800} fontSize={20} letterSpacing={0.4}>
-              AII
+            <Typography
+              fontWeight={800}
+              fontSize={30}
+              color="#FFFFFF"
+              lineHeight={1.2}
+            >
+              HRIS
             </Typography>
-            <Typography fontSize={11} sx={{ opacity: 0.7 }}>
-              Human Resource Information System
+
+            <Typography fontSize={14} color="#FFFFFF" lineHeight={1.5}>
+              Human Resource
+              <br />
+              Information System
             </Typography>
           </Box>
         </Stack>
@@ -283,7 +294,8 @@ export default function Login() {
             color: "rgba(255,255,255,0.48)",
           }}
         >
-          © {new Date().getFullYear()} PT.xxxxx . All rights reserved.
+          ©{new Date().getFullYear()} PRIDE. All rights reserved. | Version
+          1.0.0 Beta
         </Typography>
       </Box>
 
@@ -303,42 +315,39 @@ export default function Login() {
         <Box sx={{ width: "100%", maxWidth: 420 }}>
           {/* MOBILE BRAND */}
           <Stack
-            direction="row"
-            spacing={1.5}
             alignItems="center"
-            sx={{ display: { xs: "flex", md: "none" }, mb: 7 }}
+            justifyContent="center"
+            sx={{
+              display: { xs: "flex", md: "none" },
+              width: "100%",
+              mb: 5,
+              textAlign: "center",
+            }}
           >
             <Box
+              component="img"
+              src="icon/pride_dsb.png"
+              alt="PRIDE"
               sx={{
-                display: { xs: "flex", md: "none" },
-                justifyContent: "center",
-                alignItems: "center",
-                mb: 2,
+                width: { xs: 280, sm: 320 },
+                maxWidth: "90%",
+                height: "auto",
+                display: "block",
+                mx: "auto",
+              }}
+            />
+
+            <Typography
+              sx={{
+                mt: 1,
+                fontSize: 13,
+                color: "#64748B",
+                textAlign: "center",
               }}
             >
-              <Box
-                component="img"
-                src="/icon/logo_hris_small.png"
-                alt="HR Management System"
-                sx={{
-                  width: { xs: 180, sm: 200 },
-                  maxWidth: "100%",
-                  height: "auto",
-                  objectFit: "contain",
-                  display: "block",
-                }}
-              />
-            </Box>
-            <Box>
-              <Typography fontSize={20} fontWeight={800} color="#102348">
-                AII
-              </Typography>
-              <Typography fontSize={10} color="#64748B">
-                Human Resource Information System
-              </Typography>
-            </Box>
+              Human Resource Information System
+            </Typography>
           </Stack>
-
           <Typography
             sx={{
               fontSize: { xs: 20, sm: 16 },
@@ -348,20 +357,20 @@ export default function Login() {
               color: "#0F172A",
             }}
           >
-            Welcome!
+            Good to See You!
           </Typography>
 
           <Typography
             sx={{
-              mt: 1.5,
+              mt: 0.5,
               mb: 2.5,
-              fontSize: 10,
+              fontSize: 14,
               lineHeight: 1.8,
               textAlign: "center",
               color: "#64748B",
             }}
           >
-            Sign in to continue.{" "}
+            Please Sign in to continue.{" "}
           </Typography>
 
           <Box component="form" onSubmit={handleLogin} noValidate>
@@ -408,31 +417,41 @@ export default function Login() {
                   justifyContent="space-between"
                   sx={{ mb: 1 }}
                 >
-                  <Typography
+                  <Box
                     sx={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: "#334155",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      width: "100%",
+                      mb: 1,
                     }}
                   >
-                    Password
-                  </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#334155",
+                        lineHeight: "18px",
+                      }}
+                    >
+                      Password
+                    </Typography>
 
-                  <Button
-                    type="button"
-                    onClick={() => navigate("/forgot-password")}
-                    sx={{
-                      textTransform: "none",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: "#2455AA",
-                      p: 0,
-                      pl: 2,
-                      minWidth: 0,
-                    }}
-                  >
-                    Forgot password?
-                  </Button>
+                    <Typography
+                      component="span"
+                      onClick={() => navigate("/forgot-password")}
+                      sx={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "#2455AA",
+                        lineHeight: "18px",
+                        cursor: "pointer",
+                        display: "block",
+                      }}
+                    >
+                      Forgot password?
+                    </Typography>
+                  </Box>
                 </Stack>
 
                 <TextField
@@ -523,7 +542,8 @@ export default function Login() {
               color: "#94A3B8",
             }}
           >
-            © {new Date().getFullYear()} HRIS Version 1.0.0
+            ©{new Date().getFullYear()} PRIDE. All rights reserved. | Version
+            1.0.0 Beta
           </Typography>
         </Box>
       </Box>

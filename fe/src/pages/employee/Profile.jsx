@@ -25,9 +25,11 @@ import { useNavigate } from "react-router-dom";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import authService from "../../services/authService";
 import { useAuth } from "../../context/AuthContext";
+import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
+import SupportAgentOutlinedIcon from "@mui/icons-material/SupportAgentOutlined";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 
 export default function Profile() {
   const { user, setUser } = useAuth();
@@ -48,7 +50,8 @@ export default function Profile() {
       const token = localStorage.getItem("token");
 
       const result = await authService.getMe(token);
-
+      console.log("PROFILE DATA:", result.user);
+      console.log("PHOTO VALUE:", result.user?.photo);
       setUser(result.user);
     } catch (err) {
       console.error(err);
@@ -144,129 +147,152 @@ export default function Profile() {
     <Box sx={{ p: 2 }}>
       <Card
         sx={{
-          borderRadius: 2,
+          borderRadius: 1,
+          overflow: "hidden",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
         }}
       >
-        <CardContent
-          sx={{
-            textAlign: "center",
-          }}
-        >
-          <Avatar
-            src={user?.photo || ""}
+        <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
+          <Box
             sx={{
-              width: 90,
-              height: 90,
-              boxShadow: "0 8px 25px rgba(22,163,74,.25)",
-              mx: "auto",
-              mb: 2,
-              bgcolor: "#16A34A",
-              fontSize: 34,
+              display: "flex",
+              alignItems: "stretch",
+              gap: 1.5,
             }}
           >
-            {user?.name?.charAt(0)}
-          </Avatar>
-
-          <Typography variant="h5" fontWeight={700}>
-            {user.name}
-          </Typography>
-
-          <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-            {user.position}
-          </Typography>
-
-          <Chip
-            label={user.department}
-            color="success"
-            size="small"
-            sx={{
-              mt: 2,
-              px: 1,
-            }}
-          />
-        </CardContent>
-      </Card>
-      <Card
-        sx={{
-          mt: 2,
-          borderRadius: 2,
-        }}
-      >
-        <CardContent>
-          <Box py={1}>
-            <Typography variant="caption" color="text.secondary">
-              NIK
-            </Typography>
-
-            <Typography variant="body1" fontWeight={600} mt={0.5}>
-              {user.nik}
-            </Typography>
-          </Box>
-
-          <Divider />
-
-          <Box py={2}>
-            <Typography variant="caption" color="text.secondary">
-              Email
-            </Typography>
-
-            <Typography
-              variant="body1"
-              fontWeight={600}
-              mt={0.5}
+            {/* FOTO PROFIL */}
+            <Avatar
+              src={user?.photo_url || ""}
+              alt={user?.name || "Profile"}
+              variant="rounded"
               sx={{
-                wordBreak: "break-word",
+                width: 125,
+                minWidth: 125,
+                height: 215,
+                borderRadius: 1.5,
+                fontSize: 36,
+                bgcolor: "primary.main",
+                "& img": {
+                  objectFit: "cover",
+                },
               }}
             >
-              {user.email}
-            </Typography>
-          </Box>
+              {user?.name?.charAt(0)}
+            </Avatar>
 
-          <Divider />
+            {/* INFORMASI PROFIL */}
+            <Box
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                gap: 0.65,
+                py: 0.3,
+              }}
+            >
+              <Typography
+                fontSize={16}
+                lineHeight={1.2}
+                sx={{
+                  fontSize: 16,
+                  fontWeight: "bold !important",
+                  fontFamily: "Arial, sans-serif",
+                }}
+              >
+                {user?.name || "-"}
+              </Typography>
 
-          <Box py={2}>
-            <Typography variant="caption" color="text.secondary">
-              Department
-            </Typography>
-
-            <Typography variant="body1" fontWeight={600} mt={0.5}>
-              {user.department}
-            </Typography>
-          </Box>
-
-          <Divider />
-
-          <Box py={2}>
-            <Typography variant="caption" color="text.secondary">
-              Position
-            </Typography>
-
-            <Typography variant="body1" fontWeight={600} mt={0.5}>
-              {user.position}
-            </Typography>
+              {[
+                { label: "NIK", value: user?.nik },
+                { label: "Department", value: user?.department },
+                { label: "Email", value: user?.email },
+                { label: "Job Level", value: user?.position },
+                { label: "NIP", value: user?.nip },
+              ].map((item) => (
+                <Box key={item.label}>
+                  <Typography
+                    sx={{
+                      fontSize: 10,
+                      color: "text.secondary",
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {item.label}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: 12.5,
+                      fontWeight: 500,
+                      lineHeight: 1.35,
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {item.value || "-"}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
           </Box>
         </CardContent>
       </Card>
+
       <Card
         sx={{
           mt: 2,
-          borderRadius: 2,
+          borderRadius: 1,
         }}
       >
         <List disablePadding>
-          <ListItemButton onClick={() => navigate("/overtime")}>
+          {/* EDIT PROFILE */}
+          <ListItemButton onClick={() => navigate("/edit-profile")}>
             <ListItemIcon>
-              <AccessTimeRoundedIcon color="primary" />
+              <EditOutlinedIcon color="primary" />
             </ListItemIcon>
 
             <ListItemText
-              primary="Overtime Summary"
-              secondary="View overtime history and payments"
+              primary="Edit Profile"
+              secondary="Update your personal information"
             />
 
             <ChevronRightRoundedIcon color="action" />
           </ListItemButton>
+
           <Divider />
+          {/* TENTANG PERUSAHAAN */}
+          <ListItemButton onClick={() => navigate("/about-company")}>
+            <ListItemIcon>
+              <BusinessOutlinedIcon color="primary" />
+            </ListItemIcon>
+
+            <ListItemText
+              primary="About Company"
+              secondary="Information and profile of the company"
+            />
+
+            <ChevronRightRoundedIcon color="action" />
+          </ListItemButton>
+
+          <Divider />
+
+          {/* BANTUAN & DUKUNGAN */}
+          <ListItemButton onClick={() => navigate("/support")}>
+            <ListItemIcon>
+              <SupportAgentOutlinedIcon color="primary" />
+            </ListItemIcon>
+
+            <ListItemText
+              primary="Help & Support"
+              secondary="Guides and assistance for using the application"
+            />
+
+            <ChevronRightRoundedIcon color="action" />
+          </ListItemButton>
+
+          <Divider />
+
+          {/* CHANGE PASSWORD */}
           <ListItemButton>
             <ListItemIcon>
               <LockOutlinedIcon color="primary" />
@@ -282,11 +308,10 @@ export default function Profile() {
 
           <Divider />
 
+          {/* LOG OUT */}
           <ListItemButton
             onClick={() => setOpenLogout(true)}
-            sx={{
-              color: "error.main",
-            }}
+            sx={{ color: "error.main" }}
           >
             <ListItemIcon>
               <LogoutRoundedIcon color="error" />
@@ -318,12 +343,8 @@ export default function Profile() {
           textAlign: "center",
         }}
       >
-        <Typography variant="body2" fontWeight={600} color="text.secondary">
-          Emp-Attendance
-        </Typography>
-
         <Typography variant="caption" color="text.secondary">
-          Version 1.0.0
+          ©{new Date().getFullYear()} PRIDE. All rights reserved.
         </Typography>
       </Box>
     </Box>

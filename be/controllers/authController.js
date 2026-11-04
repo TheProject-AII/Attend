@@ -218,26 +218,27 @@ exports.me = async (req, res) => {
   try {
     const result = await pool.query(
       `
-SELECT
-  u.id,
-  u.role_id,
-  r.name AS role,
-  u.nik,
-  u.name,
-  u.email,
-  u.department,
-  u.position,
-  u.photo,
-  u.status,
-  u.face_enrolled_at,
-  (
-    u.face_embedding IS NOT NULL
-    AND u.face_enrolled_at IS NOT NULL
-  ) AS face_enrolled
-FROM users u
-JOIN roles r ON r.id = u.role_id
-WHERE u.id = $1
-`,
+      SELECT
+        u.id,
+        u.role_id,
+        r.name AS role,
+        u.nik,
+        u.name,
+        u.email,
+        u.department,
+        u.position,
+        u.photo,
+        u.status,
+        u.nip,
+        u.face_enrolled_at,
+        (
+          u.face_embedding IS NOT NULL
+          AND u.face_enrolled_at IS NOT NULL
+        ) AS face_enrolled
+      FROM users u
+      JOIN roles r ON r.id = u.role_id
+      WHERE u.id = $1
+      `,
       [req.user.id],
     );
 
@@ -248,14 +249,29 @@ WHERE u.id = $1
       });
     }
 
-    res.json({
+    const user = result.rows[0];
+
+    let photoUrl = null;
+
+    if (user.photo) {
+      try {
+        photoUrl = await getPrivateFileUrl(user.photo);
+      } catch (photoError) {
+        console.error("Gagal membuat URL foto profil:", photoError.message);
+      }
+    }
+
+    return res.json({
       success: true,
-      user: result.rows[0],
+      user: {
+        ...user,
+        photo_url: photoUrl,
+      },
     });
   } catch (err) {
-    console.error(err);
+    console.error("GET PROFILE ERROR:", err);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Internal Server Error",
     });
