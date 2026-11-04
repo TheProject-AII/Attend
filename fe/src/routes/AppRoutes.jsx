@@ -35,6 +35,8 @@ import AttendanceLateCompensation from "../pages/attendance/AttendanceLateCompen
 import MyLateCompensation from "../pages/attendance/MyLateCompensation";
 import FaceEnrollment from "../pages/employee/FaceEnrollment";
 import LeaveHistory from "../pages/employee/LeaveHistory";
+import EditProfile from "../pages/employee/EditProfile";
+import AboutCompany from "../pages/employee/AboutCompany";
 
 export default function AppRoutes() {
   const token = localStorage.getItem("token");
@@ -244,8 +246,9 @@ export default function AppRoutes() {
           <Route path="approval/:id" element={<ApprovalDetail />} />
 
           <Route path="approval/attendance/:id" element={<ApprovalDetail />} />
-
+          <Route path="about-company" element={<AboutCompany />} />
           <Route path="profile" element={<EmployeeProfile />} />
+          <Route path="edit-profile" element={<EditProfile />} />
           <Route path="overtime" element={<Overtime />} />
         </Route>
         <Route path="/forgot-password" element={<ForgotPassword />} />

@@ -46,6 +46,17 @@ const authService = {
     const response = await api.get("/auth/hrga-leader");
     return response.data;
   },
+  updateProfile: async (data) => {
+    const token = localStorage.getItem("token");
+
+    const response = await api.put("/auth/profile", data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
+  },
   forgotPassword: async (email, nik_last4) => {
     const response = await api.post("/auth/forgot-password", {
       email,

@@ -10,6 +10,7 @@ router.post("/login", authController.login);
 router.post("/activity", authMiddleware, authController.recordActivity);
 router.post("/forgot-password", authController.forgotPassword);
 router.post("/reset-password", authController.resetPassword);
+router.put("/profile", authMiddleware, authController.updateProfile);
 router.post(
   "/change-password",
   authMiddleware,
