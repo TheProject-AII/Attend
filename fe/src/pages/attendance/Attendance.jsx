@@ -136,7 +136,7 @@ export default function Attendance() {
         icon: "success",
         title: "Check-in Successful",
         html: `
-        <b>${result.office}</b><br>
+        <b>${result.name}</b><br>
         Distance: ${result.distance} meters
       `,
         timer: 2000,

@@ -379,7 +379,7 @@ exports.checkIn = async (req, res) => {
     if (!officeResult.rows.length) {
       return res.status(400).json({
         success: false,
-        message: "Lokasi kantor belum diatur.",
+        message: "Office location has not been set.",
       });
     }
 
@@ -406,14 +406,14 @@ exports.checkIn = async (req, res) => {
     if (!allowedTypes.includes(normalizedType)) {
       return res.status(400).json({
         success: false,
-        message: "Jenis absensi tidak valid.",
+        message: "Attendance type is not valid.",
       });
     }
 
     if (normalizedType === "OFFICE" && distance > Number(office.radius)) {
       return res.status(400).json({
         success: false,
-        message: "Anda berada di luar radius kantor.",
+        message: "You are outside the office radius.",
         distance: Math.round(distance),
         radius: office.radius,
       });
@@ -430,12 +430,12 @@ exports.checkIn = async (req, res) => {
       `,
       [userId],
     );
-    logDuration("Validasi database selesai");
+    logDuration("Database validation complete");
 
     if (existing.rows.length) {
       return res.status(400).json({
         success: false,
-        message: "Anda sudah Check In hari ini.",
+        message: "You have already checked in today.",
       });
     }
 
@@ -534,13 +534,13 @@ RETURNING
     if (err.code === "23505") {
       return res.status(409).json({
         success: false,
-        message: "Anda sudah Check In hari ini.",
+        message: "You have already checked in today.",
       });
     }
 
     return res.status(500).json({
       success: false,
-      message: "Check In gagal. Silakan coba kembali.",
+      message: "Check-in failed. Please try again.",
     });
   } finally {
     if (uploadedPhotoKey && !attendanceSaved) {
@@ -597,7 +597,7 @@ exports.checkOut = async (req, res) => {
     if (!selfiePath) {
       return res.status(400).json({
         success: false,
-        message: "Selfie wajah wajib diambil untuk Check Out.",
+        message: "A facial selfie is required for check-out.",
       });
     }
 
@@ -617,7 +617,7 @@ exports.checkOut = async (req, res) => {
     if (!existing.rows.length) {
       return res.status(400).json({
         success: false,
-        message: "Anda belum Check In atau sudah Check Out.",
+        message: "You have not checked in or have already checked out.",
       });
     }
 
@@ -657,7 +657,8 @@ exports.checkOut = async (req, res) => {
 
       return res.status(409).json({
         success: false,
-        message: "Check Out sudah diproses atau data absensi berubah.",
+        message:
+          "Check-out has been processed, or attendance data has changed.",
       });
     }
 
@@ -689,7 +690,7 @@ exports.checkOut = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Check Out gagal. Silakan coba kembali.",
+      message: "Check-out failed. Please try again.",
     });
   } finally {
     if (client) {
@@ -1123,7 +1124,7 @@ exports.getAttendancePhoto = async (req, res) => {
     if (!["check-in", "check-out"].includes(type)) {
       return res.status(400).json({
         success: false,
-        message: "Jenis foto tidak valid.",
+        message: "Invalid photo type.",
       });
     }
 
@@ -1145,7 +1146,7 @@ exports.getAttendancePhoto = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Data absensi tidak ditemukan.",
+        message: "Attendance data not found.",
       });
     }
 
@@ -1158,7 +1159,7 @@ exports.getAttendancePhoto = async (req, res) => {
     if (!isAdmin && !isOwner) {
       return res.status(403).json({
         success: false,
-        message: "Anda tidak memiliki akses ke foto ini.",
+        message: "You do not have access to this photo.",
       });
     }
 
@@ -1171,7 +1172,7 @@ exports.getAttendancePhoto = async (req, res) => {
     if (!photoKey) {
       return res.status(404).json({
         success: false,
-        message: "Foto absensi belum tersedia.",
+        message: "Attendance photo is not available.",
       });
     }
 
@@ -1179,7 +1180,7 @@ exports.getAttendancePhoto = async (req, res) => {
     if (typeof photoKey !== "string" || !photoKey.startsWith("attendance/")) {
       return res.status(404).json({
         success: false,
-        message: "Foto lama belum tersedia di Neon Storage.",
+        message: "Old photo is not available in Storage.",
       });
     }
 
@@ -1198,7 +1199,7 @@ exports.getAttendancePhoto = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Gagal mengambil foto absensi.",
+      message: "Failed to retrieve attendance photo.",
     });
   }
 };
@@ -1351,21 +1352,21 @@ exports.createEditRequest = async (req, res) => {
     if (!attendance_id) {
       return res.status(400).json({
         success: false,
-        message: "ID absensi wajib diisi.",
+        message: "Attendance ID is required.",
       });
     }
 
     if (!new_check_in && !new_check_out) {
       return res.status(400).json({
         success: false,
-        message: "Jam masuk atau jam pulang wajib diisi.",
+        message: "Check-in time or check-out time is required.",
       });
     }
 
     if (!reason || !reason.trim()) {
       return res.status(400).json({
         success: false,
-        message: "Alasan perubahan wajib diisi.",
+        message: "Reason for change is required.",
       });
     }
 
@@ -1411,7 +1412,7 @@ exports.createEditRequest = async (req, res) => {
     if (!attendance.leader_id) {
       return res.status(400).json({
         success: false,
-        message: "Atasan untuk karyawan ini belum diatur.",
+        message: "Leader for this employee is not set.",
       });
     }
 
@@ -1438,7 +1439,7 @@ exports.createEditRequest = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "Pengajuan perubahan untuk absensi ini masih menunggu approval.",
+          "This request for an attendance change is still awaiting approval.",
       });
     }
 
@@ -1465,7 +1466,7 @@ exports.createEditRequest = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "Absensi ini sudah pernah dikoreksi dan tidak dapat diubah lagi.",
+          "This attendance has already been corrected and cannot be changed again.",
       });
     }
 
@@ -1553,7 +1554,7 @@ exports.createEditRequest = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Pengajuan perubahan absensi berhasil dikirim.",
+      message: "Attendance change request submitted successfully.",
       data: editRequest,
     });
   } catch (err) {

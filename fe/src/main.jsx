@@ -7,17 +7,19 @@ import App from "./App";
 import theme from "./config/theme";
 import { registerSW } from "virtual:pwa-register";
 import "./i18n";
+import "./assets/styles/app.css";
+
 registerSW({
-    immediate: true,
+  immediate: true,
 });
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-    <React.StrictMode>
-        <AuthProvider>
-            <ThemeProvider theme={theme}>
-                <CssBaseline />
-                <App />
-            </ThemeProvider>
-        </AuthProvider>
-    </React.StrictMode>
+  <React.StrictMode>
+    <AuthProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <App />
+      </ThemeProvider>
+    </AuthProvider>
+  </React.StrictMode>,
 );
