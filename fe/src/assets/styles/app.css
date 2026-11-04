@@ -1,0 +1,20 @@
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  touch-action: pan-x pan-y;
+}
+
+/* Mencegah double tap zoom */
+* {
+  touch-action: manipulation;
+}
+/* Prevent iOS input auto-zoom */
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
