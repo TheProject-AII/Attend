@@ -508,17 +508,76 @@ export default function EmployeeDetail({ open, employee, onClose }) {
                       value={frequency}
                       onChange={(_, value) => setFrequency(value)}
                       variant="fullWidth"
-                      sx={{ mb: 2 }}
+                      sx={{
+                        mb: 2,
+                        "& .MuiTabs-indicator": {
+                          display: "none",
+                        },
+                      }}
                     >
-                      {frequencies.map((item) => (
-                        <Tab
-                          key={item.value}
-                          value={item.value}
-                          label={item.label}
-                          sx={{ minWidth: 0, px: 0.5, fontSize: 12 }}
-                        />
-                      ))}
+                      {frequencies.map((item) => {
+                        const colors = {
+                          Daily: {
+                            bg: "#E8F1FF",
+                            color: "#2563EB",
+                          },
+                          Weekly: {
+                            bg: "#E5F8EF",
+                            color: "#16834A",
+                          },
+                          Monthly: {
+                            bg: "#FFF4DF",
+                            color: "#B7791F",
+                          },
+                          Yearly: {
+                            bg: "#F1EAFE",
+                            color: "#7545B8",
+                          },
+                          "Ad-hoc": {
+                            bg: "#FFE9E9",
+                            color: "#D14343",
+                          },
+                        };
+
+                        const theme = colors[item.label] || {
+                          bg: "#E8F1FF",
+                          color: "#2563EB",
+                        };
+
+                        return (
+                          <Tab
+                            key={item.value}
+                            value={item.value}
+                            label={item.label}
+                            sx={{
+                              minWidth: 0,
+                              minHeight: 42,
+                              px: 0.5,
+                              py: 1,
+                              mx: 0.2,
+                              borderRadius: 1.5,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              textTransform: "none",
+
+                              color: `${theme.color} !important`,
+                              backgroundColor: `${theme.bg} !important`,
+
+                              "&.Mui-selected": {
+                                color: `${theme.color} !important`,
+                                backgroundColor: `${theme.bg} !important`,
+                                boxShadow: `inset 0 0 0 1px ${theme.color}`,
+                              },
+
+                              "&:hover": {
+                                filter: "brightness(0.96)",
+                              },
+                            }}
+                          />
+                        );
+                      })}
                     </Tabs>
+
                     <Box
                       sx={{
                         flex: 1,
@@ -770,22 +829,6 @@ export default function EmployeeDetail({ open, employee, onClose }) {
                 </Grid>
               </Grid>
             </Grid>
-
-            {/* KOLOM KANAN: JOB DESCRIPTION
-            <Grid size={{ xs: 12, lg: 8 }}>
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: { xs: 2, md: 3 },
-                  borderRadius: 2,
-                  height: { xs: "auto", lg: "calc(90vh - 180px)" },
-                  minHeight: { xs: 400, lg: 400 },
-                  display: "flex",
-                  flexDirection: "column",
-                  overflow: "hidden",
-                }}
-              ></Paper>
-            </Grid> */}
           </Grid>
         </DialogContent>
       </Dialog>
