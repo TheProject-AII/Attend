@@ -24,7 +24,16 @@ export default function BottomNav() {
   ).toUpperCase();
 
   const roleId = Number(user?.role_id);
+  const isEmployee =
+    roleId === 3 || roleId === 4 || roleId === 5 || roleId === 6;
 
+  // Employee wajib menyelesaikan face enrollment terlebih dahulu.
+  const mustEnrollFace = isEmployee && user?.face_enrolled !== true;
+
+  // Sembunyikan Bottom Navigation selama enrollment belum selesai.
+  if (mustEnrollFace) {
+    return null;
+  }
   const canApproval =
     ["SUPERVISOR", "MANAGER"].includes(role) || [4, 5].includes(roleId);
   const [badge, setBadge] = useState(0);

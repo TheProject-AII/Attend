@@ -16,6 +16,8 @@ export function AuthProvider({ children }) {
       return null;
     }
 
+    setLoading(true);
+
     try {
       const data = await authService.getMe(token);
       const currentUser = data.user;

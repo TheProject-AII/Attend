@@ -22,8 +22,8 @@ export default defineConfig({
       manifest: {
         id: "/",
         name: "So-Mak Attendance",
-        short_name: "Attend",
-        description: "Aplikasi Absensi",
+        short_name: "Pride",
+        description: "Attendance and Leave Management System",
         theme_color: "#0d439a",
         background_color: "#ffffff",
         display: "standalone",
