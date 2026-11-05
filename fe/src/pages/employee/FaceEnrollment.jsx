@@ -11,12 +11,13 @@ import {
 import { CameraAltRounded, CheckCircleRounded } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { LogoutRounded } from "@mui/icons-material";
 
 export default function FaceEnrollment() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const navigate = useNavigate();
-  const { loadUser } = useAuth();
+  const { loadUser, setUser } = useAuth();
   const [cameraReady, setCameraReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -64,7 +65,27 @@ export default function FaceEnrollment() {
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
+  const handleLogout = async () => {
+    try {
+      // Minta backend menghapus sesi aktif employee
+      const token = localStorage.getItem("token");
 
+      if (token) {
+        await authService.logout(token);
+      }
+    } catch (err) {
+      console.error("Logout API error:", err);
+    } finally {
+      // Tetap logout lokal meskipun API gagal
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setUser(null);
+
+      // Tutup dialog dan kembali ke login
+      setOpenLogout(false);
+      window.location.replace("/");
+    }
+  };
   const handleEnrollment = async () => {
     setError("");
     setSuccess("");
@@ -286,7 +307,23 @@ export default function FaceEnrollment() {
           >
             {loading ? "Checking your face..." : "Enroll Face"}
           </Button>
-
+          <Button
+            fullWidth
+            variant="outlined"
+            color="error"
+            size="large"
+            onClick={handleLogout}
+            disabled={loading}
+            startIcon={<LogoutRounded />}
+            sx={{
+              py: 1.5,
+              borderRadius: 2.5,
+              textTransform: "none",
+              fontWeight: 700,
+            }}
+          >
+            Cancel
+          </Button>
           <Box
             sx={{
               width: "100%",
