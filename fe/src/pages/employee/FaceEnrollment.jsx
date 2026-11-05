@@ -10,12 +10,14 @@ import {
 } from "@mui/material";
 import { CameraAltRounded, CheckCircleRounded } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { LogoutRounded } from "@mui/icons-material";
 
 export default function FaceEnrollment() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const navigate = useNavigate();
-
+  const { loadUser, setUser } = useAuth();
   const [cameraReady, setCameraReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -63,7 +65,27 @@ export default function FaceEnrollment() {
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
+  const handleLogout = async () => {
+    try {
+      // Minta backend menghapus sesi aktif employee
+      const token = localStorage.getItem("token");
 
+      if (token) {
+        await authService.logout(token);
+      }
+    } catch (err) {
+      console.error("Logout API error:", err);
+    } finally {
+      // Tetap logout lokal meskipun API gagal
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setUser(null);
+
+      // Tutup dialog dan kembali ke login
+      setOpenLogout(false);
+      window.location.replace("/");
+    }
+  };
   const handleEnrollment = async () => {
     setError("");
     setSuccess("");
@@ -135,18 +157,19 @@ export default function FaceEnrollment() {
       }
 
       setSuccess("Face enrollment successful. Redirecting to attendance...");
+      await loadUser();
 
       // Store only non-sensitive status; do not store face embeddings.
-      const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      // const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
 
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          ...storedUser,
-          face_enrolled: true,
-          face_enrolled_at: result.data?.face_enrolled_at || null,
-        }),
-      );
+      // localStorage.setItem(
+      //   "user",
+      //   JSON.stringify({
+      //     ...storedUser,
+      //     face_enrolled: true,
+      //     face_enrolled_at: result.data?.face_enrolled_at || null,
+      //   }),
+      // );
 
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
@@ -178,15 +201,15 @@ export default function FaceEnrollment() {
           width: "100%",
           maxWidth: 480,
           p: { xs: 3, sm: 4 },
-          borderRadius: 4,
+          borderRadius: 2,
           border: "1px solid #E2E8F0",
         }}
       >
         <Stack spacing={2.5} alignItems="center">
           <Box
             sx={{
-              width: 58,
-              height: 58,
+              width: 40,
+              height: 40,
               borderRadius: 3,
               display: "grid",
               placeItems: "center",
@@ -197,15 +220,28 @@ export default function FaceEnrollment() {
             <CameraAltRounded fontSize="large" />
           </Box>
 
-          <Typography variant="h5" fontWeight={800} textAlign="center">
+          <Typography
+            variant="h5"
+            sx={{ fontSize: "18px", textAlign: "center", fontWeight: 700 }}
+          >
             Face Enrollment
           </Typography>
 
-          <Typography color="text.secondary" textAlign="center">
-            Take a selfie to match your face with the reference photo registered
-            with HR.
-          </Typography>
-
+          <Box
+            sx={{
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              textAlign: "center",
+              fontSize: "8px",
+            }}
+          >
+            <Typography sx={{ fontSize: "11px" }} textAlign="center">
+              Take a selfie to match your face with the reference photo
+              registered with HR.
+            </Typography>
+          </Box>
           <Box
             sx={{
               width: "100%",
@@ -213,6 +249,7 @@ export default function FaceEnrollment() {
               borderRadius: 3,
               bgcolor: "#0F172A",
               aspectRatio: "4 / 3",
+              textAlign: "center",
             }}
           >
             <video
@@ -225,7 +262,7 @@ export default function FaceEnrollment() {
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
-                transform: "scaleX(-1)",
+                transform: "none",
               }}
             />
           </Box>
@@ -270,15 +307,41 @@ export default function FaceEnrollment() {
           >
             {loading ? "Checking your face..." : "Enroll Face"}
           </Button>
-
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            textAlign="center"
+          <Button
+            fullWidth
+            variant="outlined"
+            color="error"
+            size="large"
+            onClick={handleLogout}
+            disabled={loading}
+            startIcon={<LogoutRounded />}
+            sx={{
+              py: 1.5,
+              borderRadius: 2.5,
+              textTransform: "none",
+              fontWeight: 700,
+            }}
           >
-            Make sure your face is clearly visible, lighting is adequate, and
-            only one person is in the frame.
-          </Typography>
+            Cancel
+          </Button>
+          <Box
+            sx={{
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              textAlign: "center",
+            }}
+          >
+            <Typography
+              variant="caption"
+              color="#fd0b0b"
+              sx={{ maxWidth: 320, color: "#fd0b0b" }}
+            >
+              Make sure your face is clearly visible, lighting is adequate, and
+              only one person is in the frame.
+            </Typography>
+          </Box>
         </Stack>
       </Paper>
     </Box>

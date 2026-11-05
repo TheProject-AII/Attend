@@ -25,16 +25,6 @@ import { useNavigate } from "react-router-dom";
 import authService from "../../services/authService";
 import { useAuth } from "../../context/AuthContext";
 
-const getRedirectPath = (role) => {
-  const normalizedRole = String(role || "")
-    .trim()
-    .toUpperCase();
-
-  return ["ADMIN", "HR", "ADMIN HR"].includes(normalizedRole)
-    ? "/dashboard"
-    : "/employee/attendance";
-};
-
 export default function Login() {
   const navigate = useNavigate();
   const { loadUser } = useAuth();
@@ -73,14 +63,6 @@ export default function Login() {
       setLoading(true);
 
       const response = await authService.login(email.trim(), password);
-
-      console.log("[LOGIN DEBUG]", {
-        response,
-        responseType: typeof response,
-        keys: Object.keys(response || {}),
-        tokenExists: !!response?.token,
-        dataTokenExists: !!response?.data?.token,
-      });
 
       const payload = response?.data ?? response;
       const token = payload?.token ?? payload?.access_token;

@@ -37,6 +37,7 @@ import FaceEnrollment from "../pages/employee/FaceEnrollment";
 import LeaveHistory from "../pages/employee/LeaveHistory";
 import EditProfile from "../pages/employee/EditProfile";
 import AboutCompany from "../pages/employee/AboutCompany";
+import RequireFaceEnrollment from "../routes/RequireFaceEnrollment";
 
 export default function AppRoutes() {
   const token = localStorage.getItem("token");
@@ -223,34 +224,48 @@ export default function AppRoutes() {
           path="/employee"
           element={
             <ProtectedEmployeeRoute>
-              <EmployeeLayout />
+              <RequireFaceEnrollment />
             </ProtectedEmployeeRoute>
           }
         >
-          <Route path="attendance" element={<EmployeeAttendance />} />
+          <Route element={<EmployeeLayout />}>
+            <Route path="attendance" element={<EmployeeAttendance />} />
 
-          <Route path="face-enrollment" element={<FaceEnrollment />} />
+            <Route path="face-enrollment" element={<FaceEnrollment />} />
 
-          <Route path="history" element={<EmployeeHistoryPage />} />
+            <Route path="history" element={<EmployeeHistoryPage />} />
 
-          <Route path="my-late-compensation" element={<MyLateCompensation />} />
+            <Route
+              path="my-late-compensation"
+              element={<MyLateCompensation />}
+            />
 
-          <Route path="leave" element={<Leave />} />
+            <Route path="leave" element={<Leave />} />
 
-          <Route path="approval" element={<Approval />} />
+            <Route path="approval" element={<Approval />} />
 
-          <Route
-            path="/employee/approval/overtime/:id"
-            element={<OvertimeApprovalDetail />}
-          />
-          <Route path="approval/:id" element={<ApprovalDetail />} />
+            <Route
+              path="approval/overtime/:id"
+              element={<OvertimeApprovalDetail />}
+            />
 
-          <Route path="approval/attendance/:id" element={<ApprovalDetail />} />
-          <Route path="about-company" element={<AboutCompany />} />
-          <Route path="profile" element={<EmployeeProfile />} />
-          <Route path="edit-profile" element={<EditProfile />} />
-          <Route path="overtime" element={<Overtime />} />
+            <Route path="approval/:id" element={<ApprovalDetail />} />
+
+            <Route
+              path="approval/attendance/:id"
+              element={<ApprovalDetail />}
+            />
+
+            <Route path="about-company" element={<AboutCompany />} />
+
+            <Route path="profile" element={<EmployeeProfile />} />
+
+            <Route path="edit-profile" element={<EditProfile />} />
+
+            <Route path="overtime" element={<Overtime />} />
+          </Route>
         </Route>
+
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         <Route path="/reset-password" element={<ResetPassword />} />
