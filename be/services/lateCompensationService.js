@@ -1,4 +1,3 @@
-
 /**
  * Automatic Late Compensation
  *
@@ -24,10 +23,10 @@ const OFFICE_START = "08:00:00";
 const OFFICE_END = "17:00:00";
 
 async function lockEmployee(client, userId) {
-    await client.query(
-        "SELECT pg_advisory_xact_lock($1, $2)",
-        [17001, Number(userId)]
-    );
+  await client.query("SELECT pg_advisory_xact_lock($1, $2)", [
+    17001,
+    Number(userId),
+  ]);
 }
 
 /**
@@ -36,136 +35,137 @@ async function lockEmployee(client, userId) {
  * Panggil setelah memperoleh advisory lock karyawan.
  * Fungsi ini tidak melakukan COMMIT atau ROLLBACK.
  */
-async function reconcileEmployeeLateCompensation(
-    client,
-    userId
-) {
-    const employeeId = Number(userId);
+async function reconcileEmployeeLateCompensation(client, userId) {
+  const employeeId = Number(userId);
 
-    if (!Number.isInteger(employeeId) || employeeId <= 0) {
-        throw new Error("User ID tidak valid");
-    }
+  if (!Number.isInteger(employeeId) || employeeId <= 0) {
+    throw new Error("User ID tidak valid");
+  }
 
-    // Ambil absensi lengkap dan urutkan dari paling lama.
-    // Semua perhitungan jam dilakukan PostgreSQL agar
-    // timestamp tanpa timezone tidak bergeser di Node.js.
-    const attendanceResult = await client.query(
-        `
-    SELECT
-      a.id,
-      a.user_id,
-      a.attendance_date,
-      a.attendance_type,
-      a.check_in,
-      a.check_out,
+  // Ambil absensi lengkap dan urutkan dari paling lama.
+  // Semua perhitungan jam dilakukan PostgreSQL agar
+  // timestamp tanpa timezone tidak bergeser di Node.js.
+  const attendanceResult = await client.query(
+    `
+  SELECT
+    a.id,
+    a.user_id,
+    a.attendance_date,
+    a.attendance_type,
+    a.check_in,
+    a.check_out,
 
-      CASE
-        WHEN UPPER(
-          COALESCE(a.attendance_type, 'OFFICE')
-        ) = 'OFFICE'
-        THEN GREATEST(
-          0,
-          CEIL(
-            EXTRACT(
-              EPOCH FROM (
-                a.check_in::time - $2::time
-              )
-            ) / 60
-          )
-        )::integer
-        ELSE 0
-      END AS calculated_late,
+    -- Keterlambatan masuk dari jam 08:00
+    CASE
+      WHEN UPPER(COALESCE(a.attendance_type, 'OFFICE')) = 'OFFICE'
+      THEN GREATEST(
+        0,
+        CEIL(
+          EXTRACT(
+            EPOCH FROM (a.check_in::time - $2::time)
+          ) / 60
+        )
+      )::integer
+      ELSE 0
+    END AS calculated_late,
 
-      CASE
-        WHEN UPPER(
-          COALESCE(a.attendance_type, 'OFFICE')
-        ) = 'OFFICE'
-        THEN GREATEST(
-          0,
-          FLOOR(
-            EXTRACT(
-              EPOCH FROM (
-                a.check_out::time - $3::time
-              )
-            ) / 60
-          )
-        )::integer
-        ELSE 0
-      END AS calculated_extra
+    -- Utang jika durasi kerja kurang dari 9 jam
+    CASE
+      WHEN UPPER(COALESCE(a.attendance_type, 'OFFICE')) = 'OFFICE'
+      THEN GREATEST(
+        0,
+        CEIL(
+          (
+            540 * 60 -
+            EXTRACT(EPOCH FROM (a.check_out - a.check_in))
+          ) / 60
+        )
+      )::integer
+      ELSE 0
+    END AS calculated_debt,
 
-    FROM attendance a
-    WHERE a.user_id = $1
-      AND a.check_in IS NOT NULL
-      AND a.check_out IS NOT NULL
+    -- Kelebihan durasi kerja untuk membayar utang FIFO
+    CASE
+      WHEN UPPER(COALESCE(a.attendance_type, 'OFFICE')) = 'OFFICE'
+      THEN GREATEST(
+        0,
+        FLOOR(
+          (
+            EXTRACT(EPOCH FROM (a.check_out - a.check_in)) -
+            540 * 60
+          ) / 60
+        )
+      )::integer
+      ELSE 0
+    END AS calculated_extra
 
-    ORDER BY
-      a.attendance_date ASC,
-      a.check_in ASC,
-      a.id ASC
+  FROM attendance a
+  WHERE a.user_id = $1
+    AND a.check_in IS NOT NULL
+    AND a.check_out IS NOT NULL
 
-    FOR UPDATE OF a
-    `,
-        [employeeId, OFFICE_START, OFFICE_END]
-    );
+  ORDER BY
+    a.attendance_date ASC,
+    a.check_in ASC,
+    a.id ASC
 
-    // Hapus ledger turunan milik karyawan.
-    // Semua dilakukan dalam satu transaksi:
-    // jika terjadi error, ledger lama kembali melalui rollback.
-    await client.query(
-        `
+  FOR UPDATE OF a
+  `,
+    [employeeId, OFFICE_START],
+  );
+
+  // Hapus ledger turunan milik karyawan.
+  // Semua dilakukan dalam satu transaksi:
+  // jika terjadi error, ledger lama kembali melalui rollback.
+  await client.query(
+    `
     DELETE FROM attendance_late_payments
     WHERE user_id = $1
     `,
-        [employeeId]
-    );
+    [employeeId],
+  );
 
-    await client.query(
-        `
+  await client.query(
+    `
     DELETE FROM attendance_late_debts
     WHERE user_id = $1
     `,
-        [employeeId]
-    );
+    [employeeId],
+  );
 
-    await client.query(
-        `
+  await client.query(
+    `
     DELETE FROM attendance_late_processing
     WHERE user_id = $1
     `,
-        [employeeId]
-    );
+    [employeeId],
+  );
 
-    const history = [];
+  const history = [];
 
-    for (const attendance of attendanceResult.rows) {
-        const attendanceId = Number(attendance.id);
-        const lateMinutes = Number(
-            attendance.calculated_late || 0
-        );
-        const extraMinutes = Number(
-            attendance.calculated_extra || 0
-        );
+  for (const attendance of attendanceResult.rows) {
+    const attendanceId = Number(attendance.id);
+    const lateMinutes = Number(attendance.calculated_late || 0);
 
-        // Sinkronkan kolom attendance dengan aturan 08:00.
-        await client.query(
-            `
+    const debtMinutes = Number(attendance.calculated_debt || 0);
+
+    const extraMinutes = Number(attendance.calculated_extra || 0);
+    // Sinkronkan kolom attendance dengan aturan 08:00.
+    await client.query(
+      `
       UPDATE attendance
       SET
         is_late = $1,
         late_minutes = $2
       WHERE id = $3
       `,
-            [
-                lateMinutes > 0,
-                lateMinutes,
-                attendanceId,
-            ]
-        );
+      [lateMinutes > 0, lateMinutes, attendanceId],
+    );
 
-        // Simpan utang keterlambatan baru.
-        if (lateMinutes > 0) {
-            await client.query(
-                `
+    // Simpan utang keterlambatan baru.
+    if (debtMinutes > 0) {
+      await client.query(
+        `
         INSERT INTO attendance_late_debts (
           attendance_id,
           user_id,
@@ -176,21 +176,16 @@ async function reconcileEmployeeLateCompensation(
         )
         VALUES ($1, $2, $3, $4, 0, 'UNPAID')
         `,
-                [
-                    attendanceId,
-                    employeeId,
-                    attendance.attendance_date,
-                    lateMinutes,
-                ]
-            );
-        }
+        [attendanceId, employeeId, attendance.attendance_date, debtMinutes],
+      );
+    }
 
-        let availableMinutes = extraMinutes;
-        let paidToday = 0;
+    let availableMinutes = extraMinutes;
+    let paidToday = 0;
 
-        // Ambil utang tertua yang belum lunas.
-        const debtResult = await client.query(
-            `
+    // Ambil utang tertua yang belum lunas.
+    const debtResult = await client.query(
+      `
       SELECT
         id,
         remaining_minutes
@@ -201,21 +196,21 @@ async function reconcileEmployeeLateCompensation(
       ORDER BY debt_date ASC, id ASC
       FOR UPDATE
       `,
-            [employeeId, attendance.attendance_date]
-        );
+      [employeeId, attendance.attendance_date],
+    );
 
-        for (const debt of debtResult.rows) {
-            if (availableMinutes <= 0) break;
+    for (const debt of debtResult.rows) {
+      if (availableMinutes <= 0) break;
 
-            const payment = Math.min(
-                availableMinutes,
-                Number(debt.remaining_minutes)
-            );
+      const payment = Math.min(
+        availableMinutes,
+        Number(debt.remaining_minutes),
+      );
 
-            if (payment <= 0) continue;
+      if (payment <= 0) continue;
 
-            await client.query(
-                `
+      await client.query(
+        `
         INSERT INTO attendance_late_payments (
           debt_id,
           attendance_id,
@@ -225,17 +220,17 @@ async function reconcileEmployeeLateCompensation(
         )
         VALUES ($1, $2, $3, $4, $5)
         `,
-                [
-                    debt.id,
-                    attendanceId,
-                    employeeId,
-                    attendance.attendance_date,
-                    payment,
-                ]
-            );
+        [
+          debt.id,
+          attendanceId,
+          employeeId,
+          attendance.attendance_date,
+          payment,
+        ],
+      );
 
-            await client.query(
-                `
+      await client.query(
+        `
         UPDATE attendance_late_debts
         SET
           paid_minutes = paid_minutes + $1,
@@ -247,37 +242,38 @@ async function reconcileEmployeeLateCompensation(
           updated_at = CURRENT_TIMESTAMP
         WHERE id = $2
         `,
-                [payment, debt.id]
-            );
+        [payment, debt.id],
+      );
 
-            availableMinutes -= payment;
-            paidToday += payment;
-        }
+      availableMinutes -= payment;
+      paidToday += payment;
+    }
 
-        // Tandai absensi sudah diproses,
-        // termasuk hari tanpa keterlambatan.
-        await client.query(
-            `
+    // Tandai absensi sudah diproses,
+    // termasuk hari tanpa keterlambatan.
+    await client.query(
+      `
       INSERT INTO attendance_late_processing (
         attendance_id,
         user_id
       )
       VALUES ($1, $2)
       `,
-            [attendanceId, employeeId]
-        );
+      [attendanceId, employeeId],
+    );
 
-        history.push({
-            attendanceId,
-            date: attendance.attendance_date,
-            lateMinutes,
-            extraMinutes,
-            paidToday,
-        });
-    }
+    history.push({
+      attendanceId,
+      date: attendance.attendance_date,
+      lateMinutes,
+      debtMinutes,
+      extraMinutes,
+      paidToday,
+    });
+  }
 
-    const summaryResult = await client.query(
-        `
+  const summaryResult = await client.query(
+    `
     SELECT
       COALESCE(SUM(late_minutes), 0)::integer
         AS total_late_minutes,
@@ -291,67 +287,64 @@ async function reconcileEmployeeLateCompensation(
     FROM attendance_late_debts
     WHERE user_id = $1
     `,
-        [employeeId]
-    );
+    [employeeId],
+  );
 
-    return {
-        userId: employeeId,
-        processedAttendance: history.length,
-        ...summaryResult.rows[0],
-        history,
-    };
+  return {
+    userId: employeeId,
+    processedAttendance: history.length,
+    ...summaryResult.rows[0],
+    history,
+  };
 }
 
 /**
  * Dipanggil dari Check-out.
  * Controller sudah melakukan BEGIN dan advisory lock.
  */
-async function processLateCompensation(
-    client,
-    attendanceId
-) {
-    const result = await client.query(
-        `
+async function processLateCompensation(client, attendanceId) {
+  const result = await client.query(
+    `
     SELECT
       id,
       user_id
     FROM attendance
     WHERE id = $1
     `,
-        [attendanceId]
-    );
+    [attendanceId],
+  );
 
-    if (!result.rows.length) {
-        throw new Error("Absensi tidak ditemukan");
-    }
+  if (!result.rows.length) {
+    throw new Error("Absensi tidak ditemukan");
+  }
 
-    const attendance = result.rows[0];
+  const attendance = result.rows[0];
 
-    const summary =
-        await reconcileEmployeeLateCompensation(
-            client,
-            attendance.user_id
-        );
+  const summary = await reconcileEmployeeLateCompensation(
+    client,
+    attendance.user_id,
+  );
 
-    const currentAttendance = summary.history.find(
-        (item) =>
-            Number(item.attendanceId) === Number(attendanceId)
-    );
+  const currentAttendance = summary.history.find(
+    (item) => Number(item.attendanceId) === Number(attendanceId),
+  );
 
-    return {
-        success: true,
-        attendanceId: Number(attendanceId),
-        lateMinutes: currentAttendance?.lateMinutes || 0,
-        extraMinutes: currentAttendance?.extraMinutes || 0,
-        paidToday: currentAttendance?.paidToday || 0,
-        totalLateMinutes: summary.total_late_minutes,
-        totalPaidMinutes: summary.total_paid_minutes,
-        outstandingMinutes: summary.outstanding_minutes,
-    };
+  return {
+    success: true,
+    attendanceId: Number(attendanceId),
+    lateMinutes: currentAttendance?.lateMinutes || 0,
+    debtMinutes: currentAttendance?.debtMinutes || 0,
+    extraMinutes: currentAttendance?.extraMinutes || 0,
+    paidToday: currentAttendance?.paidToday || 0,
+    totalLateMinutes: summary.total_late_minutes,
+    totalDebtMinutes: summary.total_late_minutes,
+    totalPaidMinutes: summary.total_paid_minutes,
+    outstandingMinutes: summary.outstanding_minutes,
+  };
 }
 
 module.exports = {
-    lockEmployee,
-    processLateCompensation,
-    reconcileEmployeeLateCompensation,
+  lockEmployee,
+  processLateCompensation,
+  reconcileEmployeeLateCompensation,
 };
