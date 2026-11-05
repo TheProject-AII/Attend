@@ -12,6 +12,7 @@ import { CameraAltRounded, CheckCircleRounded } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { LogoutRounded } from "@mui/icons-material";
+import authService from "../../services/authService";
 
 export default function FaceEnrollment() {
   const videoRef = useRef(null);
@@ -65,27 +66,41 @@ export default function FaceEnrollment() {
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
-  const handleLogout = async () => {
-    try {
-      // Minta backend menghapus sesi aktif employee
-      const token = localStorage.getItem("token");
 
+  const handleLogout = async () => {
+    const token = localStorage.getItem("token");
+
+    setError("");
+    setLoading(true);
+
+    try {
+      // Hapus session di backend terlebih dahulu
       if (token) {
         await authService.logout(token);
       }
     } catch (err) {
-      console.error("Logout API error:", err);
-    } finally {
-      // Tetap logout lokal meskipun API gagal
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      setUser(null);
-
-      // Tutup dialog dan kembali ke login
-      setOpenLogout(false);
-      window.location.replace("/");
+      console.error("Backend logout failed:", err);
+      setError(
+        err.response?.data?.message ||
+          "Logout server gagal. Silakan coba lagi.",
+      );
+      setLoading(false);
+      return;
     }
+
+    // Jika logout backend berhasil, bersihkan aplikasi
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    setUser(null);
+
+    // Reload aplikasi menuju login
+    window.location.replace("/");
   };
+
   const handleEnrollment = async () => {
     setError("");
     setSuccess("");
@@ -150,7 +165,24 @@ export default function FaceEnrollment() {
         },
       );
 
-      const result = await response.json();
+      const responseText = await response.text();
+
+      console.log("FACE ENROLLMENT STATUS:", response.status);
+      console.log("FACE ENROLLMENT RESPONSE:", responseText);
+
+      let result;
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        throw new Error(
+          "Backend mengembalikan response bukan JSON: " + responseText,
+        );
+      }
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Gagal melakukan registrasi wajah.");
+      }
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || "Face enrollment failed.");
@@ -189,9 +221,13 @@ export default function FaceEnrollment() {
     <Box
       sx={{
         minHeight: "100dvh",
-        display: "grid",
-        placeItems: "center",
-        p: 2,
+        boxSizing: "border-box",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "flex-start",
+        pt: { xs: 2, sm: 4 },
+        pb: 3,
+        px: 2,
         bgcolor: "#F5F7FB",
       }}
     >
@@ -248,7 +284,7 @@ export default function FaceEnrollment() {
               overflow: "hidden",
               borderRadius: 3,
               bgcolor: "#0F172A",
-              aspectRatio: "4 / 3",
+              aspectRatio: "3 / 3",
               textAlign: "center",
             }}
           >
@@ -322,7 +358,7 @@ export default function FaceEnrollment() {
               fontWeight: 700,
             }}
           >
-            Cancel
+            {loading ? "Logging out..." : "Cancel"}
           </Button>
           <Box
             sx={{

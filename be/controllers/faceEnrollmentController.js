@@ -91,7 +91,7 @@ exports.enroll = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Gagal melakukan registrasi wajah.",
+      message: "Failed to perform face enrollment.",
     });
   } finally {
     if (req.file?.path) {
