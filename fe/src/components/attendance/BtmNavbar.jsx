@@ -12,12 +12,22 @@ import notificationService from "../../services/notificationService";
 
 export default function BottomNav() {
   const { user } = useAuth();
+  console.log("=== DEBUG MANAGER NAV ===");
+  console.log("USER:", user);
+  console.log("ROLE:", user?.role);
+  console.log("ROLE ID:", user?.role_id);
+  console.log("ROLE NAME:", user?.role_name);
   const navigate = useNavigate();
   const location = useLocation();
-  const role = user?.role?.toUpperCase() || "";
-  const [badge, setBadge] = useState(0);
+  const role = String(
+    user?.role?.name || user?.role || user?.role_name || "",
+  ).toUpperCase();
 
-  const canApproval = ["SUPERVISOR", "MANAGER"].includes(role);
+  const roleId = Number(user?.role_id);
+
+  const canApproval =
+    ["SUPERVISOR", "MANAGER"].includes(role) || [4, 5].includes(roleId);
+  const [badge, setBadge] = useState(0);
   const menus = [
     {
       label: "Attendance",
@@ -103,13 +113,19 @@ export default function BottomNav() {
         }}
       >
         {menus.map((item) => {
-          const role = user?.role?.toLowerCase();
+          const currentRole = String(
+            user?.role?.name || user?.role || user?.role_name || "",
+          ).toUpperCase();
 
-          const isLeader = ["supervisor", "manager"].includes(role);
+          const currentRoleId = Number(user?.role_id);
+
+          const isLeader =
+            ["SUPERVISOR", "MANAGER"].includes(currentRole) ||
+            [4, 5].includes(currentRoleId);
 
           const showBadge =
             (isLeader && item.value === "/employee/approval") ||
-            (role === "employee" && item.value === "/employee/leave");
+            (currentRole === "EMPLOYEE" && item.value === "/employee/leave");
 
           return (
             <BottomNavigationAction

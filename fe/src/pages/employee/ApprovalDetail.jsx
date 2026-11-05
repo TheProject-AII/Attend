@@ -154,6 +154,21 @@ export default function ApprovalDetail() {
     });
   };
 
+  const handleViewAttachment = () => {
+    if (!detail?.attachment_url) {
+      console.error("Attachment URL tidak tersedia:", detail);
+
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: "Attachment URL is unavailable.",
+      });
+
+      return;
+    }
+
+    window.open(detail.attachment_url, "_blank", "noopener,noreferrer");
+  };
   return (
     <Box
       sx={{
@@ -304,10 +319,23 @@ export default function ApprovalDetail() {
               Attachment
             </Typography>
 
-            {detail.attachment ? (
-              <Button>View Attachment</Button>
+            {detail.attachment_url ? (
+              <Button
+                variant="outlined"
+                onClick={() =>
+                  window.open(
+                    detail.attachment_url,
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
+                }
+              >
+                View Attachment
+              </Button>
             ) : (
-              <Typography color="text.secondary">No attachment</Typography>
+              <Typography color="text.secondary">
+                Attachment URL unavailable
+              </Typography>
             )}
             {!isAttendanceEdit && detail.leave_type === "SAKIT" && (
               <>
