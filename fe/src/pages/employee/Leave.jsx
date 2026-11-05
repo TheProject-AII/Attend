@@ -327,25 +327,31 @@ export default function Leave() {
     // CUTI / IZIN / SAKIT
     // =====================================
 
-    if (!endDate) {
+    if (leaveType === "IZIN") {
+      if (!startTime || !endTime) {
+        Swal.fire({
+          icon: "warning",
+          title: "Permission hours are incomplete",
+          text: "Start and end times are required.",
+        });
+        return;
+      }
+
+      if (endTime <= startTime) {
+        Swal.fire({
+          icon: "warning",
+          title: "Invalid permission hours",
+          text: "End time must be later than start time.",
+        });
+        return;
+      }
+    } else if (!endDate) {
       Swal.fire({
         icon: "warning",
         title: "Date is incomplete",
       });
-
       return;
     }
-
-    // if (leaveType === "SAKIT" && !attachment) {
-
-    //     Swal.fire({
-    //         icon: "warning",
-    //         title: "Lampiran Wajib",
-    //         text: "Pengajuan sakit wajib melampirkan surat dokter."
-    //     });
-
-    //     return;
-    // }
 
     try {
       setSubmitLoading(true);
@@ -353,13 +359,21 @@ export default function Leave() {
       const formData = new FormData();
 
       formData.append("leave_type", leaveType);
+
       if (leaveType === "CUTI") {
         formData.append("leave_category", cutiType);
       }
 
       formData.append("start_date", startDate);
 
-      formData.append("end_date", endDate);
+      // Permission hanya menggunakan satu tanggal
+      formData.append("end_date", leaveType === "IZIN" ? startDate : endDate);
+
+      // Jam khusus Permission
+      if (leaveType === "IZIN") {
+        formData.append("start_time", startTime);
+        formData.append("end_time", endTime);
+      }
 
       formData.append("reason", reason);
 
@@ -368,6 +382,7 @@ export default function Leave() {
       }
 
       await leaveService.create(formData);
+
       // Tutup dialog pengajuan dulu
       setOpenDialog(false);
 

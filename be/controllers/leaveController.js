@@ -31,6 +31,37 @@ exports.create = async (req, res) => {
       });
     }
 
+    const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+    // PERMISSION
+    if (leave_type === "IZIN") {
+      if (!start_time || !end_time) {
+        return res.status(400).json({
+          success: false,
+          message: "Jam mulai dan selesai izin wajib diisi.",
+        });
+      }
+
+      if (start_date !== end_date) {
+        return res.status(400).json({
+          success: false,
+          message: "Permission hanya berlaku untuk satu hari.",
+        });
+      }
+
+      if (
+        !timePattern.test(start_time) ||
+        !timePattern.test(end_time) ||
+        start_time >= end_time
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Rentang jam permission tidak valid.",
+        });
+      }
+    }
+
+    // EARLY CHECKOUT PERMISSION
     if (leave_type === "IZIN_PULANG_AWAL") {
       if (!start_time || !end_time) {
         return res.status(400).json({
@@ -46,8 +77,6 @@ exports.create = async (req, res) => {
         });
       }
 
-      const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
-
       if (
         !timePattern.test(start_time) ||
         !timePattern.test(end_time) ||
@@ -59,22 +88,6 @@ exports.create = async (req, res) => {
           message: "Rentang jam izin pulang awal tidak valid.",
         });
       }
-    }
-
-    const today = new Date().toISOString().split("T")[0];
-
-    if (start_date < today) {
-      return res.status(400).json({
-        success: false,
-        message: "Tanggal pengajuan tidak boleh sebelum hari ini.",
-      });
-    }
-
-    if (end_date < start_date) {
-      return res.status(400).json({
-        success: false,
-        message: "Tanggal selesai tidak valid.",
-      });
     }
 
     // CHECK EXISTING REQUEST
@@ -112,6 +125,7 @@ exports.create = async (req, res) => {
     // INSERT LEAVE REQUEST
     const leaveResult = await pool.query(
       `
+      
       INSERT INTO leave_requests
       (
         user_id,
@@ -119,19 +133,25 @@ exports.create = async (req, res) => {
         leave_category,
         start_date,
         end_date,
+        start_time,
+        end_time,
         reason,
         attachment,
         status
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING id
+
       `,
+
       [
         userId,
         leave_type,
         leave_type === "CUTI" ? leave_category : null,
         start_date,
         end_date,
+        ["IZIN", "IZIN_PULANG_AWAL"].includes(leave_type) ? start_time : null,
+        ["IZIN", "IZIN_PULANG_AWAL"].includes(leave_type) ? end_time : null,
         reason,
         uploadedAttachment,
         "PENDING_SUPERVISOR",

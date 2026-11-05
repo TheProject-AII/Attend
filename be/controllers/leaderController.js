@@ -168,6 +168,22 @@ exports.leaveDetail = async (req, res) => {
 
     const data = result.rows[0];
 
+    let attachment_url = null;
+
+    if (data.attachment) {
+      try {
+        attachment_url = await getPrivateFileUrl(data.attachment);
+      } catch (error) {
+        console.error("GAGAL MEMBUAT URL ATTACHMENT MANAGER:", error.message);
+      }
+    }
+
+    data.attachment_url = attachment_url;
+
+    console.log("MANAGER ATTACHMENT:", {
+      attachment: data.attachment,
+      attachment_url: data.attachment_url,
+    });
     const leaveDays =
       Math.ceil(
         (new Date(data.end_date) - new Date(data.start_date)) /
@@ -183,7 +199,7 @@ exports.leaveDetail = async (req, res) => {
       : data.leave_balance;
 
     data.can_approve = isAnnualLeave ? data.leave_balance >= leaveDays : true;
-
+    console.log("ATTACHMENT URL:", data.attachment_url);
     return res.json({
       success: true,
       data,

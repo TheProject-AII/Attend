@@ -37,6 +37,7 @@ export default function LeaveDialog({
   onSubmit,
 }) {
   const isOvertime = leaveType === "LEMBUR";
+  const isPermission = leaveType === "IZIN";
 
   const labelStyle = {
     mb: 1,
@@ -84,7 +85,7 @@ export default function LeaveDialog({
           </FormControl>
         </Box>
 
-        {/* LEAVE TYPE - ONLY WHEN CUTI */}
+        {/* LEAVE TYPE */}
         {leaveType === "CUTI" && (
           <Box sx={{ mt: 2 }}>
             <Typography sx={labelStyle}>Leave Type</Typography>
@@ -133,7 +134,6 @@ export default function LeaveDialog({
             >
               <Box>
                 <Typography sx={labelStyle}>Start Time</Typography>
-
                 <TextField
                   fullWidth
                   type="time"
@@ -145,7 +145,6 @@ export default function LeaveDialog({
 
               <Box>
                 <Typography sx={labelStyle}>End Time</Typography>
-
                 <TextField
                   fullWidth
                   type="time"
@@ -170,39 +169,94 @@ export default function LeaveDialog({
           </>
         ) : (
           <>
-            {/* START DATE */}
-            <Box sx={{ mt: 2 }}>
-              <Typography sx={labelStyle}>Start Date</Typography>
+            {/* PERMISSION: SINGLE DATE */}
+            {isPermission ? (
+              <>
+                <Box sx={{ mt: 2 }}>
+                  <Typography sx={labelStyle}>Permission Date</Typography>
 
-              <TextField
-                fullWidth
-                type="date"
-                variant="outlined"
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
+                  <TextField
+                    fullWidth
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      setEndDate(e.target.value);
+                    }}
+                    sx={inputStyle}
+                  />
+                </Box>
 
-                  if (!endDate) {
-                    setEndDate(e.target.value);
-                  }
-                }}
-                sx={inputStyle}
-              />
-            </Box>
+                {/* PERMISSION TIME */}
+                <Box
+                  sx={{
+                    mt: 2,
+                    display: "grid",
+                    gridTemplateColumns: {
+                      xs: "1fr",
+                      sm: "1fr 1fr",
+                    },
+                    gap: 2,
+                  }}
+                >
+                  <Box>
+                    <Typography sx={labelStyle}>Start Time</Typography>
+                    <TextField
+                      fullWidth
+                      type="time"
+                      value={startTime || ""}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      sx={inputStyle}
+                    />
+                  </Box>
 
-            {/* END DATE */}
-            <Box sx={{ mt: 2 }}>
-              <Typography sx={labelStyle}>End Date</Typography>
+                  <Box>
+                    <Typography sx={labelStyle}>End Time</Typography>
+                    <TextField
+                      fullWidth
+                      type="time"
+                      value={endTime || ""}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      sx={inputStyle}
+                    />
+                  </Box>
+                </Box>
+              </>
+            ) : (
+              <>
+                {/* START DATE */}
+                <Box sx={{ mt: 2 }}>
+                  <Typography sx={labelStyle}>Start Date</Typography>
 
-              <TextField
-                fullWidth
-                type="date"
-                variant="outlined"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                sx={inputStyle}
-              />
-            </Box>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+
+                      if (!endDate) {
+                        setEndDate(e.target.value);
+                      }
+                    }}
+                    sx={inputStyle}
+                  />
+                </Box>
+
+                {/* END DATE */}
+                <Box sx={{ mt: 2 }}>
+                  <Typography sx={labelStyle}>End Date</Typography>
+
+                  <TextField
+                    fullWidth
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    sx={inputStyle}
+                  />
+                </Box>
+              </>
+            )}
 
             {/* DETAILS */}
             <Box sx={{ mt: 2 }}>
@@ -210,7 +264,7 @@ export default function LeaveDialog({
                 fullWidth
                 multiline
                 rows={4}
-                label="Details"
+                label="Reason"
                 placeholder="Enter a reason for your request..."
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -270,7 +324,9 @@ export default function LeaveDialog({
             !startDate ||
             !reason.trim() ||
             (isOvertime && (!startTime || !endTime)) ||
-            (!isOvertime && !endDate)
+            (isPermission &&
+              (!startTime || !endTime || endTime <= startTime)) ||
+            (!isOvertime && !isPermission && !endDate)
           }
         >
           {loading

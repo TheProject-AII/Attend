@@ -8,6 +8,7 @@ import {
   Stack,
   Divider,
   Chip,
+  Box,
 } from "@mui/material";
 
 import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
@@ -15,12 +16,30 @@ import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
 export default function LeaveDetailDialog({ open, onClose, data }) {
   if (!data) return null;
 
-  const formatDate = (date) =>
-    new Date(date).toLocaleDateString("en-US", {
+  const isPermission = data.leave_type === "IZIN";
+
+  const formatDate = (date) => {
+    if (!date) return "-";
+
+    // Hindari pergeseran tanggal akibat timezone
+    const dateOnly = String(date).slice(0, 10);
+    const [year, month, day] = dateOnly.split("-");
+
+    return new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+    ).toLocaleDateString("en-US", {
       day: "numeric",
       month: "long",
       year: "numeric",
     });
+  };
+
+  const formatTime = (time) => {
+    if (!time) return "-";
+    return String(time).slice(0, 5);
+  };
 
   const totalDays = Math.max(
     1,
@@ -75,6 +94,7 @@ export default function LeaveDetailDialog({ open, onClose, data }) {
                 DINAS: "Business Travel",
                 BUSINESS_TRIP: "Business Travel",
                 CLIENT: "Client Visit",
+                IZIN_PULANG_AWAL: "Early Leave Permission",
               }[data.leave_type] || data.leave_type
             }
           />
@@ -94,11 +114,23 @@ export default function LeaveDetailDialog({ open, onClose, data }) {
           )}
 
           <BoxItem
-            title="Date"
-            value={`${formatDate(data.start_date)} - ${formatDate(data.end_date)}`}
+            title={isPermission ? "Permission Date" : "Date"}
+            value={
+              isPermission
+                ? formatDate(data.start_date)
+                : `${formatDate(data.start_date)} - ${formatDate(data.end_date)}`
+            }
           />
 
-          <BoxItem title="Duration" value={`${totalDays} days`} />
+          {isPermission ? (
+            <>
+              <BoxItem title="Start Time" value={formatTime(data.start_time)} />
+
+              <BoxItem title="End Time" value={formatTime(data.end_time)} />
+            </>
+          ) : (
+            <BoxItem title="Duration" value={`${totalDays} days`} />
+          )}
 
           <BoxItem title="Details" value={data.reason || "-"} />
 
@@ -143,12 +175,12 @@ export default function LeaveDetailDialog({ open, onClose, data }) {
 
 function BoxItem({ title, value }) {
   return (
-    <div>
+    <Box>
       <Typography variant="caption" color="text.secondary">
         {title}
       </Typography>
 
       <Typography fontWeight={600}>{value}</Typography>
-    </div>
+    </Box>
   );
 }
