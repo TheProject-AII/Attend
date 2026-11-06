@@ -334,10 +334,9 @@ exports.createEmployee = async (req, res) => {
       name,
       email,
       phone,
-      department,
-      working_hours_setting_id,
-      position,
+      department_id,
       role_id,
+      working_hours_setting_id,
       job_description,
       join_date,
       address,
@@ -352,13 +351,20 @@ exports.createEmployee = async (req, res) => {
     // VALIDASI
     // =========================
 
-    if (!nik || !name || !email || !department || !role_id) {
+    if (
+      !nik ||
+      !name ||
+      !email ||
+      !department_id ||
+      !role_id ||
+      !working_hours_setting_id
+    ) {
       return res.status(400).json({
         success: false,
-        message: "NIK, nama, email, dan departemen wajib diisi",
+        message:
+          "NIK, nama, email, department, jabatan, dan jadwal kerja wajib diisi",
       });
     }
-
     if (!/^\d{16}$/.test(nik)) {
       return res.status(400).json({
         success: false,
@@ -384,16 +390,33 @@ exports.createEmployee = async (req, res) => {
     if (existing.rows.length > 0) {
       return res.status(400).json({
         success: false,
-        message: "NIK atau email sudah terdaftar",
+        message: "NIK or email is already registered",
+      });
+    }
+
+    const departmentCheck = await pool.query(
+      `
+  SELECT id, name
+  FROM departments
+  WHERE id = $1 AND is_active = TRUE
+  LIMIT 1
+  `,
+      [department_id],
+    );
+
+    if (departmentCheck.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Department is invalid or inactive",
       });
     }
 
     const roleCheck = await pool.query(
       `
-    SELECT id, name
-    FROM roles
-    WHERE id = $1
-    LIMIT 1
+  SELECT id, name
+  FROM roles
+  WHERE id = $1
+  LIMIT 1
   `,
       [role_id],
     );
@@ -401,9 +424,12 @@ exports.createEmployee = async (req, res) => {
     if (roleCheck.rows.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Jabatan tidak valid",
+        message: "Role is invalid",
       });
     }
+
+    const departmentName = departmentCheck.rows[0].name;
+    const roleName = roleCheck.rows[0].name;
 
     const workingHoursCheck = await pool.query(
       `
@@ -419,7 +445,7 @@ exports.createEmployee = async (req, res) => {
     if (workingHoursCheck.rows.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Jadwal kerja tidak valid atau tidak aktif.",
+        message: "Working hours setting is invalid or inactive.",
       });
     }
     const defaultPassword = `so-mak${nik.slice(-4)}`;
@@ -444,36 +470,51 @@ exports.createEmployee = async (req, res) => {
     const result = await client.query(
       `
   INSERT INTO users (
-    role_id, nik, name, email, password,
-    phone, department, position, job_description,
-    photo, ktp, npwp, bpjs_kesehatan, bpjs_tk, kk,
-    join_date, address, status,
-    employee_type, contract_start_date, contract_end_date,
-    company_id, leader_id
+    role_id,
+    department_id,
+    nik,
+    name,
+    email,
+    password,
+    phone,
+    department,
+    position,
+    job_description,
+    photo,
+    ktp,
+    npwp,
+    bpjs_kesehatan,
+    bpjs_tk,
+    kk,
+    join_date,
+    address,
+    status,
+    employee_type,
+    contract_start_date,
+    contract_end_date,
+    company_id,
+    leader_id,
+    working_hours_setting_id
   )
   VALUES (
-    $1, $2, $3, $4, $5,
-    $6, $7, $8, $9,
-    $10, $11, $12, $13, $14, $15,
-    $16, $17, true,
-    $18, $19, $20, $21, $22
+    $1, $2, $3, $4, $5, $6, $7,
+    $8, $9, $10,
+    $11, $12, $13, $14, $15, $16,
+    $17, $18, TRUE,
+    $19, $20, $21, $22, $23, $24
   )
-  RETURNING
-    id, role_id, nik, name, email, phone,
-    department, position, job_description,
-    photo, ktp, npwp, bpjs_kesehatan, bpjs_tk, kk,
-    join_date, address, status,
-    employee_type, contract_start_date, contract_end_date
+  RETURNING *
   `,
       [
         role_id,
+        department_id,
         nik,
         name,
         email,
         hashedPassword,
         phone || null,
-        department,
-        position || null,
+        departmentName,
+        roleName,
         job_description || null,
         paths.photo,
         paths.ktp,
@@ -665,44 +706,67 @@ exports.createEmployee = async (req, res) => {
 exports.getEmployees = async (req, res) => {
   try {
     const result = await pool.query(`
-  SELECT
-    u.id,
-    u.nik,
-    u.name,
-    u.email,
-    u.company_email,
-    u.phone,
-    u.department,
-    u.nip,
-    u.company_id,
-    c.name AS company_name,
-    u.placement,
-    u.job_level,
-    u.position,
-    r.name AS role_name,
-    u.job_description,
-    u.photo,
-    u.status,
-    u.employee_type,
-    u.contract_start_date,
-    u.contract_end_date,
-    u.join_date,
-    
-    u.ktp,
-    u.npwp,
-    u.bpjs_kesehatan,
-    u.bpjs_tk,
-    u.kk
-  FROM users u
-  LEFT JOIN companies c ON u.company_id = c.id
-  LEFT JOIN roles r ON u.role_id = r.id
-  WHERE (
-    u.role_id = 3
-    OR u.nip IS NOT NULL
-    OR LOWER(TRIM(r.name)) = 'manager'
-  )
-  ORDER BY u.name ASC
-`);
+      SELECT
+        u.id,
+        u.role_id,
+        u.nik,
+        u.name,
+        u.email,
+        u.company_email,
+        u.phone,
+
+        -- Department
+        u.department_id,
+        d.name AS department_name,
+        u.department,
+
+        -- Position / Role
+        r.name AS role_name,
+        u.position,
+
+        u.nip,
+        u.company_id,
+        c.name AS company_name,
+        u.placement,
+        u.job_level,
+
+        u.job_description,
+        u.photo,
+        u.status,
+        u.employee_type,
+        u.contract_start_date,
+        u.contract_end_date,
+        u.join_date,
+
+        -- Working Hours
+        u.working_hours_setting_id,
+
+        -- Documents
+        u.ktp,
+        u.npwp,
+        u.bpjs_kesehatan,
+        u.bpjs_tk,
+        u.kk
+
+      FROM users u
+
+      LEFT JOIN companies c
+        ON u.company_id = c.id
+
+      LEFT JOIN roles r
+        ON u.role_id = r.id
+
+      LEFT JOIN departments d
+        ON u.department_id = d.id
+
+      WHERE (
+        u.role_id = 3
+        OR u.nip IS NOT NULL
+        OR LOWER(TRIM(r.name)) = 'manager'
+      )
+
+      ORDER BY u.name ASC
+    `);
 
     const employees = await Promise.all(
       result.rows.map(async (employee) => {
@@ -764,32 +828,69 @@ exports.getRoles = async (req, res) => {
   }
 };
 
+exports.getDepartments = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, name
+      FROM departments
+      WHERE is_active = TRUE
+      ORDER BY name ASC
+    `);
+
+    return res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error("GET DEPARTMENTS ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil data department",
+    });
+  }
+};
 exports.updateEmployee = async (req, res) => {
   let uploadedKeys = [];
+
   try {
     const { id } = req.params;
-    const oldPhotoResult = await pool.query(
-      `SELECT photo
-FROM users
-WHERE id = $1`,
+
+    // =====================================
+    // AMBIL DATA EMPLOYEE LAMA
+    // =====================================
+    const oldEmployeeResult = await pool.query(
+      `
+      SELECT
+        id,
+        photo,
+        working_hours_setting_id
+      FROM users
+      WHERE id = $1
+      `,
       [id],
     );
 
-    if (oldPhotoResult.rows.length === 0) {
+    if (oldEmployeeResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: "Employee Not Found",
       });
     }
 
-    const oldPhoto = oldPhotoResult.rows[0].photo;
+    const oldEmployee = oldEmployeeResult.rows[0];
+    const oldPhoto = oldEmployee.photo;
+
+    // =====================================
+    // AMBIL REQUEST BODY
+    // =====================================
     const {
       nik,
       name,
       email,
       phone,
-      department,
-      position,
+      department_id,
+      role_id,
       job_description,
       working_hours_setting_id,
       join_date,
@@ -801,107 +902,215 @@ WHERE id = $1`,
       leader_id,
     } = req.body;
 
-    const workingHoursCheck = await pool.query(
-      `SELECT id
-   FROM working_hours_settings
-   WHERE id = $1 AND is_active = TRUE
-   LIMIT 1`,
-      [working_hours_setting_id],
-    );
-
-    if (workingHoursCheck.rows.length === 0) {
+    // =====================================
+    // VALIDASI DEPARTMENT
+    // =====================================
+    if (!department_id) {
       return res.status(400).json({
         success: false,
-        message: "Jadwal kerja tidak valid atau tidak aktif.",
+        message: "Department wajib dipilih.",
       });
     }
-    // =========================
-    // UPLOAD DOKUMEN KE NEON
-    // =========================
 
+    const departmentCheck = await pool.query(
+      `
+      SELECT id, name
+      FROM departments
+      WHERE id = $1
+        AND is_active = TRUE
+      LIMIT 1
+      `,
+      [department_id],
+    );
+
+    if (departmentCheck.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Department tidak valid atau tidak aktif.",
+      });
+    }
+
+    const departmentName = departmentCheck.rows[0].name;
+
+    // =====================================
+    // VALIDASI POSITION / ROLE
+    // =====================================
+    if (!role_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Position wajib dipilih.",
+      });
+    }
+
+    const roleCheck = await pool.query(
+      `
+      SELECT id, name
+      FROM roles
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [role_id],
+    );
+
+    if (roleCheck.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Jabatan tidak valid.",
+      });
+    }
+
+    const roleName = roleCheck.rows[0].name;
+
+    // =====================================
+    // WORKING HOURS
+    // Jika kosong, gunakan nilai sebelumnya
+    // =====================================
+    const effectiveWorkingHoursId =
+      working_hours_setting_id || oldEmployee.working_hours_setting_id;
+
+    if (effectiveWorkingHoursId) {
+      const workingHoursCheck = await pool.query(
+        `
+        SELECT id
+        FROM working_hours_settings
+        WHERE id = $1
+          AND is_active = TRUE
+        LIMIT 1
+        `,
+        [effectiveWorkingHoursId],
+      );
+
+      if (workingHoursCheck.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Jadwal kerja tidak valid atau tidak aktif.",
+        });
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Working Hours belum tersedia untuk karyawan ini.",
+      });
+    }
+
+    // =====================================
+    // UPLOAD DOKUMEN KE NEON
+    // =====================================
     const uploaded = await uploadEmployeeDocuments(req.files);
 
-    uploadedKeys = uploaded.uploadedKeys;
+    uploadedKeys = uploaded.uploadedKeys || [];
 
-    const paths = uploaded.paths;
+    const paths = uploaded.paths || {};
 
+    // =====================================
+    // VALIDASI JENIS KARYAWAN
+    // =====================================
+    const contractTypes = [
+      "PROBATION",
+      "KONTRAK_3_BULAN",
+      "KONTRAK_6_BULAN",
+      "KONTRAK_12_BULAN",
+      "KONTRAK_INTERN",
+    ];
+
+    const isContract = contractTypes.includes(employee_type);
+
+    // =====================================
+    // UPDATE EMPLOYEE
+    // =====================================
     const result = await pool.query(
       `
-  UPDATE users
-SET
-  role_id = (
-    SELECT id FROM roles WHERE name = 'Employee'
-  ),
-  nik = $1,
-  name = $2,
-  email = $3,
-  phone = $4,
-  department = $5,
-  position = $6,
-  join_date = $7,
-  address = $8,
-  employee_type = $9,
-  contract_start_date = $10,
-  contract_end_date = $11,
-  company_id = $12,
-  leader_id = $13,
-  job_description = $14,
-  working_hours_setting_id = $15,
-  photo = COALESCE($16, photo),
-  face_embedding = CASE
-    WHEN $16 IS NOT NULL THEN NULL
-    ELSE face_embedding
-  END,
-  face_enrolled_at = CASE
-    WHEN $16 IS NOT NULL THEN NULL
-    ELSE face_enrolled_at
-  END,
-  ktp = COALESCE($17, ktp),
-  npwp = COALESCE($18, npwp),
-  bpjs_kesehatan = COALESCE($19, bpjs_kesehatan),
-  bpjs_tk = COALESCE($20, bpjs_tk),
-  kk = COALESCE($21, kk),
-  updated_at = NOW()
-WHERE id = $22
-RETURNING *;
-  `,
+      UPDATE users
+      SET
+        nik = $1,
+        name = $2,
+        email = $3,
+        phone = $4,
+
+        -- Department
+        department = $5,
+        department_id = $6,
+
+        -- Position
+        position = $7,
+        role_id = $8,
+
+        -- Employee Information
+        join_date = $9,
+        address = $10,
+        employee_type = $11,
+
+        contract_start_date = $12,
+        contract_end_date = $13,
+
+        company_id = $14,
+        leader_id = $15,
+
+        job_description = $16,
+
+        -- Working Hours
+        working_hours_setting_id = $17,
+
+        -- Employee Photo
+        photo = COALESCE($18, photo),
+
+        face_embedding = CASE
+          WHEN $18 IS NOT NULL THEN NULL
+          ELSE face_embedding
+        END,
+
+        face_enrolled_at = CASE
+          WHEN $18 IS NOT NULL THEN NULL
+          ELSE face_enrolled_at
+        END,
+
+        -- Documents
+        ktp = COALESCE($19, ktp),
+        npwp = COALESCE($20, npwp),
+        bpjs_kesehatan = COALESCE($21, bpjs_kesehatan),
+        bpjs_tk = COALESCE($22, bpjs_tk),
+        kk = COALESCE($23, kk),
+
+        updated_at = NOW()
+
+      WHERE id = $24
+
+      RETURNING *
+      `,
       [
-        nik, // $1
-        name, // $2
-        email, // $3
-        phone, // $4
-        department, // $5
-        position, // $6
-        join_date || null, // $7
-        address, // $8
-        employee_type, // $9
-        [
-          "PROBATION",
-          "KONTRAK_3_BULAN",
-          "KONTRAK_6_BULAN",
-          "KONTRAK_12_BULAN",
-        ].includes(employee_type)
-          ? contract_start_date || null
-          : null, // $10
-        [
-          "PROBATION",
-          "KONTRAK_3_BULAN",
-          "KONTRAK_6_BULAN",
-          "KONTRAK_12_BULAN",
-        ].includes(employee_type)
-          ? contract_end_date || null
-          : null, // $11
-        company_id || null, // $12
-        leader_id || null, // $13
-        job_description || null, // $14
-        working_hours_setting_id, // $15
-        paths.photo, // $16
-        paths.ktp, // $17
-        paths.npwp, // $18
-        paths.bpjs_kesehatan, // $19
-        paths.bpjs_tk, // $20
-        paths.kk, // $21
-        id, // $22
+        nik,
+        name,
+        email,
+        phone,
+
+        departmentName,
+        department_id,
+
+        roleName,
+        role_id,
+
+        join_date || null,
+        address || null,
+        employee_type,
+
+        isContract ? contract_start_date || null : null,
+        isContract ? contract_end_date || null : null,
+
+        company_id || null,
+        leader_id || null,
+
+        job_description || null,
+
+        effectiveWorkingHoursId,
+
+        paths.photo || null,
+        paths.ktp || null,
+        paths.npwp || null,
+        paths.bpjs_kesehatan || null,
+        paths.bpjs_tk || null,
+        paths.kk || null,
+
+        id,
       ],
     );
 
@@ -913,30 +1122,39 @@ RETURNING *;
         message: "Employee Not Found",
       });
     }
+
+    // =====================================
+    // INVALIDATE PHOTO CACHE
+    // =====================================
     if (paths.photo) {
       invalidateEmployeePhotoCache(oldPhoto);
     }
-    return res.json({
+
+    return res.status(200).json({
       success: true,
-      message: "Data karyawan berhasil diperbarui",
+      message: "Data karyawan berhasil diperbarui.",
       data: result.rows[0],
     });
   } catch (err) {
     if (uploadedKeys.length > 0) {
-      await cleanupUploadedDocuments(uploadedKeys);
+      try {
+        await cleanupUploadedDocuments(uploadedKeys);
+      } catch (cleanupError) {
+        console.error("CLEANUP UPLOAD ERROR:", cleanupError);
+      }
     }
 
-    console.error("UPDATE EMPLOYEE ERROR:", err.message);
+    console.error("UPDATE EMPLOYEE ERROR:", err);
     console.error("ERROR CODE:", err.code);
     console.error("ERROR DETAIL:", err.detail);
 
     return res.status(500).json({
       success: false,
-      message: "Gagal memperbarui data karyawan",
+      message: "Gagal memperbarui data karyawan.",
+      error: err.message,
     });
   }
 };
-
 exports.getPositions = async (req, res) => {
   try {
     const result = await pool.query(`

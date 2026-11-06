@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Box,
@@ -32,14 +32,13 @@ export default function EmployeeCreate({
   const [roles, setRoles] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [workingHours, setWorkingHours] = useState([]);
-  const [positions, setPositions] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [form, setForm] = useState({
     nik: "",
     name: "",
     email: "",
     phone: "",
-    department: "",
-    position: "",
+    department_id: "",
     role_id: "",
     join_date: "",
     address: "",
@@ -65,8 +64,8 @@ export default function EmployeeCreate({
     if (open) {
       loadRoles();
       loadEmployees();
+      loadDepartments();
       loadWorkingHours();
-      loadPositions();
     }
   }, [open]);
 
@@ -152,15 +151,19 @@ export default function EmployeeCreate({
     }
   };
 
-  const loadPositions = async () => {
+  const loadDepartments = async () => {
     try {
-      const result = await attendanceService.getPositions();
+      const result = await attendanceService.getDepartments();
+      console.log("DEPARTMENTS RESPONSE:", result);
 
-      if (result.success) {
-        setPositions(result.data || []);
+      if (result?.success) {
+        setDepartments(Array.isArray(result.data) ? result.data : []);
+      } else {
+        setDepartments([]);
+        console.warn("DEPARTMENTS RESPONSE NOT SUCCESS:", result);
       }
     } catch (err) {
-      console.error("GET POSITIONS ERROR:", err);
+      console.error("GET DEPARTMENTS ERROR:", err);
     }
   };
   useEffect(() => {
@@ -170,9 +173,10 @@ export default function EmployeeCreate({
         name: employee.name || "",
         email: employee.email || "",
         phone: employee.phone || "",
-        department: employee.department || "",
-        position: employee.position || "",
-        role_id: employee.role_id || "",
+        department_id: employee.department_id
+          ? String(employee.department_id)
+          : "",
+        role_id: employee.role_id ? String(employee.role_id) : "",
         join_date: employee.join_date
           ? dayjs(employee.join_date).format("YYYY-MM-DD")
           : "",
@@ -187,7 +191,9 @@ export default function EmployeeCreate({
         contract_end_date: employee.contract_end_date
           ? dayjs(employee.contract_end_date).format("YYYY-MM-DD")
           : "",
-        working_hours_setting_id: employee.working_hours_setting_id || "",
+        working_hours_setting_id: employee.working_hours_setting_id
+          ? String(employee.working_hours_setting_id)
+          : "",
         company_id: employee.company_id || "",
 
         leader_id: employee.leader_id || "",
@@ -258,13 +264,6 @@ export default function EmployeeCreate({
       ...prev,
       [name]: file,
     }));
-
-    if (name === "photo") {
-      setPreviewPhotoUrl((oldUrl) => {
-        if (oldUrl) URL.revokeObjectURL(oldUrl);
-        return file ? URL.createObjectURL(file) : "";
-      });
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -279,8 +278,7 @@ export default function EmployeeCreate({
       formData.append("name", form.name);
       formData.append("email", form.email);
       formData.append("phone", form.phone);
-      formData.append("department", form.department);
-      formData.append("position", form.position);
+      formData.append("department_id", form.department_id);
       formData.append("role_id", form.role_id);
       formData.append("join_date", form.join_date);
       formData.append("address", form.address);
@@ -290,9 +288,8 @@ export default function EmployeeCreate({
         "working_hours_setting_id",
         form.working_hours_setting_id,
       );
-      if (form.employee_type === "KONTRAK") {
+      if (form.employee_type !== "TETAP") {
         formData.append("contract_start_date", form.contract_start_date);
-
         formData.append("contract_end_date", form.contract_end_date);
       }
 
@@ -364,37 +361,35 @@ export default function EmployeeCreate({
 
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md">
-      <DialogTitle>
-        <DialogTitle
+      <DialogTitle
+        sx={{
+          pt: 3,
+          pb: 2,
+        }}
+      >
+        <Typography
           sx={{
-            pt: 3,
-            pb: 2,
+            fontSize: "22px",
+            fontWeight: 800,
+            color: "#111827",
+            lineHeight: 1.3,
           }}
         >
-          <Typography
-            sx={{
-              fontSize: "22px",
-              fontWeight: 800,
-              color: "#111827",
-              lineHeight: 1.3,
-            }}
-          >
-            {mode === "edit" ? "Edit Employee" : "Add Employee"}
-          </Typography>
+          {mode === "edit" ? "Edit Employee" : "Add Employee"}
+        </Typography>
 
-          <Typography
-            variant="body2"
-            sx={{
-              mt: 0.5,
-              color: "#6B7280",
-              fontWeight: 400,
-            }}
-          >
-            {mode === "edit"
-              ? "Update employee information"
-              : "Enter employee information and login credentials"}
-          </Typography>
-        </DialogTitle>
+        <Typography
+          variant="body2"
+          sx={{
+            mt: 0.5,
+            color: "#6B7280",
+            fontWeight: 400,
+          }}
+        >
+          {mode === "edit"
+            ? "Update employee information"
+            : "Enter employee information and login credentials"}
+        </Typography>
       </DialogTitle>
 
       <Box component="form" onSubmit={handleSubmit}>
@@ -526,15 +521,23 @@ export default function EmployeeCreate({
             </Grid>
 
             {/* DEPARTMENT */}
+            {/* DEPARTMENT */}
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 required
+                select
                 label="Department"
-                name="department"
-                value={form.department}
+                name="department_id"
+                value={form.department_id}
                 onChange={handleChange}
-              />
+              >
+                {departments.map((item) => (
+                  <MenuItem key={item.id} value={String(item.id)}>
+                    {item.name}
+                  </MenuItem>
+                ))}
+              </TextField>
             </Grid>
 
             {/* POSITION */}
@@ -544,13 +547,13 @@ export default function EmployeeCreate({
                 required
                 select
                 label="Position"
-                name="position"
-                value={form.position}
+                name="role_id"
+                value={form.role_id}
                 onChange={handleChange}
               >
-                {positions.map((item) => (
-                  <MenuItem key={item.position} value={item.position}>
-                    {item.position}
+                {roles.map((item) => (
+                  <MenuItem key={item.id} value={String(item.id)}>
+                    {item.name}
                   </MenuItem>
                 ))}
               </TextField>
@@ -705,7 +708,11 @@ export default function EmployeeCreate({
                   )
                   .map((item) => (
                     <MenuItem key={item.id} value={item.id}>
-                      {item.name} ({item.department || "No Department"})
+                      {item.name} (
+                      {item.department_name ||
+                        item.department ||
+                        "No Department"}
+                      )
                     </MenuItem>
                   ))}
               </TextField>
@@ -717,7 +724,7 @@ export default function EmployeeCreate({
                 select
                 label="Working Hours"
                 name="working_hours_setting_id"
-                value={form.working_hours_setting_id}
+                value={String(form.working_hours_setting_id || "")}
                 onChange={handleChange}
               >
                 {workingHours

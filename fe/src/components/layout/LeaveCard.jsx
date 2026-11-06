@@ -163,15 +163,7 @@ export default function LeaveCard({ item, onClick }) {
             </Typography>
 
             <Typography variant="body2" sx={{ mb: 0 }}>
-              <strong>Duration:</strong>{" "}
-              {Math.max(
-                1,
-                Math.ceil(
-                  (new Date(item.end_date) - new Date(item.start_date)) /
-                    86400000,
-                ) + 1,
-              )}{" "}
-              days
+              <strong>Duration:</strong> {item.leave_days ?? "-"} days
             </Typography>
 
             <Typography variant="body2">

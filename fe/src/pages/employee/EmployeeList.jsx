@@ -257,7 +257,7 @@ export default function EmployeeList() {
                 minWidth: 180,
               }}
             >
-              <InputLabel>Company</InputLabel>
+              <InputLabel>Position</InputLabel>
 
               <Select
                 value={departmentFilter}
@@ -413,7 +413,7 @@ export default function EmployeeList() {
                         },
                       }}
                     >
-                      Department
+                      Company
                     </TableSortLabel>
                   </TableCell>
 

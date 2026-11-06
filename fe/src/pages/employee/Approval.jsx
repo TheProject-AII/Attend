@@ -374,15 +374,15 @@ export default function Approval() {
 
                   <Typography color="text.secondary" mt={0.5}>
                     <strong>Request:</strong>{" "}
-                    {{
-                      CUTI: "Leave",
-                      IZIN: "Permission",
-                      SAKIT: "Sick Leave",
-                      LEMBUR: "Overtime",
-                      BUSINESS_TRIP: "Business Travel",
-                      CLIENT: "Client Visit",
-                    }[item.leave_type] || item.leave_type}{" "}
-                    {getDuration(item.start_date, item.end_date)}
+                    {item.leave_type === "CUTI"
+                      ? item.leave_type_name || "Leave"
+                      : {
+                          IZIN: "Permission",
+                          SAKIT: "Sick Leave",
+                          LEMBUR: "Overtime",
+                          BUSINESS_TRIP: "Business Travel",
+                          CLIENT: "Client Visit",
+                        }[item.leave_type] || item.leave_type}
                   </Typography>
 
                   {/* DATE */}

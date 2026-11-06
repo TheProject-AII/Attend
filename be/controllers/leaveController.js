@@ -5,6 +5,45 @@ const {
   deleteFromStorage,
   getPrivateFileUrl,
 } = require("../services/storageService");
+const countWorkingDays = require("../utils/countWorkingDays");
+// GET ACTIVE LEAVE TYPES
+exports.getTypes = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id,
+        name,
+        category,
+        entitlement_days,
+        is_paid,
+        deduct_annual_balance,
+        requires_approval,
+        requires_document
+      FROM leave_types
+      WHERE is_active = TRUE
+      ORDER BY
+        CASE category
+          WHEN 'ANNUAL' THEN 1
+          WHEN 'SPECIAL' THEN 2
+          WHEN 'OTHER' THEN 3
+          ELSE 4
+        END,
+        id ASC
+    `);
+
+    return res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error("GET LEAVE TYPES ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil jenis cuti.",
+    });
+  }
+};
 
 exports.create = async (req, res) => {
   let uploadedAttachment = null;
@@ -12,10 +51,10 @@ exports.create = async (req, res) => {
 
   try {
     const userId = req.user.id;
-
     const {
       leave_type,
       leave_category,
+      leave_type_id,
       start_date,
       end_date,
       start_time,
@@ -24,6 +63,36 @@ exports.create = async (req, res) => {
     } = req.body;
 
     // VALIDATION
+    // GET EMPLOYEE WORK SCHEDULE
+    const scheduleResult = await pool.query(
+      `
+  SELECT whs.work_days
+  FROM users u
+  JOIN working_hours_settings whs
+    ON whs.id = u.working_hours_setting_id
+  WHERE u.id = $1
+    AND whs.is_active = TRUE
+  `,
+      [userId],
+    );
+
+    if (!scheduleResult.rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Pengaturan hari kerja karyawan belum tersedia.",
+      });
+    }
+
+    const workDays = scheduleResult.rows[0].work_days;
+
+    const leaveDays = countWorkingDays(start_date, end_date, workDays);
+
+    if (leaveDays <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Tanggal pengajuan tidak mencakup hari kerja.",
+      });
+    }
     if (!leave_type || !start_date || !end_date) {
       return res.status(400).json({
         success: false,
@@ -117,37 +186,74 @@ exports.create = async (req, res) => {
       }
     }
 
+    let selectedLeaveType = null;
+
+    if (leave_type === "CUTI") {
+      if (!leave_type_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Jenis cuti wajib dipilih.",
+        });
+      }
+
+      const typeResult = await pool.query(
+        `SELECT *
+     FROM leave_types
+     WHERE id = $1 AND is_active = TRUE`,
+        [leave_type_id],
+      );
+
+      if (typeResult.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Jenis cuti tidak ditemukan atau sudah tidak aktif.",
+        });
+      }
+
+      selectedLeaveType = typeResult.rows[0];
+
+      if (selectedLeaveType.requires_document && !req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "Dokumen pendukung wajib dilampirkan.",
+        });
+      }
+    }
     // UPLOAD ATTACHMENT TO NEON STORAGE
     if (req.file) {
       uploadedAttachment = await uploadToStorage(req.file, "leave");
     }
 
     // INSERT LEAVE REQUEST
+    // INSERT LEAVE REQUEST
     const leaveResult = await pool.query(
       `
-      
-      INSERT INTO leave_requests
-      (
-        user_id,
-        leave_type,
-        leave_category,
-        start_date,
-        end_date,
-        start_time,
-        end_time,
-        reason,
-        attachment,
-        status
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING id
-
-      `,
-
+  INSERT INTO leave_requests
+  (
+    user_id,
+    leave_type,
+    leave_type_id,
+    leave_category,
+    start_date,
+    end_date,
+    start_time,
+    end_time,
+    reason,
+    attachment,
+    status,
+    deduct_leave
+  )
+  VALUES (
+    $1, $2, $3, $4, $5, $6,
+    $7, $8, $9, $10, $11, $12
+  )
+  RETURNING id
+  `,
       [
         userId,
         leave_type,
-        leave_type === "CUTI" ? leave_category : null,
+        selectedLeaveType?.id || null,
+        selectedLeaveType?.category || null,
         start_date,
         end_date,
         ["IZIN", "IZIN_PULANG_AWAL"].includes(leave_type) ? start_time : null,
@@ -155,6 +261,7 @@ exports.create = async (req, res) => {
         reason,
         uploadedAttachment,
         "PENDING_SUPERVISOR",
+        false,
       ],
     );
 
@@ -219,22 +326,25 @@ exports.create = async (req, res) => {
 };
 
 exports.history = async (req, res) => {
+  console.log("=== HISTORY CONTROLLER TERPANGGIL ===");
+
   try {
     const userId = req.user.id;
 
     const result = await pool.query(
       `
       SELECT
-    id,
-    leave_type,
-    leave_category,
-    start_date,
-    end_date,
-    reason,
-    attachment,
-    status,
-    approval_note,
-    created_at,
+     lr.id,
+    lr.leave_type,
+    lr.leave_category,
+    lr.start_date,
+    lr.end_date,
+    whs.work_days,
+    lr.reason,
+    lr.attachment,
+    lr.status,
+    lr.approval_note,
+    lr.created_at,
 
     'LEAVE' AS request_type,
 
@@ -243,9 +353,13 @@ exports.history = async (req, res) => {
     NULL::timestamp AS old_check_out,
     NULL::timestamp AS new_check_out
 
-FROM leave_requests
+FROM leave_requests lr
+JOIN users u ON u.id = lr.user_id
+LEFT JOIN working_hours_settings whs
+  ON whs.id = u.working_hours_setting_id
+  AND whs.is_active = TRUE
 
-WHERE user_id = $1
+WHERE lr.user_id = $1
 
 
             UNION ALL
@@ -260,7 +374,7 @@ WHERE user_id = $1
 
     a.attendance_date AS start_date,
     a.attendance_date AS end_date,
-
+NULL::jsonb AS work_days,
     aer.reason,
 
     NULL::text AS attachment,
@@ -313,67 +427,67 @@ WHERE aer.user_id = $1
     const leaveBalance = Number(balance.rows[0]?.leave_balance || 0);
     const summaryResult = await pool.query(
       `
-    SELECT
-
-        COALESCE(
-    SUM(
-        CASE
-            WHEN leave_type = 'CUTI'
-             AND status = 'APPROVED'
-             AND (
-                 leave_category = 'TAHUNAN'
-                 OR leave_category IS NULL
-             )
-            THEN (
-                end_date - start_date + 1
-            )
-            ELSE 0
-        END
-    ),
-    0
-)::int AS cuti_taken_days,
-
-        COALESCE(
-            SUM(
-                CASE
-                 WHEN leave_type = 'SAKIT'
- AND status = 'APPROVED'
- AND deduct_leave = true
-THEN (
-    end_date - start_date + 1
-)
-                    ELSE 0
-                END
-            ),
-            0
-        )::int AS sick_deduction_days,
-
-        COALESCE(
-            SUM(
-                CASE
-                    WHEN leave_type = 'CUTI'
-                     AND leave_category IN (
-                         'MENIKAH',
-                         'MELAHIRKAN',
-                         'KELUARGA_MENINGGAL'
-                     )
-                     AND status = 'APPROVED'
-                    THEN (
-                        end_date - start_date + 1
-                    )
-                    ELSE 0
-                END
-            ),
-            0
-        )::int AS special_leave_days
-
-    FROM leave_requests
-
-    WHERE user_id = $1
-    `,
+  SELECT
+    lr.leave_type,
+    lr.leave_category,
+    lr.start_date,
+    lr.end_date,
+    lr.deduct_leave,
+    lr.status,
+    whs.work_days,
+    lt.category AS master_leave_category,
+    lt.deduct_annual_balance
+  FROM leave_requests lr
+  JOIN users u ON u.id = lr.user_id
+  LEFT JOIN working_hours_settings whs
+    ON whs.id = u.working_hours_setting_id
+    AND whs.is_active = TRUE
+  LEFT JOIN leave_types lt
+    ON lt.id = lr.leave_type_id
+  WHERE lr.user_id = $1
+    AND lr.status = 'APPROVED'
+  `,
       [userId],
     );
-    const leaveSummary = summaryResult.rows[0] || {};
+    const leaveSummary = {
+      cuti_taken_days: 0,
+      sick_deduction_days: 0,
+      special_leave_days: 0,
+    };
+
+    for (const item of summaryResult.rows) {
+      if (!Array.isArray(item.work_days)) continue;
+
+      const days = countWorkingDays(
+        item.start_date,
+        item.end_date,
+        item.work_days,
+      );
+
+      if (item.leave_type === "CUTI") {
+        const isAnnual =
+          item.deduct_annual_balance === true ||
+          item.master_leave_category === "ANNUAL" ||
+          item.leave_category === "TAHUNAN" ||
+          item.leave_category === null;
+
+        const isSpecial =
+          item.master_leave_category === "SPECIAL" ||
+          ["MENIKAH", "MELAHIRKAN", "KELUARGA_MENINGGAL"].includes(
+            item.leave_category,
+          );
+
+        if (isAnnual) {
+          leaveSummary.cuti_taken_days += days;
+        } else if (isSpecial) {
+          leaveSummary.special_leave_days += days;
+        }
+      }
+
+      if (item.leave_type === "SAKIT" && item.deduct_leave === true) {
+        leaveSummary.sick_deduction_days += days;
+      }
+    }
     const historyData = await Promise.all(
       result.rows.map(async (item) => {
         let attachment_url = null;
@@ -386,8 +500,22 @@ THEN (
           }
         }
 
+        const leaveDays =
+          item.request_type === "LEAVE" && Array.isArray(item.work_days)
+            ? countWorkingDays(item.start_date, item.end_date, item.work_days)
+            : null;
+
+        console.log("DEBUG LEAVE HISTORY:", {
+          id: item.id,
+          start_date: item.start_date,
+          end_date: item.end_date,
+          work_days: item.work_days,
+          leave_days: leaveDays,
+        });
+
         return {
           ...item,
+          leave_days: leaveDays,
           attachment_url,
         };
       }),

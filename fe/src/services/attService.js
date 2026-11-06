@@ -61,7 +61,10 @@ const attendanceService = {
 
     return data;
   },
-
+  getDepartments: async () => {
+    const response = await api.get("/employees/departments");
+    return response.data;
+  },
   getSummary: async (params) => {
     const { data } = await api.get("/attendance/summary", {
       params,

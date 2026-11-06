@@ -327,7 +327,7 @@ export default function EmployeeDetail({ open, employee, onClose }) {
 
                 <Divider sx={{ mb: 2.5 }} />
 
-                <Typography fontWeight={700} mb={2}>
+                <Typography sx={{ fontWeight: 700 }} mb={2}>
                   Personal Information
                 </Typography>
 
@@ -351,7 +351,7 @@ export default function EmployeeDetail({ open, employee, onClose }) {
 
                 <Divider sx={{ mb: 2.5 }} />
 
-                <Typography fontWeight={700} mb={2}>
+                <Typography sx={{ fontWeight: 700 }} mb={2}>
                   Dokumen
                 </Typography>
 
@@ -387,7 +387,7 @@ export default function EmployeeDetail({ open, employee, onClose }) {
 
                 <Divider sx={{ mb: 2.5 }} />
 
-                <Typography fontWeight={700} mb={2}>
+                <Typography sx={{ fontWeight: 700 }} mb={2}>
                   Employment Information
                 </Typography>
 
@@ -424,7 +424,7 @@ export default function EmployeeDetail({ open, employee, onClose }) {
                 {employee.employee_type?.includes("KONTRAK") && (
                   <>
                     <Divider sx={{ mb: 2.5 }} />
-                    <Typography fontWeight={700} mb={2}>
+                    <Typography sx={{ fontWeight: 700 }} mb={2}>
                       Contract Term
                     </Typography>
                     <Grid container spacing={2.5}>

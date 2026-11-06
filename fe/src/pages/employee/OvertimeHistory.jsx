@@ -62,7 +62,7 @@ const formatDate = (date) => {
 const getStatusLabel = (status) => {
   switch (status) {
     case "PENDING_SUPERVISOR":
-      return "Pending Supervisor Approval";
+      return "Pending Leader Approval";
 
     case "PENDING_MANAGER":
       return "Pending Manager Approval";
