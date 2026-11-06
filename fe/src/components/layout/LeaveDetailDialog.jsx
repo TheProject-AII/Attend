@@ -64,7 +64,7 @@ export default function LeaveDetailDialog({ open, onClose, data }) {
             label={
               {
                 PENDING: "Pending",
-                PENDING_SUPERVISOR: "Pending Supervisor Approval",
+                PENDING_SUPERVISOR: "Pending Leader Approval",
                 PENDING_MANAGER: "Pending Manager Approval",
                 APPROVED: "Approved",
                 REJECTED: "Rejected",

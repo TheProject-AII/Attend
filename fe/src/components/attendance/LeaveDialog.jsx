@@ -10,6 +10,7 @@ import {
   TextField,
   Typography,
   Box,
+  InputLabel,
 } from "@mui/material";
 
 import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
@@ -20,6 +21,9 @@ export default function LeaveDialog({
   cutiType,
   setCutiType,
   leaveType,
+  leaveTypes = [],
+  leaveTypeId,
+  setLeaveTypeId,
   setLeaveType,
   startDate,
   setStartDate,
@@ -80,30 +84,27 @@ export default function LeaveDialog({
               <MenuItem value="SAKIT">Sick Leave</MenuItem>
               <MenuItem value="IZIN">Permission</MenuItem>
               <MenuItem value="CUTI">Leave</MenuItem>
-              <MenuItem value="LEMBUR">Overtime</MenuItem>
             </Select>
           </FormControl>
         </Box>
 
         {/* LEAVE TYPE */}
         {leaveType === "CUTI" && (
-          <Box sx={{ mt: 2 }}>
-            <Typography sx={labelStyle}>Leave Type</Typography>
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>Leave Type</InputLabel>
 
-            <FormControl fullWidth>
-              <Select
-                value={cutiType}
-                onChange={(e) => setCutiType(e.target.value)}
-              >
-                <MenuItem value="TAHUNAN">Annual Leave</MenuItem>
-                <MenuItem value="MENIKAH">Marriage</MenuItem>
-                <MenuItem value="MELAHIRKAN">Maternity Leave</MenuItem>
-                <MenuItem value="KELUARGA_MENINGGAL">
-                  Bereavement Leave
+            <Select
+              value={leaveTypeId || ""}
+              label="Jenis Cuti"
+              onChange={(e) => setLeaveTypeId(e.target.value)}
+            >
+              {leaveTypes.map((item) => (
+                <MenuItem key={item.id} value={String(item.id)}>
+                  {item.name}
                 </MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
+              ))}
+            </Select>
+          </FormControl>
         )}
 
         {/* OVERTIME FORM */}

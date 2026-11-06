@@ -222,12 +222,12 @@ export default function ApprovalDetail() {
                 <InfoItem
                   title="Request Type"
                   value={
-                    {
-                      CUTI: "Leave",
-                      IZIN: "Permission",
-                      SAKIT: "Sick Leave",
-                      LEMBUR: "Overtime",
-                    }[detail.leave_type] || detail.leave_type
+                    detail.leave_type === "CUTI"
+                      ? detail.leave_type_name || "Leave"
+                      : {
+                          IZIN: "Permission",
+                          SAKIT: "Sick Leave",
+                        }[detail.leave_type] || detail.leave_type
                   }
                 />
 
@@ -252,7 +252,7 @@ export default function ApprovalDetail() {
                   value={`${detail.leave_balance} days`}
                 />
 
-                {detail.leave_type === "CUTI" && (
+                {detail.should_deduct_annual === true && (
                   <>
                     <Divider sx={{ my: 2 }} />
 

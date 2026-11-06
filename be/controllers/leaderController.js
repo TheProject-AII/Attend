@@ -1,7 +1,7 @@
 const pool = require("../config/db");
 
 const { getPrivateFileUrl } = require("../services/storageService");
-
+const countWorkingDays = require("../utils/countWorkingDays");
 exports.leaveRequests = async (req, res) => {
   try {
     const leaderId = Number(req.user.id);
@@ -17,57 +17,64 @@ exports.leaveRequests = async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT
-        lr.id,
-        lr.leave_type,
-        lr.start_date,
-        lr.end_date,
-        lr.reason,
-        lr.attachment,
-        lr.status,
-        lr.created_at,
-        lr.approved_at,
-        u.id AS employee_id,
-        u.name,
-        u.email,
-        'LEAVE' AS request_type,
-        NULL::timestamp AS old_check_in,
-        NULL::timestamp AS new_check_in,
-        NULL::timestamp AS old_check_out,
-        NULL::timestamp AS new_check_out
-      FROM leave_requests lr
-      JOIN users u ON u.id = lr.user_id
-      WHERE u.leader_id = $1
-      ${statusFilter}
+  SELECT
+    lr.id,
+    lr.leave_type,
+    lr.leave_type_id,
+    lt.name AS leave_type_name,
+    lr.leave_category,
+    lr.start_date,
+    lr.end_date,
+    lr.reason,
+    lr.attachment,
+    lr.status,
+    lr.created_at,
+    lr.approved_at,
+    u.id AS employee_id,
+    u.name,
+    u.email,
+    'LEAVE' AS request_type,
+    NULL::timestamp AS old_check_in,
+    NULL::timestamp AS new_check_in,
+    NULL::timestamp AS old_check_out,
+    NULL::timestamp AS new_check_out
+  FROM leave_requests lr
+  JOIN users u ON u.id = lr.user_id
+  LEFT JOIN leave_types lt ON lt.id = lr.leave_type_id
+  WHERE u.leader_id = $1
+  ${statusFilter}
 
-      UNION ALL
+  UNION ALL
 
-      SELECT
-        aer.id,
-        'PERUBAHAN ABSENSI' AS leave_type,
-        a.attendance_date AS start_date,
-        a.attendance_date AS end_date,
-        aer.reason,
-        NULL::text AS attachment,
-        aer.status,
-        aer.created_at,
-        aer.approved_at,
-        u.id AS employee_id,
-        u.name,
-        u.email,
-        'ATTENDANCE_EDIT' AS request_type,
-        aer.old_check_in,
-        aer.new_check_in,
-        aer.old_check_out,
-        aer.new_check_out
-      FROM attendance_edit_requests aer
-      JOIN users u ON u.id = aer.user_id
-      JOIN attendance a ON a.id = aer.attendance_id
-      WHERE u.leader_id = $1
-      ${status !== "ALL" ? "AND aer.status = $2" : ""}
+  SELECT
+    aer.id,
+    'PERUBAHAN ABSENSI' AS leave_type,
+    NULL::integer AS leave_type_id,
+    NULL::varchar AS leave_type_name,
+    NULL::varchar AS leave_category,
+    a.attendance_date AS start_date,
+    a.attendance_date AS end_date,
+    aer.reason,
+    NULL::text AS attachment,
+    aer.status,
+    aer.created_at,
+    aer.approved_at,
+    u.id AS employee_id,
+    u.name,
+    u.email,
+    'ATTENDANCE_EDIT' AS request_type,
+    aer.old_check_in,
+    aer.new_check_in,
+    aer.old_check_out,
+    aer.new_check_out
+  FROM attendance_edit_requests aer
+  JOIN users u ON u.id = aer.user_id
+  JOIN attendance a ON a.id = aer.attendance_id
+  WHERE u.leader_id = $1
+  ${status !== "ALL" ? "AND aer.status = $2" : ""}
 
-      ORDER BY created_at DESC
-      `,
+  ORDER BY created_at DESC
+  `,
       params,
     );
 
@@ -136,19 +143,45 @@ exports.leaveDetail = async (req, res) => {
     }
 
     let sql = `
-      SELECT
-        lr.*,
-        u.id AS employee_id,
-        u.name,
-        u.email,
-        u.department,
-        u.position,
-        u.photo,
-        u.leave_balance
-      FROM leave_requests lr
-      JOIN users u ON u.id = lr.user_id
-      WHERE lr.id = $1
-    `;
+  SELECT
+    lr.*,
+    u.id AS employee_id,
+    u.name,
+    u.email,
+    u.department,
+    u.position,
+    u.photo,
+    u.leave_balance,
+    whs.work_days,
+
+    lt.name AS leave_type_name,
+    lt.category AS master_leave_category,
+    lt.entitlement_days,
+    lt.is_paid,
+    lt.deduct_annual_balance,
+    lt.requires_document,
+
+    COALESCE(
+      lt.deduct_annual_balance,
+      CASE
+        WHEN lr.leave_type = 'CUTI'
+          AND (
+            lr.leave_category = 'TAHUNAN'
+            OR lr.leave_category IS NULL
+          )
+        THEN TRUE
+        ELSE FALSE
+      END
+    ) AS should_deduct_annual
+
+  FROM leave_requests lr
+  JOIN users u ON u.id = lr.user_id
+  LEFT JOIN working_hours_settings whs
+  ON whs.id = u.working_hours_setting_id
+  AND whs.is_active = TRUE
+  LEFT JOIN leave_types lt ON lt.id = lr.leave_type_id
+  WHERE lr.id = $1
+`;
 
     const params = [id];
 
@@ -184,14 +217,25 @@ exports.leaveDetail = async (req, res) => {
       attachment: data.attachment,
       attachment_url: data.attachment_url,
     });
-    const leaveDays =
-      Math.ceil(
-        (new Date(data.end_date) - new Date(data.start_date)) /
-          (1000 * 60 * 60 * 24),
-      ) + 1;
+    if (!Array.isArray(data.work_days)) {
+      return res.status(400).json({
+        success: false,
+        message: "Pengaturan hari kerja karyawan belum tersedia.",
+      });
+    }
 
-    const isAnnualLeave = data.leave_type === "CUTI";
-
+    const leaveDays = countWorkingDays(
+      data.start_date,
+      data.end_date,
+      data.work_days,
+    );
+    if (leaveDays <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Tanggal pengajuan tidak mencakup hari kerja.",
+      });
+    }
+    const isAnnualLeave = data.should_deduct_annual === true;
     data.leave_days = leaveDays;
 
     data.remaining_leave = isAnnualLeave
@@ -241,15 +285,37 @@ exports.approveLeave = async (req, res) => {
 
     const result = await client.query(
       `
-      SELECT
-        lr.*,
-        u.leave_balance,
-        u.leader_id
-      FROM leave_requests lr
-      JOIN users u ON u.id = lr.user_id
-      WHERE lr.id = $1
-      FOR UPDATE OF lr
-      `,
+  SELECT
+    lr.*,
+    u.leave_balance,
+    u.leader_id,
+u.working_hours_setting_id,
+whs.work_days,
+    lt.name AS leave_type_name,
+    lt.category AS master_leave_category,
+    lt.deduct_annual_balance,
+
+    COALESCE(
+      lt.deduct_annual_balance,
+      CASE
+        WHEN lr.leave_type = 'CUTI'
+          AND (
+            lr.leave_category = 'TAHUNAN'
+            OR lr.leave_category IS NULL
+          )
+        THEN TRUE
+        ELSE FALSE
+      END
+    ) AS should_deduct_annual
+
+  FROM leave_requests lr
+  JOIN users u ON u.id = lr.user_id
+  LEFT JOIN working_hours_settings whs
+  ON whs.id = u.working_hours_setting_id
+  AND whs.is_active = TRUE
+  LEFT JOIN leave_types lt ON lt.id = lr.leave_type_id
+  FOR UPDATE OF lr
+  `,
       [id],
     );
 
@@ -279,13 +345,31 @@ exports.approveLeave = async (req, res) => {
       });
     }
 
-    const leaveDays =
-      Math.ceil(
-        (new Date(leave.end_date) - new Date(leave.start_date)) /
-          (1000 * 60 * 60 * 24),
-      ) + 1;
+    if (!Array.isArray(leave.work_days)) {
+      await client.query("ROLLBACK");
 
-    const isAnnualLeave = leave.leave_type === "CUTI";
+      return res.status(400).json({
+        success: false,
+        message: "Pengaturan hari kerja karyawan belum tersedia.",
+      });
+    }
+
+    const leaveDays = countWorkingDays(
+      leave.start_date,
+      leave.end_date,
+      leave.work_days,
+    );
+
+    if (leaveDays <= 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        success: false,
+        message: "Tanggal pengajuan tidak mencakup hari kerja.",
+      });
+    }
+
+    const isAnnualLeave = leave.should_deduct_annual === true;
 
     const isSickLeaveDeducted =
       leave.leave_type === "SAKIT" && deduct_leave === true;
@@ -336,7 +420,7 @@ exports.approveLeave = async (req, res) => {
       [
         leave.user_id,
         "Pengajuan Disetujui",
-        `Pengajuan ${leave.leave_type} Anda telah disetujui.`,
+        `Pengajuan ${leave.leave_type_name || leave.leave_type} Anda telah disetujui.`,
         "LEAVE_APPROVED",
         leave.id,
       ],
@@ -388,13 +472,15 @@ exports.rejectLeave = async (req, res) => {
 
     const result = await client.query(
       `
-      SELECT
-        lr.*,
-        u.leader_id
-      FROM leave_requests lr
-      JOIN users u ON u.id = lr.user_id
-      WHERE lr.id = $1
-      FOR UPDATE OF lr
+     SELECT
+  lr.*,
+  u.leader_id,
+  lt.name AS leave_type_name
+FROM leave_requests lr
+JOIN users u ON u.id = lr.user_id
+LEFT JOIN leave_types lt ON lt.id = lr.leave_type_id
+WHERE lr.id = $1
+FOR UPDATE OF lr
       `,
       [id],
     );
@@ -450,8 +536,8 @@ exports.rejectLeave = async (req, res) => {
         leave.user_id,
         "Pengajuan Ditolak",
         note
-          ? `Pengajuan ${leave.leave_type} Anda ditolak. Alasan: ${note}`
-          : `Pengajuan ${leave.leave_type} Anda ditolak.`,
+          ? `Pengajuan ${leave.leave_type_name || leave.leave_type} Anda ditolak. Alasan: ${note}`
+          : `Pengajuan ${leave.leave_type_name || leave.leave_type} Anda ditolak.`,
         "LEAVE_REJECTED",
         leave.id,
       ],

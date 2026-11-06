@@ -12,4 +12,8 @@ export default {
   history() {
     return api.get("/leave/history");
   },
+
+  types() {
+    return api.get("/leave/types");
+  },
 };

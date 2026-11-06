@@ -35,7 +35,8 @@ export default function Leave() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [selectedLeave, setSelectedLeave] = useState(null);
   const [cutiType, setCutiType] = useState("TAHUNAN");
-
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [leaveTypeId, setLeaveTypeId] = useState("");
   const [openDetail, setOpenDetail] = useState(false);
   const [openOvertimeDetail, setOpenOvertimeDetail] = useState(false);
   const [summary, setSummary] = useState({
@@ -75,7 +76,25 @@ export default function Leave() {
 
     return value;
   };
+  const loadLeaveTypes = async () => {
+    try {
+      const response = await leaveService.types();
 
+      const result = Array.isArray(response.data)
+        ? response.data
+        : response.data?.data || [];
+
+      console.log("LEAVE TYPES:", result);
+
+      setLeaveTypes(result);
+
+      if (result.length > 0) {
+        setLeaveTypeId(String(result[0].id));
+      }
+    } catch (err) {
+      console.error("LOAD LEAVE TYPES ERROR:", err);
+    }
+  };
   const filteredHistory = useMemo(() => {
     console.log("FILTER DIPILIH:", statusFilter);
 
@@ -126,6 +145,7 @@ export default function Leave() {
 
   useEffect(() => {
     loadHistory();
+    loadLeaveTypes();
     const markNotificationsAsRead = async () => {
       try {
         await notificationService.readResult();
@@ -361,15 +381,25 @@ export default function Leave() {
       formData.append("leave_type", leaveType);
 
       if (leaveType === "CUTI") {
-        formData.append("leave_category", cutiType);
+        const selectedType = leaveTypes.find(
+          (item) => String(item.id) === String(leaveTypeId),
+        );
+
+        if (!selectedType) {
+          Swal.fire({
+            icon: "warning",
+            title: "Jenis cuti belum dipilih",
+          });
+          return;
+        }
+
+        formData.append("leave_type_id", selectedType.id);
+        formData.append("leave_category", selectedType.category);
       }
 
       formData.append("start_date", startDate);
-
-      // Permission hanya menggunakan satu tanggal
       formData.append("end_date", leaveType === "IZIN" ? startDate : endDate);
 
-      // Jam khusus Permission
       if (leaveType === "IZIN") {
         formData.append("start_time", startTime);
         formData.append("end_time", endTime);
@@ -705,6 +735,9 @@ export default function Leave() {
         setAttachment={setAttachment}
         loading={submitLoading}
         onSubmit={handleSubmit}
+        leaveTypes={leaveTypes}
+        leaveTypeId={leaveTypeId}
+        setLeaveTypeId={setLeaveTypeId}
       />
       <LeaveDetailDialog
         open={openDetail}

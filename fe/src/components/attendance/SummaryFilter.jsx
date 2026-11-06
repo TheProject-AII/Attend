@@ -13,11 +13,8 @@ import dayjs from "dayjs";
 
 export default function SummaryFilter({
   filters,
-
   setFilters,
-
   departments = [],
-
   onSearch,
 }) {
   const currentYear = new Date().getFullYear();
@@ -33,8 +30,7 @@ export default function SummaryFilter({
     >
       <CardContent>
         <Grid container spacing={2} alignItems="center">
-          {/* Month */}
-
+          {/* MONTH */}
           <Grid size={{ xs: 12, md: 2 }}>
             <TextField
               fullWidth
@@ -70,8 +66,7 @@ export default function SummaryFilter({
             </TextField>
           </Grid>
 
-          {/* Year */}
-
+          {/* YEAR */}
           <Grid size={{ xs: 12, md: 2 }}>
             <TextField
               fullWidth
@@ -94,15 +89,14 @@ export default function SummaryFilter({
             </TextField>
           </Grid>
 
-          {/* Department */}
-
+          {/* DEPARTMENT */}
           <Grid size={{ xs: 12, md: 2 }}>
             <TextField
               fullWidth
               select
               size="small"
               label="Department"
-              value={filters.department}
+              value={filters.department || ""}
               onChange={(e) =>
                 setFilters((prev) => ({
                   ...prev,
@@ -113,15 +107,14 @@ export default function SummaryFilter({
               <MenuItem value="">All Departments</MenuItem>
 
               {departments.map((item) => (
-                <MenuItem key={item.department} value={item.department}>
-                  {item.department}
+                <MenuItem key={item.id} value={item.name}>
+                  {item.name}
                 </MenuItem>
               ))}
             </TextField>
           </Grid>
 
-          {/* Employee */}
-
+          {/* EMPLOYEE */}
           <Grid size={{ xs: 12, md: 3 }}>
             <TextField
               fullWidth
@@ -137,8 +130,7 @@ export default function SummaryFilter({
             />
           </Grid>
 
-          {/* Button */}
-
+          {/* BUTTONS */}
           <Grid
             size={{ xs: 12, md: 3 }}
             sx={{
@@ -153,16 +145,12 @@ export default function SummaryFilter({
               onClick={() => {
                 const reset = {
                   month: dayjs().month() + 1,
-
                   year: dayjs().year(),
-
                   department: "",
-
                   search: "",
                 };
 
                 setFilters(reset);
-
                 onSearch(reset);
               }}
             >

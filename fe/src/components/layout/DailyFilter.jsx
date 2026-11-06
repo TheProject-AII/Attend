@@ -5,7 +5,6 @@ import {
   TextField,
   MenuItem,
   Button,
-  Stack,
 } from "@mui/material";
 
 import SearchIcon from "@mui/icons-material/Search";
@@ -18,12 +17,9 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 
 export default function DailyFilter({
   filters,
-
   setFilters,
-
   onSearch,
-
-  departments,
+  departments = [],
 }) {
   return (
     <Card
@@ -43,6 +39,7 @@ export default function DailyFilter({
         }}
       >
         <Grid container spacing={2} alignItems="center">
+          {/* DATE */}
           <Grid size={{ xs: 12, md: 2.5 }}>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
@@ -65,13 +62,14 @@ export default function DailyFilter({
             </LocalizationProvider>
           </Grid>
 
+          {/* DEPARTMENT */}
           <Grid size={{ xs: 12, md: 2 }}>
             <TextField
               fullWidth
               size="small"
               select
               label="Department"
-              value={filters.department}
+              value={filters.department || ""}
               onChange={(e) =>
                 setFilters((prev) => ({
                   ...prev,
@@ -82,13 +80,14 @@ export default function DailyFilter({
               <MenuItem value="">All Departments</MenuItem>
 
               {departments.map((item) => (
-                <MenuItem key={item.department} value={item.department}>
-                  {item.department}
+                <MenuItem key={item.id} value={item.name}>
+                  {item.name}
                 </MenuItem>
               ))}
             </TextField>
           </Grid>
 
+          {/* STATUS */}
           <Grid size={{ xs: 12, md: 2 }}>
             <TextField
               fullWidth
@@ -104,17 +103,14 @@ export default function DailyFilter({
               }
             >
               <MenuItem value="">All Statuses</MenuItem>
-
               <MenuItem value="Hadir">Present</MenuItem>
-
               <MenuItem value="Terlambat">Late</MenuItem>
-
               <MenuItem value="Belum Pulang">Not Checked Out</MenuItem>
-
               <MenuItem value="Belum Check In">Not Checked In</MenuItem>
             </TextField>
           </Grid>
 
+          {/* SEARCH */}
           <Grid size={{ xs: 12, md: 3 }}>
             <TextField
               fullWidth
@@ -129,6 +125,8 @@ export default function DailyFilter({
               }
             />
           </Grid>
+
+          {/* ACTIONS */}
           <Grid
             size={{ xs: 12, md: 2.5 }}
             sx={{
@@ -143,21 +141,18 @@ export default function DailyFilter({
               onClick={() => {
                 const reset = {
                   date: dayjs(),
-
                   department: "",
-
                   status: "",
-
                   search: "",
                 };
 
                 setFilters(reset);
-
                 onSearch(reset);
               }}
             >
               Reset
             </Button>
+
             <Button
               variant="contained"
               startIcon={<SearchIcon />}
