@@ -1560,3 +1560,98 @@ exports.createEditRequest = async (req, res) => {
     });
   }
 };
+
+/*
+|--------------------------------------------------------------------------
+| CAPTURE AUTO CHECKOUT GPS
+|--------------------------------------------------------------------------
+*/
+
+exports.captureAutoCheckoutLocation = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { latitude, longitude, accuracy } = req.body;
+
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    const gpsAccuracy = Number(accuracy);
+
+    if (
+      latitude == null ||
+      longitude == null ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      lat < -90 ||
+      lat > 90 ||
+      lng < -180 ||
+      lng > 180
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Koordinat GPS tidak valid.",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      WITH jakarta_clock AS (
+        SELECT NOW() AT TIME ZONE 'Asia/Jakarta' AS local_now
+      )
+      INSERT INTO attendance_auto_checkouts (
+        attendance_id,
+        auto_checkout_time,
+        latitude,
+        longitude,
+        location_accuracy,
+        gps_captured_at,
+        reason,
+        created_at
+      )
+      SELECT
+        a.id,
+        a.attendance_date + TIME '18:30',
+        $2,
+        $3,
+        $4,
+        j.local_now,
+        'Not manually checked out by 18:30',
+        j.local_now
+      FROM attendance a
+      CROSS JOIN jakarta_clock j
+      WHERE a.user_id = $1
+        AND a.attendance_date = j.local_now::date
+        AND a.check_in IS NOT NULL
+        AND a.check_out IS NULL
+        AND j.local_now::time >= TIME '18:30'
+      ON CONFLICT (attendance_id)
+      DO UPDATE SET
+        latitude = EXCLUDED.latitude,
+        longitude = EXCLUDED.longitude,
+        location_accuracy = EXCLUDED.location_accuracy,
+        gps_captured_at = EXCLUDED.gps_captured_at
+      RETURNING *
+      `,
+      [userId, lat, lng, Number.isFinite(gpsAccuracy) ? gpsAccuracy : null],
+    );
+
+    if (!result.rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Tidak ada absensi aktif atau belum waktunya auto-checkout.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "GPS auto-checkout berhasil disimpan.",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("AUTO CHECKOUT GPS ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal menyimpan GPS auto-checkout.",
+    });
+  }
+};

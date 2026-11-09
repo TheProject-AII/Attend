@@ -1,42 +1,50 @@
-import { BottomNavigation, BottomNavigationAction, Paper } from "@mui/material";
+import { useEffect, useState } from "react";
+
+import {
+  BottomNavigation,
+  BottomNavigationAction,
+  Paper,
+  Badge,
+} from "@mui/material";
+
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import FactCheckRoundedIcon from "@mui/icons-material/FactCheckRounded";
+
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import Badge from "@mui/material/Badge";
-import { useEffect, useState } from "react";
 import notificationService from "../../services/notificationService";
 
 export default function BottomNav() {
   const { user } = useAuth();
-  console.log("=== DEBUG MANAGER NAV ===");
-  console.log("USER:", user);
-  console.log("ROLE:", user?.role);
-  console.log("ROLE ID:", user?.role_id);
-  console.log("ROLE NAME:", user?.role_name);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [badge, setBadge] = useState(0);
+
+  // =====================================
+  // ROLE CHECK
+  // =====================================
+
   const role = String(
     user?.role?.name || user?.role || user?.role_name || "",
   ).toUpperCase();
 
   const roleId = Number(user?.role_id);
-  const isEmployee =
-    roleId === 3 || roleId === 4 || roleId === 5 || roleId === 6;
 
-  // Employee wajib menyelesaikan face enrollment terlebih dahulu.
+  const isEmployee = [3, 4, 5, 6].includes(roleId);
+
   const mustEnrollFace = isEmployee && user?.face_enrolled !== true;
 
-  // Sembunyikan Bottom Navigation selama enrollment belum selesai.
-  if (mustEnrollFace) {
-    return null;
-  }
   const canApproval =
     ["SUPERVISOR", "MANAGER"].includes(role) || [4, 5].includes(roleId);
-  const [badge, setBadge] = useState(0);
+
+  // =====================================
+  // MENU
+  // =====================================
+
   const menus = [
     {
       label: "Attendance",
@@ -54,6 +62,7 @@ export default function BottomNav() {
       icon: <DescriptionRoundedIcon />,
     },
   ];
+
   if (canApproval) {
     menus.push({
       label: "Approval",
@@ -61,41 +70,76 @@ export default function BottomNav() {
       icon: <FactCheckRoundedIcon />,
     });
   }
+
   menus.push({
     label: "Profile",
     value: "/employee/profile",
     icon: <PersonRoundedIcon />,
   });
+
+  // =====================================
+  // NOTIFICATION BADGE
+  // =====================================
+
   useEffect(() => {
-    loadBadge();
-  }, [location.pathname]);
+    const loadBadge = async () => {
+      try {
+        const { data } = await notificationService.getBadge();
+        setBadge(data.badge || 0);
+      } catch (err) {
+        console.error("LOAD NAV BADGE ERROR:", err);
+      }
+    };
 
-  const loadBadge = async () => {
-    try {
-      const { data } = await notificationService.getBadge();
-
-      setBadge(data.badge);
-    } catch (err) {
-      console.error(err);
+    if (!mustEnrollFace) {
+      loadBadge();
     }
-  };
+  }, [location.pathname, mustEnrollFace]);
+
+  // =====================================
+  // HIDE DURING FACE ENROLLMENT
+  // =====================================
+
+  if (mustEnrollFace) {
+    return null;
+  }
+
+  // =====================================
+  // RENDER
+  // =====================================
 
   return (
     <Paper
       elevation={8}
       sx={{
         position: "fixed",
-        bottom: 12,
+
+        // Safe area Android / iOS
+        bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+
         left: 12,
         right: 12,
+
         borderRadius: "18px",
         overflow: "hidden",
-        zIndex: (theme) => theme.zIndex.appBar,
+
+        zIndex: 1200,
+        boxSizing: "border-box",
+
+        backgroundColor: "#ffffff",
+        border: "1px solid rgba(229, 231, 235, 0.8)",
+
+        // Hindari navbar ikut bergeser saat keyboard muncul
+        "@media (max-height: 450px)": {
+          bottom: "8px",
+        },
       }}
     >
       <BottomNavigation
         value={location.pathname}
-        onChange={(e, newValue) => navigate(newValue)}
+        onChange={(event, newValue) => {
+          navigate(newValue);
+        }}
         showLabels
         sx={{
           height: 68,
@@ -105,6 +149,8 @@ export default function BottomNav() {
             color: "#9CA3AF",
             transition: ".25s",
             minWidth: 0,
+            paddingLeft: 0.5,
+            paddingRight: 0.5,
           },
 
           "& .MuiBottomNavigationAction-label": {
@@ -122,19 +168,9 @@ export default function BottomNav() {
         }}
       >
         {menus.map((item) => {
-          const currentRole = String(
-            user?.role?.name || user?.role || user?.role_name || "",
-          ).toUpperCase();
-
-          const currentRoleId = Number(user?.role_id);
-
-          const isLeader =
-            ["SUPERVISOR", "MANAGER"].includes(currentRole) ||
-            [4, 5].includes(currentRoleId);
-
           const showBadge =
-            (isLeader && item.value === "/employee/approval") ||
-            (currentRole === "EMPLOYEE" && item.value === "/employee/leave");
+            (canApproval && item.value === "/employee/approval") ||
+            (role === "EMPLOYEE" && item.value === "/employee/leave");
 
           return (
             <BottomNavigationAction

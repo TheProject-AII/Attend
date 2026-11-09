@@ -3,60 +3,53 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 const MockLocation = registerPlugin("MockLocation");
 
 export const getCurrentLocation = async () => {
-  try {
-    // Android: gunakan koordinat langsung dari native plugin.
-    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
-      const result = await MockLocation.checkMockLocation();
+  if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+    const result = await MockLocation.checkMockLocation();
 
-      if (!result.checked) {
-        throw new Error("Tidak dapat memverifikasi status GPS.");
-      }
+    // GPS HP belum aktif
+    if (result.locationEnabled === false) {
+      await MockLocation.openLocationSettings();
 
-      if (result.isMock) {
-        throw new Error(
-          "Fake GPS terdeteksi. Matikan aplikasi GPS palsu sebelum melakukan absensi.",
-        );
-      }
-
-      return {
-        latitude: result.latitude,
-        longitude: result.longitude,
-        accuracy: result.accuracy,
-        isMock: result.isMock,
-      };
+      throw new Error(
+        "Location HP belum aktif. Aktifkan GPS, lalu kembali ke aplikasi.",
+      );
     }
 
-    // Web / browser: gunakan Geolocation API.
-    if (!navigator.geolocation) {
-      throw new Error("Perangkat tidak mendukung GPS.");
+    if (!result.checked) {
+      throw new Error("Lokasi belum berhasil diperoleh.");
     }
 
-    const position = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0,
-      });
-    });
+    if (result.isMock) {
+      throw new Error("Fake GPS terdeteksi. Matikan aplikasi lokasi palsu.");
+    }
 
     return {
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-      accuracy: position.coords.accuracy,
-      isMock: false,
-    };
-  } catch (error) {
-    console.error("MOCK LOCATION ERROR:", error);
-
-    throw {
-      code: error?.code ?? 0,
-      message:
-        error?.message ||
-        error?.errorMessage ||
-        (typeof error === "string" ? error : JSON.stringify(error)) ||
-        "Gagal mendapatkan lokasi GPS.",
+      latitude: result.latitude,
+      longitude: result.longitude,
+      accuracy: result.accuracy,
+      isMock: result.isMock,
     };
   }
+
+  // iOS / Web
+  if (!navigator.geolocation) {
+    throw new Error("GPS tidak didukung perangkat ini.");
+  }
+
+  const position = await new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0,
+    });
+  });
+
+  return {
+    latitude: position.coords.latitude,
+    longitude: position.coords.longitude,
+    accuracy: position.coords.accuracy,
+    isMock: false,
+  };
 };
 
 // Haversine Formula

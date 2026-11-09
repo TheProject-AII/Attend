@@ -1,5 +1,11 @@
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 html,
-body {
+body,
+#root {
   width: 100%;
   min-height: 100%;
   margin: 0;
@@ -12,9 +18,19 @@ body {
 * {
   touch-action: manipulation;
 }
+
 /* Prevent iOS input auto-zoom */
 input,
 textarea,
 select {
   font-size: 16px !important;
+}
+
+/* Safe area Android dan iOS */
+.safe-area-bottom {
+  padding-bottom: var(--safe-area-bottom);
+}
+
+.safe-area-top {
+  padding-top: var(--safe-area-top);
 }

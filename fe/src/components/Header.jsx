@@ -18,48 +18,68 @@ import {
   TextField,
   Stack,
 } from "@mui/material";
+
 import CloseIcon from "@mui/icons-material/Close";
 import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import PasswordRoundedIcon from "@mui/icons-material/PasswordRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
+import LanguageIcon from "@mui/icons-material/Language";
+
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
-import LanguageIcon from "@mui/icons-material/Language";
 import authService from "../services/authService";
 
 export default function Header({ title = "Dashboard", subtitle }) {
   const [notifAnchor, setNotifAnchor] = useState(null);
   const [profileAnchor, setProfileAnchor] = useState(null);
-  const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
+
+  const navigate = useNavigate();
   const { user, setUser } = useAuth();
+  const { i18n } = useTranslation();
+
   const [hrgaLeader, setHrgaLeader] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
-  const { t, i18n } = useTranslation();
   const [languageAnchor, setLanguageAnchor] = useState(null);
 
-  // Fungsi untuk mengubah password
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+
+  // =====================================
+  // LANGUAGE
+  // =====================================
 
   const changeLanguage = async (language) => {
     await i18n.changeLanguage(language);
     localStorage.setItem("aii_language", language);
     setLanguageAnchor(null);
   };
+
+  // =====================================
+  // NOTIFICATIONS
+  // =====================================
+
   const notifications = [
     "New leave request",
     "3 employees have not checked in",
     "1 overtime request",
   ];
 
+  // =====================================
+  // USER
+  // =====================================
+
   const initial = user?.name ? user.name.charAt(0).toUpperCase() : "?";
+
+  // =====================================
+  // LOGOUT
+  // =====================================
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -67,9 +87,12 @@ export default function Header({ title = "Dashboard", subtitle }) {
 
     setUser(null);
 
-    // Paksa reload ke login
     window.location.replace("/");
   };
+
+  // =====================================
+  // CHANGE PASSWORD
+  // =====================================
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -112,6 +135,10 @@ export default function Header({ title = "Dashboard", subtitle }) {
     }
   };
 
+  // =====================================
+  // PROFILE
+  // =====================================
+
   const handleOpenProfile = async () => {
     setProfileOpen(true);
     setLoadingProfile(true);
@@ -121,6 +148,7 @@ export default function Header({ title = "Dashboard", subtitle }) {
       setHrgaLeader(response.data);
     } catch (error) {
       console.error("GET HRGA LEADER ERROR:", error);
+
       alert(
         error.response?.data?.message || "Gagal mengambil data profil HRGA.",
       );
@@ -128,17 +156,37 @@ export default function Header({ title = "Dashboard", subtitle }) {
       setLoadingProfile(false);
     }
   };
+
+  // =====================================
+  // RENDER
+  // =====================================
+
   return (
     <>
+      {/* HEADER */}
       <Box
         sx={{
           position: "sticky",
           top: 0,
           zIndex: 1200,
 
-          height: 80,
+          boxSizing: "border-box",
+          width: "100%",
+          height: "auto",
 
-          px: 4,
+          // Safe area normal
+          pt: "calc(env(safe-area-inset-top, 0px) + 8px)",
+          minHeight: "calc(80px + env(safe-area-inset-top, 0px))",
+
+          // Fallback untuk iPhone saat aplikasi dibuka dari Home Screen
+          "@supports (-webkit-touch-callout: none)": {
+            "@media (display-mode: standalone)": {
+              pt: "max(env(safe-area-inset-top, 0px), 59px)",
+              minHeight: "139px",
+            },
+          },
+
+          px: { xs: 2, sm: 4 },
 
           display: "flex",
           alignItems: "center",
@@ -146,14 +194,14 @@ export default function Header({ title = "Dashboard", subtitle }) {
 
           bgcolor: "rgba(255,255,255,.95)",
           backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
 
           borderBottom: "1px solid #E5E7EB",
-
           transition: ".25s",
         }}
       >
         {/* LEFT */}
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography variant="h4" fontWeight={700}>
             {title}
           </Typography>
@@ -162,12 +210,13 @@ export default function Header({ title = "Dashboard", subtitle }) {
             {subtitle || `Welcome, ${user?.name} 👋`}
           </Typography>
         </Box>
+
         {/* RIGHT */}
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
-            gap: 2,
+            gap: { xs: 0.5, sm: 2 },
           }}
         >
           {/* NOTIFICATION */}
@@ -218,42 +267,33 @@ export default function Header({ title = "Dashboard", subtitle }) {
               </Typography>
             </Box>
 
-            <KeyboardArrowDownRoundedIcon
-              sx={{
-                color: "#9CA3AF",
-              }}
-            />
+            <KeyboardArrowDownRoundedIcon sx={{ color: "#9CA3AF" }} />
           </Box>
-          <>
-            <Button
-              startIcon={<LanguageIcon />}
-              onClick={(event) => setLanguageAnchor(event.currentTarget)}
-              sx={{ textTransform: "none" }}
-            >
-              {i18n.language === "id" ? "Bahasa" : "English"}
-            </Button>
 
-            <Menu
-              anchorEl={languageAnchor}
-              open={Boolean(languageAnchor)}
-              onClose={() => setLanguageAnchor(null)}
-            >
-              <MenuItem onClick={() => changeLanguage("id")}>
-                🇮🇩 Bahasa Indonesia
-              </MenuItem>
+          {/* LANGUAGE */}
+          <Button
+            startIcon={<LanguageIcon />}
+            onClick={(event) => setLanguageAnchor(event.currentTarget)}
+            sx={{ textTransform: "none" }}
+          >
+            {i18n.language === "id" ? "Bahasa" : "English"}
+          </Button>
 
-              <MenuItem onClick={() => changeLanguage("en")}>
-                🇬🇧 English
-              </MenuItem>
-            </Menu>
-          </>
+          <Menu
+            anchorEl={languageAnchor}
+            open={Boolean(languageAnchor)}
+            onClose={() => setLanguageAnchor(null)}
+          >
+            <MenuItem onClick={() => changeLanguage("id")}>
+              🇮🇩 Bahasa Indonesia
+            </MenuItem>
+
+            <MenuItem onClick={() => changeLanguage("en")}>🇬🇧 English</MenuItem>
+          </Menu>
         </Box>
       </Box>
 
-      {/* ========================= */}
       {/* NOTIFICATION MENU */}
-      {/* ========================= */}
-
       <Menu
         anchorEl={notifAnchor}
         open={Boolean(notifAnchor)}
@@ -278,10 +318,7 @@ export default function Header({ title = "Dashboard", subtitle }) {
         ))}
       </Menu>
 
-      {/* ========================= */}
       {/* PROFILE MENU */}
-      {/* ========================= */}
-
       <Menu
         anchorEl={profileAnchor}
         open={Boolean(profileAnchor)}
@@ -316,14 +353,10 @@ export default function Header({ title = "Dashboard", subtitle }) {
           </ListItemIcon>
           Change Password
         </MenuItem>
+
         <Divider />
 
-        <MenuItem
-          onClick={handleLogout}
-          sx={{
-            color: "error.main",
-          }}
-        >
+        <MenuItem onClick={handleLogout} sx={{ color: "error.main" }}>
           <ListItemIcon>
             <LogoutRoundedIcon color="error" fontSize="small" />
           </ListItemIcon>
@@ -360,13 +393,13 @@ export default function Header({ title = "Dashboard", subtitle }) {
                 alignItems: "flex-end",
                 gap: 2,
                 backgroundImage: `
-            linear-gradient(
-              to top,
-              rgba(15, 23, 42, 0.85),
-              rgba(15, 23, 42, 0.15)
-            ),
-            url("${hrgaLeader.photoUrl || ""}")
-          `,
+                  linear-gradient(
+                    to top,
+                    rgba(15, 23, 42, 0.85),
+                    rgba(15, 23, 42, 0.15)
+                  ),
+                  url("${hrgaLeader.photoUrl || ""}")
+                `,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }}
@@ -399,6 +432,7 @@ export default function Header({ title = "Dashboard", subtitle }) {
                 <Typography variant="h6" fontWeight={700}>
                   {hrgaLeader.name}
                 </Typography>
+
                 <Typography variant="body2">
                   {hrgaLeader.position} - {hrgaLeader.job_level}
                 </Typography>
@@ -472,7 +506,10 @@ export default function Header({ title = "Dashboard", subtitle }) {
               <Button
                 onClick={() => setProfileOpen(false)}
                 variant="outlined"
-                sx={{ borderRadius: 2, textTransform: "none" }}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: "none",
+                }}
               >
                 Close
               </Button>
@@ -481,7 +518,6 @@ export default function Header({ title = "Dashboard", subtitle }) {
         ) : null}
       </Dialog>
 
-      {/* CHANGE PASSWORD DIALOG */}
       {/* CHANGE PASSWORD DIALOG */}
       <Dialog
         open={passwordOpen}
@@ -550,7 +586,10 @@ export default function Header({ title = "Dashboard", subtitle }) {
             variant="contained"
             onClick={handleChangePassword}
             disabled={changingPassword}
-            sx={{ borderRadius: 2, textTransform: "none" }}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+            }}
           >
             {changingPassword ? "Updating..." : "Update Password"}
           </Button>

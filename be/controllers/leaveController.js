@@ -9,28 +9,40 @@ const countWorkingDays = require("../utils/countWorkingDays");
 // GET ACTIVE LEAVE TYPES
 exports.getTypes = async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT
-        id,
-        name,
-        category,
-        entitlement_days,
-        is_paid,
-        deduct_annual_balance,
-        requires_approval,
-        requires_document
-      FROM leave_types
-      WHERE is_active = TRUE
-      ORDER BY
-        CASE category
-          WHEN 'ANNUAL' THEN 1
-          WHEN 'SPECIAL' THEN 2
-          WHEN 'OTHER' THEN 3
-          ELSE 4
-        END,
-        id ASC
-    `);
-
+    const result = await pool.query(
+      `
+  SELECT
+    lt.id,
+    lt.name,
+    lt.category,
+    lt.entitlement_days,
+    lt.is_paid,
+    lt.deduct_annual_balance,
+    lt.requires_approval,
+    lt.requires_document,
+    whs.work_days
+  FROM leave_types lt
+  CROSS JOIN users u
+  LEFT JOIN working_hours_settings whs
+    ON whs.id = u.working_hours_setting_id
+   AND whs.is_active = TRUE
+  WHERE u.id = $1
+    AND lt.is_active = TRUE
+  ORDER BY
+    CASE lt.category
+      WHEN 'ANNUAL' THEN 1
+      WHEN 'SPECIAL' THEN 2
+      WHEN 'OTHER' THEN 3
+      ELSE 4
+    END,
+    lt.id ASC
+  `,
+      [req.user.id],
+    );
+    console.log(
+      "DEBUG BACKEND LEAVE TYPES:",
+      JSON.stringify(result.rows, null, 2),
+    );
     return res.json({
       success: true,
       data: result.rows,
@@ -61,7 +73,13 @@ exports.create = async (req, res) => {
       end_time,
       reason,
     } = req.body;
-
+    // VALIDASI KELENGKAPAN DATA
+    if (!leave_type || !start_date || !end_date) {
+      return res.status(400).json({
+        success: false,
+        message: "Data belum lengkap.",
+      });
+    }
     // VALIDATION
     // GET EMPLOYEE WORK SCHEDULE
     const scheduleResult = await pool.query(
@@ -91,12 +109,6 @@ exports.create = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Tanggal pengajuan tidak mencakup hari kerja.",
-      });
-    }
-    if (!leave_type || !start_date || !end_date) {
-      return res.status(400).json({
-        success: false,
-        message: "Data belum lengkap.",
       });
     }
 
@@ -211,6 +223,34 @@ exports.create = async (req, res) => {
       }
 
       selectedLeaveType = typeResult.rows[0];
+
+      // =====================================
+      // VALIDASI MAKSIMAL HARI CUTI KHUSUS
+      // =====================================
+
+      const entitlementDays = Number(selectedLeaveType.entitlement_days);
+
+      if (
+        selectedLeaveType.category === "SPECIAL" &&
+        Number.isFinite(entitlementDays) &&
+        entitlementDays > 0 &&
+        leaveDays > entitlementDays
+      ) {
+        return res.status(400).json({
+          success: false,
+          code: "LEAVE_ENTITLEMENT_EXCEEDED",
+          message: `Rentang tanggal yang dipilih adalah ${leaveDays} hari kerja, sedangkan ${selectedLeaveType.name} maksimal ${entitlementDays} hari kerja.`,
+          data: {
+            leave_days: leaveDays,
+            entitlement_days: entitlementDays,
+            excess_days: leaveDays - entitlementDays,
+          },
+        });
+      }
+
+      // =====================================
+      // VALIDASI LAMPIRAN
+      // =====================================
 
       if (selectedLeaveType.requires_document && !req.file) {
         return res.status(400).json({

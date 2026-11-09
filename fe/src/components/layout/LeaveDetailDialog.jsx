@@ -99,17 +99,12 @@ export default function LeaveDetailDialog({ open, onClose, data }) {
             }
           />
 
-          {data.leave_category && (
+          {(data.master_leave_category || data.leave_category) && (
             <BoxItem
               title="Leave Category"
-              value={
-                {
-                  TAHUNAN: "Annual Leave",
-                  MENIKAH: "Marriage",
-                  MELAHIRKAN: "Maternity Leave",
-                  KELUARGA_MENINGGAL: "Bereavement Leave",
-                }[data.leave_category] || data.leave_category
-              }
+              value={`${data.master_leave_category || data.leave_category} - ${
+                data.leave_type_name || data.leave_type
+              }`}
             />
           )}
 
