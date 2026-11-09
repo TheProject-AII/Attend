@@ -39,7 +39,10 @@ exports.getTypes = async (req, res) => {
   `,
       [req.user.id],
     );
-
+    console.log(
+      "DEBUG BACKEND LEAVE TYPES:",
+      JSON.stringify(result.rows, null, 2),
+    );
     return res.json({
       success: true,
       data: result.rows,

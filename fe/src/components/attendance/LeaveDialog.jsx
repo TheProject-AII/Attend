@@ -11,6 +11,7 @@ import {
   Typography,
   Box,
   InputLabel,
+  Alert, // TAMBAHKAN
 } from "@mui/material";
 
 import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
@@ -39,10 +40,14 @@ export default function LeaveDialog({
   setAttachment,
   loading,
   onSubmit,
+  selectedLeaveDays = 0,
+  maxLeaveDays = 0,
+  isSpecialLeave = false,
+  isLeaveExceeded = false,
 }) {
   const isOvertime = leaveType === "LEMBUR";
   const isPermission = leaveType === "IZIN";
-
+  const isCuti = leaveType === "CUTI";
   const labelStyle = {
     mb: 1,
     fontSize: 14,
@@ -105,6 +110,34 @@ export default function LeaveDialog({
               ))}
             </Select>
           </FormControl>
+        )}
+
+        {/* SPECIAL LEAVE VALIDATION */}
+        {isCuti && isSpecialLeave && (
+          <Alert severity={isLeaveExceeded ? "error" : "info"} sx={{ mt: 2 }}>
+            <Typography variant="body2" fontWeight={700}>
+              {
+                leaveTypes.find(
+                  (item) => String(item.id) === String(leaveTypeId),
+                )?.name
+              }
+            </Typography>
+
+            <Typography variant="body2">
+              Maximum: {maxLeaveDays} working days
+            </Typography>
+
+            <Typography variant="body2">
+              Selected: {selectedLeaveDays} working days
+            </Typography>
+
+            {isLeaveExceeded && (
+              <Typography variant="body2" fontWeight={600} sx={{ mt: 1 }}>
+                Exceeds the maximum by {selectedLeaveDays - maxLeaveDays}{" "}
+                working days. Please adjust your selected dates.
+              </Typography>
+            )}
+          </Alert>
         )}
 
         {/* OVERTIME FORM */}
@@ -322,6 +355,7 @@ export default function LeaveDialog({
           onClick={onSubmit}
           disabled={
             loading ||
+            (isCuti && isLeaveExceeded) ||
             !startDate ||
             !reason.trim() ||
             (isOvertime && (!startTime || !endTime)) ||

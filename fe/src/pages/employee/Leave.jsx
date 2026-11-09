@@ -107,7 +107,25 @@ export default function Leave() {
 
   const isLeaveExceeded =
     isSpecialLeave && maxLeaveDays > 0 && selectedLeaveDays > maxLeaveDays;
-
+  console.log(
+    "DEBUG SPECIAL LEAVE:",
+    JSON.stringify(
+      {
+        leaveType,
+        leaveTypeId,
+        category: selectedLeaveType?.category,
+        entitlementDays: selectedLeaveType?.entitlement_days,
+        workDays: selectedLeaveType?.work_days,
+        startDate,
+        endDate,
+        selectedLeaveDays,
+        isSpecialLeave,
+        isLeaveExceeded,
+      },
+      null,
+      2,
+    ),
+  );
   const [statusFilter, setStatusFilter] = useState("ALL");
   const normalizeStatus = (status) => {
     if (!status) {
@@ -142,13 +160,17 @@ export default function Leave() {
     try {
       const response = await leaveService.types();
 
+      console.log(
+        "RAW API RESPONSE: " + JSON.stringify(response.data, null, 2),
+      );
+
       const result = Array.isArray(response.data)
         ? response.data
         : response.data?.data || [];
 
-      console.log("LEAVE TYPES:", result);
-
       setLeaveTypes(result);
+
+      console.log("PARSED LEAVE TYPES: " + JSON.stringify(result, null, 2));
 
       if (result.length > 0) {
         setLeaveTypeId(String(result[0].id));
@@ -312,7 +334,10 @@ export default function Leave() {
     // =====================================
     // VALIDASI UMUM
     // =====================================
-
+    // VALIDASI BATAS CUTI KHUSUS
+    if (leaveType === "CUTI" && isLeaveExceeded) {
+      return;
+    }
     if (!startDate) {
       Swal.fire({
         icon: "warning",
@@ -357,14 +382,6 @@ export default function Leave() {
       }
 
       try {
-        if (leaveType === "CUTI" && isLeaveExceeded) {
-          Swal.fire({
-            icon: "warning",
-            title: "Melebihi Batas Cuti",
-            text: `Pengajuan maksimal ${maxLeaveDays} hari kerja.`,
-          });
-          return;
-        }
         setSubmitLoading(true);
 
         await overtimeService.create({
