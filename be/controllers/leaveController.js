@@ -13,7 +13,7 @@ exports.getTypes = async (req, res) => {
       `
   SELECT
     lt.id,
-    lt.name,
+    TRIM(lt.name) AS name,
     lt.category,
     lt.entitlement_days,
     lt.is_paid,
@@ -373,11 +373,14 @@ exports.history = async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT
-     lr.id,
-    lr.leave_type,
-    lr.leave_category,
-    lr.start_date,
+     SELECT
+  lr.id,
+  lr.leave_type,
+  lr.leave_category,
+  lr.leave_type_id,
+  lt.name AS leave_type_name,
+  lt.category AS master_leave_category,
+  lr.start_date,
     lr.end_date,
     whs.work_days,
     lr.reason,
@@ -395,6 +398,10 @@ exports.history = async (req, res) => {
 
 FROM leave_requests lr
 JOIN users u ON u.id = lr.user_id
+
+LEFT JOIN leave_types lt
+  ON lt.id = lr.leave_type_id
+
 LEFT JOIN working_hours_settings whs
   ON whs.id = u.working_hours_setting_id
   AND whs.is_active = TRUE
@@ -406,13 +413,19 @@ WHERE lr.user_id = $1
 
 
         SELECT
-    aer.id,
+  aer.id,
 
-    'PERUBAHAN ABSENSI' AS leave_type,
+  'PERUBAHAN ABSENSI' AS leave_type,
 
-    NULL::varchar(50) AS leave_category,
+  NULL::varchar(50) AS leave_category,
 
-    a.attendance_date AS start_date,
+  NULL::integer AS leave_type_id,
+
+  NULL::text AS leave_type_name,
+
+  NULL::text AS master_leave_category,
+
+  a.attendance_date AS start_date,
     a.attendance_date AS end_date,
 NULL::jsonb AS work_days,
     aer.reason,

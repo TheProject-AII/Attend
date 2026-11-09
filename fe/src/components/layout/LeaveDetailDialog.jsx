@@ -17,7 +17,10 @@ export default function LeaveDetailDialog({ open, onClose, data }) {
   if (!data) return null;
 
   const isPermission = data.leave_type === "IZIN";
-
+  const displayLeaveCategory =
+    data.master_leave_category && data.leave_type_name
+      ? `${data.master_leave_category} - ${data.leave_type_name}`
+      : data.leave_category || "-";
   const formatDate = (date) => {
     if (!date) return "-";
 
@@ -100,12 +103,7 @@ export default function LeaveDetailDialog({ open, onClose, data }) {
           />
 
           {(data.master_leave_category || data.leave_category) && (
-            <BoxItem
-              title="Leave Category"
-              value={`${data.master_leave_category || data.leave_category} - ${
-                data.leave_type_name || data.leave_type
-              }`}
-            />
+            <BoxItem title="Leave Category" value={displayLeaveCategory} />
           )}
 
           <BoxItem
