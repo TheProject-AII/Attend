@@ -29,17 +29,10 @@ exports.testEmail = async (req, res) => {
                     padding: 20px;
                 ">
 
-                    <h2>
-                        KJI Attendance
-                    </h2>
+                   
 
                     <p>
                         Halo 👋
-                    </p>
-
-                    <p>
-                        Ini adalah email percobaan
-                        dari sistem KJI Attendance.
                     </p>
 
                     <p>

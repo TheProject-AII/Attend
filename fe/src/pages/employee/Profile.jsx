@@ -293,7 +293,13 @@ export default function Profile() {
           <Divider />
 
           {/* CHANGE PASSWORD */}
-          <ListItemButton onClick={() => navigate("/forgot-password")}>
+          <ListItemButton
+            onClick={() =>
+              navigate("/forgot-password", {
+                state: { fromProfile: true },
+              })
+            }
+          >
             <ListItemIcon>
               <LockOutlinedIcon color="primary" />
             </ListItemIcon>
