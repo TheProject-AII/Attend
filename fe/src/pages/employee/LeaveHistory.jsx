@@ -500,19 +500,23 @@ export default function LeaveHistory() {
                         <TableCell>{item.department || "-"}</TableCell>
 
                         <TableCell>
-                          <Typography fontWeight={500} fontSize={13}>
-                            {item.leave_type || "-"}
+                          <Typography fontWeight={600} fontSize={13}>
+                            {item.leave_type === "CUTI"
+                              ? `${item.leave_type_name || "Cuti"}`
+                              : item.leave_type || "-"}
                           </Typography>
-                          {item.leave_category && (
+
+                          {item.leave_type === "CUTI" && (
                             <Typography
                               variant="caption"
                               color="text.secondary"
                             >
-                              {item.leave_category}
+                              {item.master_leave_category ||
+                                item.leave_category ||
+                                "-"}
                             </Typography>
                           )}
                         </TableCell>
-
                         <TableCell>
                           <Typography fontSize={13}>
                             {formatDate(item.start_date)}
@@ -730,7 +734,9 @@ export default function LeaveHistory() {
                       Leave Type
                     </Typography>
                     <Typography fontWeight={600}>
-                      {selectedRequest.leave_type || "-"}
+                      {selectedRequest.leave_type === "CUTI"
+                        ? `${selectedRequest.leave_type_name || "Cuti"}`
+                        : selectedRequest.leave_type || "-"}
                     </Typography>
                   </Box>
 
@@ -739,7 +745,9 @@ export default function LeaveHistory() {
                       Category
                     </Typography>
                     <Typography fontWeight={600}>
-                      {selectedRequest.leave_category || "-"}
+                      {selectedRequest.master_leave_category ||
+                        selectedRequest.leave_category ||
+                        "-"}
                     </Typography>
                   </Box>
 

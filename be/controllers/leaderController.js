@@ -963,6 +963,9 @@ exports.adminLeaveHistory = async (req, res) => {
 
         lr.leave_type,
         lr.leave_category,
+        lr.leave_type_id,
+        lt.name AS leave_type_name,
+        lt.category AS master_leave_category,
         lr.start_date,
         lr.end_date,
         lr.reason,
@@ -979,6 +982,9 @@ exports.adminLeaveHistory = async (req, res) => {
 
       JOIN users u
         ON u.id = lr.user_id
+
+      LEFT JOIN leave_types lt
+        ON lt.id = lr.leave_type_id
 
       LEFT JOIN users approver
         ON approver.id = lr.approved_by

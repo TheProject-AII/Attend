@@ -107,25 +107,7 @@ export default function Leave() {
 
   const isLeaveExceeded =
     isSpecialLeave && maxLeaveDays > 0 && selectedLeaveDays > maxLeaveDays;
-  console.log(
-    "DEBUG SPECIAL LEAVE:",
-    JSON.stringify(
-      {
-        leaveType,
-        leaveTypeId,
-        category: selectedLeaveType?.category,
-        entitlementDays: selectedLeaveType?.entitlement_days,
-        workDays: selectedLeaveType?.work_days,
-        startDate,
-        endDate,
-        selectedLeaveDays,
-        isSpecialLeave,
-        isLeaveExceeded,
-      },
-      null,
-      2,
-    ),
-  );
+
   const [statusFilter, setStatusFilter] = useState("ALL");
   const normalizeStatus = (status) => {
     if (!status) {
@@ -753,21 +735,29 @@ export default function Leave() {
             </CardContent>
           </Card>
         ) : (
-          filteredHistory.map((item) => (
-            <LeaveCard
-              key={`${item.leave_type}-${item.id}`}
-              item={item}
-              onClick={() => {
-                setSelectedLeave(item);
+          filteredHistory.map((item) => {
+            const selectedType = leaveTypes.find(
+              (type) => String(type.id) === String(item.leave_type_id),
+            );
+            return (
+              <LeaveCard
+                key={`${item.leave_type}-${item.id}`}
+                item={{
+                  ...item,
+                  leave_type_name: selectedType?.name || item.leave_type_name,
+                }}
+                onClick={() => {
+                  setSelectedLeave(item);
 
-                if (item.leave_type === "LEMBUR") {
-                  setOpenOvertimeDetail(true);
-                } else {
-                  setOpenDetail(true);
-                }
-              }}
-            />
-          ))
+                  if (item.leave_type === "LEMBUR") {
+                    setOpenOvertimeDetail(true);
+                  } else {
+                    setOpenDetail(true);
+                  }
+                }}
+              />
+            );
+          })
         )}
       </Box>
       <Fab

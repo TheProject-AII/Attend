@@ -35,7 +35,10 @@ const getStatusLabel = (status) => {
 
 export default function LeaveCard({ item, onClick }) {
   const isOvertime = item.leave_type === "LEMBUR";
-
+  const displayLeaveType =
+    item.leave_type === "CUTI"
+      ? `Leave - ${item.leave_type_name || "Cuti"}`
+      : leaveTypeLabel[item.leave_type] || item.leave_type;
   const formatDate = (date) => {
     if (!date) return "-";
 
@@ -100,17 +103,7 @@ export default function LeaveCard({ item, onClick }) {
               lineHeight: 1.4,
             }}
           >
-            {item.leave_type === "CUTI"
-              ? item.leave_category === "TAHUNAN"
-                ? "Annual Leave"
-                : item.leave_category === "MENIKAH"
-                  ? "Marriage Leave"
-                  : item.leave_category === "MELAHIRKAN"
-                    ? "Maternity Leave"
-                    : item.leave_category === "KELUARGA_MENINGGAL"
-                      ? "Bereavement Leave"
-                      : "Leave"
-              : leaveTypeLabel[item.leave_type] || item.leave_type}
+            {displayLeaveType}
           </Typography>
 
           <Chip
