@@ -379,9 +379,38 @@ export default function Attendance() {
         gpsReady={gpsReady}
         onRetryLocation={loadLocation}
         refreshingLocation={refreshingLocation}
-        onOpenAttendance={() => {
-          setDialogAction(status === "checked-in" ? "CHECK_OUT" : "CHECK_IN");
+        onOpenAttendance={async () => {
+          const isCheckingOut = status === "checked-in";
 
+          // Jika belum mencapai 9 jam, minta konfirmasi sebelum membuka dialog checkout.
+          if (isCheckingOut && todayData?.checkIn) {
+            const checkInDate = new Date(todayData.checkIn);
+            const elapsedMilliseconds = time.getTime() - checkInDate.getTime();
+            const nineHoursMilliseconds = 9 * 60 * 60 * 1000;
+
+            // Jika waktu check-in tidak valid, jangan lanjut tanpa konfirmasi.
+            const hasValidCheckIn = !Number.isNaN(checkInDate.getTime());
+            const hasReachedNineHours =
+              hasValidCheckIn && elapsedMilliseconds >= nineHoursMilliseconds;
+
+            if (!hasReachedNineHours) {
+              const confirmation = await Swal.fire({
+                icon: "warning",
+                title: "Attention",
+                text: "Your work hours are still under 8 hours, are you sure you want to check out?",
+                showCancelButton: true,
+                confirmButtonText: "Yes, Check Out",
+                cancelButtonText: "No",
+                confirmButtonColor: "#d32f2f",
+                cancelButtonColor: "#757575",
+                reverseButtons: true,
+              });
+
+              if (!confirmation.isConfirmed) return;
+            }
+          }
+
+          setDialogAction(isCheckingOut ? "CHECK_OUT" : "CHECK_IN");
           setOpenDialog(true);
         }}
       />
