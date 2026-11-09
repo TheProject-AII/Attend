@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import authService from "../services/authService";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 
+const MockLocation = registerPlugin("MockLocation");
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
@@ -9,7 +11,21 @@ export function AuthProvider({ children }) {
 
   const loadUser = async () => {
     const token = localStorage.getItem("token");
-
+    if (
+      token &&
+      Capacitor.isNativePlatform() &&
+      Capacitor.getPlatform() === "android"
+    ) {
+      try {
+        await MockLocation.configureAutoCheckout({
+          token,
+          apiUrl:
+            "https://hris.so-mak.com/api/attendance/auto-checkout/location",
+        });
+      } catch (error) {
+        console.error("AUTO CHECKOUT SCHEDULER ERROR:", error);
+      }
+    }
     if (!token) {
       setUser(null);
       setLoading(false);
@@ -25,6 +41,8 @@ export function AuthProvider({ children }) {
       setUser(currentUser);
       localStorage.setItem("user", JSON.stringify(currentUser));
 
+      await requestBackgroundGPS();
+
       return currentUser;
     } catch (err) {
       console.error("Failed to load user:", err);
@@ -37,7 +55,20 @@ export function AuthProvider({ children }) {
       setLoading(false);
     }
   };
-
+  const requestBackgroundGPS = async () => {
+    if (
+      Capacitor.isNativePlatform() &&
+      Capacitor.getPlatform() === "android" &&
+      !localStorage.getItem("background_gps_prompted")
+    ) {
+      try {
+        localStorage.setItem("background_gps_prompted", "true");
+        await MockLocation.openBackgroundLocationSettings();
+      } catch (error) {
+        console.error("Background GPS Settings:", error);
+      }
+    }
+  };
   useEffect(() => {
     loadUser();
   }, []);

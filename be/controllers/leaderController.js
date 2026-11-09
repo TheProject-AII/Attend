@@ -314,7 +314,8 @@ whs.work_days,
   ON whs.id = u.working_hours_setting_id
   AND whs.is_active = TRUE
   LEFT JOIN leave_types lt ON lt.id = lr.leave_type_id
-  FOR UPDATE OF lr
+WHERE lr.id = $1
+FOR UPDATE OF lr, u
   `,
       [id],
     );
@@ -480,7 +481,7 @@ FROM leave_requests lr
 JOIN users u ON u.id = lr.user_id
 LEFT JOIN leave_types lt ON lt.id = lr.leave_type_id
 WHERE lr.id = $1
-FOR UPDATE OF lr
+FOR UPDATE OF lr, u
       `,
       [id],
     );

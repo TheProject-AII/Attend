@@ -83,10 +83,14 @@ export default function AnnouncementSlider({ announcements = [] }) {
   // Conditional return harus setelah semua Hooks
   if (announcements.length === 0) {
     return (
-      <Card sx={{ mt: 2, mx: 1.5, borderRadius: 2 }}>
+      <Card sx={{ mt: 2, mx: 1.5, borderRadius: 1 }}>
         <CardContent>
-          <Typography variant="body2" color="text.secondary" textAlign="center">
-            📢 No active announcements
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ textAlign: "center" }}
+          >
+            No active announcements
           </Typography>
         </CardContent>
       </Card>

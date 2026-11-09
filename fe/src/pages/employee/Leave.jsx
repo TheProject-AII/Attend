@@ -21,6 +21,50 @@ import notificationService from "../../services/notificationService";
 import overtimeService from "../../services/overtimeService";
 import OvertimeDetailDialog from "../../components/layout/OvertimeDetailDialog";
 
+const countWorkingDays = (startDate, endDate, workDays) => {
+  if (!startDate || !endDate || !Array.isArray(workDays)) {
+    return 0;
+  }
+
+  const workingDays = new Set(workDays.map((day) => String(day).toUpperCase()));
+
+  const dayNames = [
+    "SUNDAY",
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+  ];
+
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+
+  if (
+    Number.isNaN(start.getTime()) ||
+    Number.isNaN(end.getTime()) ||
+    end < start
+  ) {
+    return 0;
+  }
+
+  let total = 0;
+  const current = new Date(start);
+
+  while (current <= end) {
+    const dayName = dayNames[current.getDay()];
+
+    if (workingDays.has(dayName)) {
+      total++;
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return total;
+};
+
 export default function Leave() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +89,24 @@ export default function Leave() {
     sick_deduction_days: 0,
     special_leave_days: 0,
   });
+
+  const selectedLeaveType = leaveTypes.find(
+    (item) => String(item.id) === String(leaveTypeId),
+  );
+
+  const selectedLeaveDays = countWorkingDays(
+    startDate,
+    endDate,
+    selectedLeaveType?.work_days,
+  );
+
+  const maxLeaveDays = Number(selectedLeaveType?.entitlement_days || 0);
+
+  const isSpecialLeave =
+    leaveType === "CUTI" && selectedLeaveType?.category === "SPECIAL";
+
+  const isLeaveExceeded =
+    isSpecialLeave && maxLeaveDays > 0 && selectedLeaveDays > maxLeaveDays;
 
   const [statusFilter, setStatusFilter] = useState("ALL");
   const normalizeStatus = (status) => {
@@ -295,6 +357,14 @@ export default function Leave() {
       }
 
       try {
+        if (leaveType === "CUTI" && isLeaveExceeded) {
+          Swal.fire({
+            icon: "warning",
+            title: "Melebihi Batas Cuti",
+            text: `Pengajuan maksimal ${maxLeaveDays} hari kerja.`,
+          });
+          return;
+        }
         setSubmitLoading(true);
 
         await overtimeService.create({
@@ -738,6 +808,10 @@ export default function Leave() {
         leaveTypes={leaveTypes}
         leaveTypeId={leaveTypeId}
         setLeaveTypeId={setLeaveTypeId}
+        selectedLeaveDays={selectedLeaveDays}
+        maxLeaveDays={maxLeaveDays}
+        isSpecialLeave={isSpecialLeave}
+        isLeaveExceeded={isLeaveExceeded}
       />
       <LeaveDetailDialog
         open={openDetail}

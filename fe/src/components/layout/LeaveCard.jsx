@@ -165,7 +165,6 @@ export default function LeaveCard({ item, onClick }) {
             <Typography variant="body2" sx={{ mb: 0 }}>
               <strong>Duration:</strong> {item.leave_days ?? "-"} days
             </Typography>
-
             <Typography variant="body2">
               <strong>Details:</strong> {item.reason || "-"}
             </Typography>

@@ -4,183 +4,210 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  TextField,
   Typography,
-  Stack,
-  Divider,
-  Chip,
   Box,
+  Alert,
 } from "@mui/material";
 
 import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
 
-export default function LeaveDetailDialog({ open, onClose, data }) {
-  if (!data) return null;
+const LeaveDialog = ({
+  open,
+  onClose,
+  leaveType,
+  setLeaveType,
+  startDate,
+  setStartDate,
+  endDate,
+  setEndDate,
+  startTime,
+  setStartTime,
+  endTime,
+  setEndTime,
+  reason,
+  setReason,
+  attachment,
+  setAttachment,
+  loading,
+  onSubmit,
 
-  const isPermission = data.leave_type === "IZIN";
+  // Dynamic leave types
+  leaveTypes = [],
+  leaveTypeId,
+  setLeaveTypeId,
 
-  const formatDate = (date) => {
-    if (!date) return "-";
+  // Entitlement validation
+  selectedLeaveDays = 0,
+  maxLeaveDays = 0,
+  isSpecialLeave = false,
+  isLeaveExceeded = false,
+}) => {
+  const isOvertime = leaveType === "LEMBUR";
+  const isPermission = leaveType === "IZIN";
+  const isCuti = leaveType === "CUTI";
 
-    // Hindari pergeseran tanggal akibat timezone
-    const dateOnly = String(date).slice(0, 10);
-    const [year, month, day] = dateOnly.split("-");
-
-    return new Date(
-      Number(year),
-      Number(month) - 1,
-      Number(day),
-    ).toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  };
-
-  const formatTime = (time) => {
-    if (!time) return "-";
-    return String(time).slice(0, 5);
-  };
-
-  const totalDays = Math.max(
-    1,
-    Math.ceil(
-      (new Date(data.end_date) - new Date(data.start_date)) / 86400000,
-    ) + 1,
+  const selectedType = leaveTypes.find(
+    (item) => String(item.id) === String(leaveTypeId),
   );
-
-  const handleViewAttachment = () => {
-    if (!data.attachment_url) return;
-
-    window.open(data.attachment_url, "_blank", "noopener,noreferrer");
-  };
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Request Details</DialogTitle>
+      <DialogTitle>
+        Pengajuan {isOvertime ? "Lembur" : "Cuti / Izin"}
+      </DialogTitle>
 
       <DialogContent>
-        <Stack spacing={2}>
-          <Chip
-            label={
-              {
-                PENDING: "Pending",
-                PENDING_SUPERVISOR: "Pending Leader Approval",
-                PENDING_MANAGER: "Pending Manager Approval",
-                APPROVED: "Approved",
-                REJECTED: "Rejected",
-                CANCELLED: "Cancelled",
-              }[data.status] || data.status
-            }
-            color={
-              data.status === "APPROVED"
-                ? "success"
-                : data.status === "REJECTED"
-                  ? "error"
-                  : "warning"
-            }
-            sx={{ width: "fit-content" }}
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+          {/* Jenis Pengajuan */}
+          <FormControl fullWidth>
+            <InputLabel>Jenis Pengajuan</InputLabel>
+            <Select
+              value={leaveType}
+              label="Jenis Pengajuan"
+              onChange={(e) => setLeaveType(e.target.value)}
+            >
+              <MenuItem value="SAKIT">Sakit</MenuItem>
+              <MenuItem value="IZIN">Izin</MenuItem>
+              <MenuItem value="CUTI">Cuti</MenuItem>
+              <MenuItem value="LEMBUR">Lembur</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Jenis Cuti dari Database */}
+          {isCuti && (
+            <FormControl fullWidth>
+              <InputLabel>Jenis Cuti</InputLabel>
+              <Select
+                value={leaveTypeId || ""}
+                label="Jenis Cuti"
+                onChange={(e) => setLeaveTypeId(e.target.value)}
+              >
+                {leaveTypes.map((item) => (
+                  <MenuItem key={item.id} value={String(item.id)}>
+                    {item.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+
+          {/* Informasi Jatah Cuti Khusus */}
+          {isCuti && isSpecialLeave && selectedType && (
+            <Alert severity={isLeaveExceeded ? "error" : "info"}>
+              <Typography variant="body2">
+                <strong>{selectedType.name}</strong>
+              </Typography>
+
+              <Typography variant="body2">
+                Maksimal: {maxLeaveDays} hari kerja
+              </Typography>
+
+              <Typography variant="body2">
+                Hari yang dipilih: {selectedLeaveDays} hari kerja
+              </Typography>
+
+              {isLeaveExceeded && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  Jumlah hari yang dipilih melebihi batas maksimal sebanyak{" "}
+                  {selectedLeaveDays - maxLeaveDays} hari kerja. Silakan ubah
+                  rentang tanggal.
+                </Typography>
+              )}
+            </Alert>
+          )}
+
+          {/* Tanggal */}
+          <TextField
+            fullWidth
+            type="date"
+            label="Tanggal Mulai"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
           />
 
-          <Divider />
-
-          <BoxItem
-            title="Type"
-            value={
-              {
-                SAKIT: "Sick Leave",
-                IZIN: "Permission",
-                CUTI: "Leave",
-                LEMBUR: "Overtime",
-                DINAS: "Business Travel",
-                BUSINESS_TRIP: "Business Travel",
-                CLIENT: "Client Visit",
-                IZIN_PULANG_AWAL: "Early Leave Permission",
-              }[data.leave_type] || data.leave_type
-            }
-          />
-
-          {data.leave_category && (
-            <BoxItem
-              title="Leave Category"
-              value={
-                {
-                  TAHUNAN: "Annual Leave",
-                  MENIKAH: "Marriage",
-                  MELAHIRKAN: "Maternity Leave",
-                  KELUARGA_MENINGGAL: "Bereavement Leave",
-                }[data.leave_category] || data.leave_category
-              }
+          {!isPermission && (
+            <TextField
+              fullWidth
+              type="date"
+              label="Tanggal Selesai"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ min: startDate || undefined }}
             />
           )}
 
-          <BoxItem
-            title={isPermission ? "Permission Date" : "Date"}
-            value={
-              isPermission
-                ? formatDate(data.start_date)
-                : `${formatDate(data.start_date)} - ${formatDate(data.end_date)}`
-            }
-          />
-
-          {isPermission ? (
+          {/* Jam untuk Izin */}
+          {isPermission && (
             <>
-              <BoxItem title="Start Time" value={formatTime(data.start_time)} />
+              <TextField
+                fullWidth
+                type="time"
+                label="Jam Mulai"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
 
-              <BoxItem title="End Time" value={formatTime(data.end_time)} />
+              <TextField
+                fullWidth
+                type="time"
+                label="Jam Selesai"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
             </>
-          ) : (
-            <BoxItem title="Duration" value={`${totalDays} days`} />
           )}
 
-          <BoxItem title="Details" value={data.reason || "-"} />
+          {/* Alasan */}
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            label="Alasan / Keterangan"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
 
-          <Divider />
+          {/* Lampiran */}
+          <Button
+            component="label"
+            variant="outlined"
+            startIcon={<AttachFileRoundedIcon />}
+          >
+            {attachment ? attachment.name : "Upload Lampiran"}
 
-          <Stack spacing={1}>
-            <Typography variant="caption" color="text.secondary">
-              Attachment
-            </Typography>
-
-            {data.attachment ? (
-              data.attachment_url ? (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<AttachFileRoundedIcon />}
-                  onClick={handleViewAttachment}
-                  sx={{ alignSelf: "flex-start" }}
-                >
-                  View Attachment
-                </Button>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  Attachment URL unavailable
-                </Typography>
-              )
-            ) : (
-              <Typography fontWeight={600}>-</Typography>
-            )}
-          </Stack>
-
-          <BoxItem title="HR Notes" value={data.approval_note || "-"} />
-        </Stack>
+            <input
+              type="file"
+              hidden
+              onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+            />
+          </Button>
+        </Box>
       </DialogContent>
 
-      <DialogActions>
-        <Button onClick={onClose}>Close</Button>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose} color="inherit">
+          Batal
+        </Button>
+
+        <Button
+          variant="contained"
+          onClick={onSubmit}
+          disabled={loading || (isCuti && isLeaveExceeded)}
+        >
+          {loading ? "Mengirim..." : "Ajukan"}
+        </Button>
       </DialogActions>
     </Dialog>
   );
-}
+};
 
-function BoxItem({ title, value }) {
-  return (
-    <Box>
-      <Typography variant="caption" color="text.secondary">
-        {title}
-      </Typography>
-
-      <Typography fontWeight={600}>{value}</Typography>
-    </Box>
-  );
-}
+export default LeaveDialog;

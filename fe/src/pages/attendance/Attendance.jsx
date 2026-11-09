@@ -13,6 +13,8 @@ import {
 } from "../../services/locationService";
 
 import officeService from "../../services/officeService";
+import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 
 export default function Attendance() {
   const [openDialog, setOpenDialog] = useState(false);
@@ -34,7 +36,30 @@ export default function Attendance() {
   const [insideRadius, setInsideRadius] = useState(null);
   const [refreshingLocation, setRefreshingLocation] = useState(false);
   const [dialogAction, setDialogAction] = useState(null);
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
 
+    let listener;
+
+    const setupListener = async () => {
+      listener = await App.addListener(
+        "appStateChange",
+        async ({ isActive }) => {
+          if (isActive) {
+            console.log("Aplikasi aktif kembali, refresh GPS...");
+
+            await loadLocation();
+          }
+        },
+      );
+    };
+
+    setupListener();
+
+    return () => {
+      listener?.remove();
+    };
+  }, []);
   useEffect(() => {
     loadOffice();
     loadAnnouncements();

@@ -51,7 +51,11 @@ router.post(
   uploadAttendance.single("photo"),
   attendanceController.checkOut,
 );
-
+router.post(
+  "/auto-checkout/location",
+  authMiddleware,
+  attendanceController.captureAutoCheckoutLocation,
+);
 router.post(
   "/face-enrollment",
   authMiddleware,
