@@ -44,6 +44,8 @@ export default function LeaveDialog({
   maxLeaveDays = 0,
   isSpecialLeave = false,
   isLeaveExceeded = false,
+  submitError = "",
+  setSubmitError,
 }) {
   const isOvertime = leaveType === "LEMBUR";
   const isPermission = leaveType === "IZIN";
@@ -76,6 +78,7 @@ export default function LeaveDialog({
                 const value = e.target.value;
 
                 setLeaveType(value);
+                if (setSubmitError) setSubmitError("");
                 setStartDate("");
                 setEndDate("");
                 setReason("");
@@ -111,7 +114,16 @@ export default function LeaveDialog({
             </Select>
           </FormControl>
         )}
-
+        {/* SUBMIT ERROR */}
+        {submitError && (
+          <Alert
+            severity="error"
+            sx={{ mt: 2 }}
+            onClose={() => setSubmitError?.("")}
+          >
+            {submitError}
+          </Alert>
+        )}
         {/* SPECIAL LEAVE VALIDATION */}
         {isCuti && isSpecialLeave && (
           <Alert severity={isLeaveExceeded ? "error" : "info"} sx={{ mt: 2 }}>

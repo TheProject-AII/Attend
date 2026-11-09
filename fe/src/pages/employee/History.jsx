@@ -536,38 +536,38 @@ export default function History() {
 
               <TextField
                 fullWidth
+                type="time"
                 label="Check-in Time"
-                placeholder="HH:mm"
                 value={editForm.check_in}
-                onChange={(e) => {
-                  const value = e.target.value;
-
-                  if (/^\d{0,2}:?\d{0,2}$/.test(value)) {
-                    setEditForm((prev) => ({
-                      ...prev,
-                      check_in: value,
-                    }));
-                  }
-                }}
-                helperText="24-hour format, for example: 13:57"
+                onChange={(e) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    check_in: e.target.value,
+                  }))
+                }
+                onKeyDown={(e) => e.preventDefault()}
+                onPaste={(e) => e.preventDefault()}
+                inputProps={{ step: 60 }}
+                InputLabelProps={{ shrink: true }}
+                helperText="Select the check-in time using the clock picker."
               />
 
               <TextField
                 fullWidth
+                type="time"
                 label="Check-out Time"
-                placeholder="HH:mm"
                 value={editForm.check_out}
-                onChange={(e) => {
-                  const value = e.target.value;
-
-                  if (/^\d{0,2}:?\d{0,2}$/.test(value)) {
-                    setEditForm((prev) => ({
-                      ...prev,
-                      check_out: value,
-                    }));
-                  }
-                }}
-                helperText="24-hour format, for example: 17:00"
+                onChange={(e) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    check_out: e.target.value,
+                  }))
+                }
+                onKeyDown={(e) => e.preventDefault()}
+                onPaste={(e) => e.preventDefault()}
+                inputProps={{ step: 60 }}
+                InputLabelProps={{ shrink: true }}
+                helperText="Select the check-out time using the clock picker."
               />
 
               <TextField

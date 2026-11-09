@@ -68,6 +68,7 @@ const countWorkingDays = (startDate, endDate, workDays) => {
 export default function Leave() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitError, setSubmitError] = useState("");
   const [openDialog, setOpenDialog] = useState(false);
   const [leaveType, setLeaveType] = useState("SAKIT");
   const [startDate, setStartDate] = useState("");
@@ -313,10 +314,10 @@ export default function Leave() {
   };
 
   const handleSubmit = async () => {
+    setSubmitError("");
     // =====================================
     // VALIDASI UMUM
     // =====================================
-    // VALIDASI BATAS CUTI KHUSUS
     if (leaveType === "CUTI" && isLeaveExceeded) {
       return;
     }
@@ -505,11 +506,21 @@ export default function Leave() {
 
       loadHistory();
     } catch (err) {
-      Swal.fire({
-        icon: "error",
-        title: "Failed",
-        text: err.response?.data?.message || "An error occurred.",
-      });
+      console.log("LEAVE ERROR RESPONSE:", err.response?.data);
+      console.log("LEAVE ERROR CODE:", err.response?.data?.code);
+
+      const errorCode = err.response?.data?.code;
+      const errorMessage = err.response?.data?.message || "An error occurred.";
+
+      if (errorCode === "SPECIAL_LEAVE_ALREADY_USED") {
+        setSubmitError(errorMessage);
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Failed",
+          text: errorMessage,
+        });
+      }
     } finally {
       setSubmitLoading(false);
     }
@@ -786,7 +797,7 @@ export default function Leave() {
         open={openDialog}
         onClose={() => {
           setOpenDialog(false);
-
+          setSubmitError("");
           setLeaveType("SAKIT");
 
           setStartDate("");
@@ -811,6 +822,8 @@ export default function Leave() {
         attachment={attachment}
         setAttachment={setAttachment}
         loading={submitLoading}
+        submitError={submitError}
+        setSubmitError={setSubmitError}
         onSubmit={handleSubmit}
         leaveTypes={leaveTypes}
         leaveTypeId={leaveTypeId}

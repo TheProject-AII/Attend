@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import authService from "../../services/authService";
 
 export default function ForgotPassword() {
@@ -21,7 +21,9 @@ export default function ForgotPassword() {
   const [nikLast4, setNikLast4] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const location = useLocation();
 
+  const fromProfile = location.state?.fromProfile === true;
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -155,20 +157,11 @@ export default function ForgotPassword() {
                 {loading ? "Memverifikasi..." : "Verifikasi Akun"}
               </Button>
 
-              <Button
-                type="button"
-                variant="text"
-                startIcon={<ArrowBackRoundedIcon />}
-                onClick={() => navigate("/")}
-                disabled={loading}
-                sx={{
-                  color: "#102E67",
-                  textTransform: "none",
-                  fontWeight: 600,
-                }}
-              >
-                Back to Sign In
-              </Button>
+              {!fromProfile && (
+                <Button onClick={() => navigate("/login")}>
+                  Back to Sign In
+                </Button>
+              )}
             </Stack>
           </Box>
         </CardContent>
