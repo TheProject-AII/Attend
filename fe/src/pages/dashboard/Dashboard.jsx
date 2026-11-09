@@ -24,6 +24,7 @@ export default function Dashboard() {
     totalEmployee: 0,
     present: 0,
     leave: 0,
+    pendingLeave: 0,
     late: 0,
     chart: [],
     attendance: [],
@@ -75,6 +76,7 @@ export default function Dashboard() {
     <>
       <Grid
         container
+        columns={{ xs: 4, sm: 8, lg: 10 }}
         spacing={2.5}
         sx={{
           alignItems: "stretch",
@@ -87,7 +89,7 @@ export default function Dashboard() {
           },
         }}
       >
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Grid size={{ xs: 4, sm: 4, lg: 2 }}>
           <StatCard
             title={t("dashboard.totalEmployees")}
             value={dashboard.totalEmployee}
@@ -97,7 +99,7 @@ export default function Dashboard() {
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Grid size={{ xs: 4, sm: 4, lg: 2 }}>
           <StatCard
             title={t("dashboard.presentToday")}
             value={dashboard.present}
@@ -111,7 +113,7 @@ export default function Dashboard() {
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Grid size={{ xs: 4, sm: 4, lg: 2 }}>
           <StatCard
             title={t("dashboard.leave")}
             value={dashboard.leave}
@@ -124,8 +126,17 @@ export default function Dashboard() {
             onClick={() => navigate("/admin/leave-history")}
           />
         </Grid>
-
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <Grid size={{ xs: 4, sm: 4, lg: 2 }}>
+          <StatCard
+            title="Pending Requests"
+            value={dashboard.pendingLeave}
+            subtitle="Awaiting approval"
+            color="#ED6C02"
+            blink={true}
+            onClick={() => navigate("/admin/leave-history")}
+          />
+        </Grid>
+        <Grid size={{ xs: 4, sm: 4, lg: 2 }}>
           <StatCard
             title={t("dashboard.late")}
             value={dashboard.late}
@@ -135,6 +146,7 @@ export default function Dashboard() {
               year: "numeric",
             })}
             color="#6A1B9A"
+            blink={true}
             onClick={() => navigate("/admin/attendance")}
           />
         </Grid>

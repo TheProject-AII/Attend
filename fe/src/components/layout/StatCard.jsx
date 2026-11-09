@@ -7,7 +7,10 @@ export default function StatCard({
   subtitle,
   color = "#1976d2",
   onClick,
+  blink = false,
 }) {
+  const isBlinking = blink && Number(value) > 0;
+
   return (
     <Card
       onClick={onClick}
@@ -15,8 +18,27 @@ export default function StatCard({
       sx={{
         cursor: onClick ? "pointer" : "default",
         borderRadius: 1,
-        border: "1px solid #E5E7EB",
+        border: isBlinking ? "1px solid #ED6C02" : "1px solid #E5E7EB",
+        backgroundColor: isBlinking ? "#FFF3E0" : "#FFFFFF",
         transition: ".25s",
+
+        ...(isBlinking && {
+          animation: "pendingBlink 1.2s ease-in-out infinite",
+
+          "@keyframes pendingBlink": {
+            "0%, 100%": {
+              backgroundColor: "#FFF3E0",
+              borderColor: "#ED6C02",
+              boxShadow: "0 0 0 rgba(237,108,2,0)",
+            },
+            "50%": {
+              backgroundColor: "#FFE0B2",
+              borderColor: "#f41414",
+              boxShadow: "0 0 14px rgba(237,108,2,0.35)",
+            },
+          },
+        }),
+
         "&:hover": onClick
           ? {
               transform: "translateY(-3px)",
@@ -33,7 +55,11 @@ export default function StatCard({
           }}
         >
           <Box sx={{ flex: 1 }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              color={isBlinking ? "#ee1b1b" : "text.secondary"}
+              fontWeight={isBlinking ? 700 : 400}
+            >
               {title}
             </Typography>
 
@@ -43,6 +69,7 @@ export default function StatCard({
                 fontWeight: 700,
                 lineHeight: 1.2,
                 mt: 0.5,
+                color: isBlinking ? "#E65100" : "inherit",
               }}
             >
               {value}
@@ -57,8 +84,8 @@ export default function StatCard({
             sx={{
               width: 54,
               height: 54,
-              bgcolor: `${color}20`,
-              color,
+              bgcolor: isBlinking ? "#FFCC80" : `${color}20`,
+              color: isBlinking ? "#E65100" : color,
               ml: 2,
             }}
           >

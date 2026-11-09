@@ -29,6 +29,16 @@ WHERE
     AND CURRENT_DATE BETWEEN start_date AND end_date
 `);
 
+    const pendingLeaveToday = await pool.query(`
+    SELECT COUNT(*) AS total
+    FROM leave_requests
+    WHERE status IN (
+        'PENDING',
+        'PENDING_SUPERVISOR',
+        'PENDING_MANAGER'
+    )
+`);
+
     const lateToday = await pool.query(`
 SELECT COUNT(*) AS total
 FROM attendance
@@ -103,6 +113,7 @@ ORDER BY a.check_in ASC;
         totalEmployee: Number(totalEmployee.rows[0].total),
         present: Number(presentToday.rows[0].total),
         leave: Number(leaveToday.rows[0].total),
+        pendingLeave: Number(pendingLeaveToday.rows[0].total),
         late: Number(lateToday.rows[0].total),
         notCheckIn:
           Number(totalEmployee.rows[0].total) -

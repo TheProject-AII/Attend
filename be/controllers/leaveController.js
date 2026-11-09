@@ -223,7 +223,48 @@ exports.create = async (req, res) => {
       }
 
       selectedLeaveType = typeResult.rows[0];
+      // VALIDASI CUTI KHUSUS HANYA SATU KALI
+      // JENIS CUTI/IZIN YANG HANYA BOLEH DIGUNAKAN SATU KALI
+      const onceOnlyLeaveTypeIds = [
+        2, // Pernikahan Karyawan
+        3, // Pernikahan Anak Karyawan
+        4, // Istri Melahirkan atau Keguguran
+        7, // Pengkhitanan Anak
+        8, // Pembaptisan Anak
+        9, // Wisuda
+        10, // Pindah Rumah
+        11, // Pemilihan Umum
+        12, // Menjalankan Wajib Militer
+        13, // Memenuhi Panggilan Pihak Berwajib
+        14, // Umrah & Hajj
+      ];
 
+      if (onceOnlyLeaveTypeIds.includes(Number(selectedLeaveType.id))) {
+        const previousRequest = await pool.query(
+          `
+          SELECT id, status
+          FROM leave_requests
+          WHERE user_id = $1
+            AND leave_type_id = $2
+            AND status IN (
+              'APPROVED',
+              'PENDING',
+              'PENDING_SUPERVISOR',
+              'PENDING_MANAGER'
+            )
+          LIMIT 1
+          `,
+          [req.user.id, selectedLeaveType.id],
+        );
+
+        if (previousRequest.rows.length > 0) {
+          return res.status(400).json({
+            success: false,
+            code: "SPECIAL_LEAVE_ALREADY_USED",
+            message: `${selectedLeaveType.name} hanya dapat digunakan satu kali selama masa kerja. Kamu sudah pernah mengajukan jenis ini.`,
+          });
+        }
+      }
       // =====================================
       // VALIDASI MAKSIMAL HARI CUTI KHUSUS
       // =====================================
