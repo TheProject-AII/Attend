@@ -7,6 +7,9 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import PercentIcon from "@mui/icons-material/Percent";
 
 const menu = [
   {
@@ -45,6 +48,28 @@ const menu = [
     path: "/admin/leave-history",
     section: "management",
   },
+  {
+    title: "Payroll",
+    translationKey: "menu.payroll",
+    icon: <AccountBalanceWalletIcon />,
+    path: "/payroll",
+    section: "management",
+  },
+  {
+    title: "Payroll Details",
+    translationKey: "menu.payrollDetails",
+    icon: <ReceiptLongIcon />,
+    path: "/payroll/details",
+    section: "management",
+  },
+  {
+    title: "Master TER",
+    translationKey: "menu.masterTER",
+    icon: <PercentIcon />,
+    path: "/master-ter",
+    section: "management",
+  },
+
   // {
   //   title: "Overtime",
   //   translationKey: "menu.overtime",

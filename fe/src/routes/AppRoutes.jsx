@@ -38,6 +38,9 @@ import LeaveHistory from "../pages/employee/LeaveHistory";
 import EditProfile from "../pages/employee/EditProfile";
 import AboutCompany from "../pages/employee/AboutCompany";
 import RequireFaceEnrollment from "../routes/RequireFaceEnrollment";
+import Payroll from "../pages/dashboard/Payroll";
+import PayrollDetails from "../pages/dashboard/PayrollDetails";
+import MasterTER from "../pages/dashboard/MasterTER";
 
 export default function AppRoutes() {
   const token = localStorage.getItem("token");
@@ -163,6 +166,46 @@ export default function AppRoutes() {
                 subtitle="Manage employee overtime"
               >
                 <OvertimeRecap />
+              </DashboardLayout>
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/payroll"
+          element={
+            <ProtectedAdminRoute>
+              <DashboardLayout
+                title="Payroll"
+                subtitle="Manage employee salaries and payroll"
+              >
+                <Payroll />
+              </DashboardLayout>
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/payroll/details"
+          element={
+            <ProtectedAdminRoute>
+              <DashboardLayout
+                title="Payroll Details"
+                subtitle="Employee salary breakdown and payroll calculation"
+              >
+                <PayrollDetails />
+              </DashboardLayout>
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/master-ter"
+          element={
+            <ProtectedAdminRoute>
+              <DashboardLayout
+                title="Master TER"
+                subtitle="Manage PPh 21 TER rates"
+              >
+                <MasterTER />
               </DashboardLayout>
             </ProtectedAdminRoute>
           }
