@@ -49,11 +49,14 @@ const overtimeRoutes = require("./routes/overtimeRoutes");
 const announcementRoutes = require("./routes/announRoute");
 const settingsRoutes = require("./routes/settingsRoutes");
 const startAutoCheckoutJob = require("./jobs/attendanceAutoCheckout");
+const payrollRoutes = require("./routes/payrollRoutes");
+const terRoutes = require("./routes/terRoutes");
 
 startAutoCheckoutJob();
 app.use("/api/settings", settingsRoutes);
 app.use("/api/overtime", overtimeRoutes);
-
+app.use("/api/payroll", payrollRoutes);
+app.use("/api/master-ter", terRoutes);
 // ==============================
 // Middleware
 // ==============================
