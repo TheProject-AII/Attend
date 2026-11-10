@@ -156,18 +156,18 @@ export default function PayrollDetails() {
       }
     };
 
-    const handlePointerDown = (event) => {
-      const clickedRow = event.target?.closest?.("[data-payroll-row]");
-      const clickedRowId = clickedRow?.getAttribute("data-payroll-row");
-      resetDirtyRows(clickedRowId ?? null);
-    };
+    // const handlePointerDown = (event) => {
+    //   const clickedRow = event.target?.closest?.("[data-payroll-row]");
+    //   const clickedRowId = clickedRow?.getAttribute("data-payroll-row");
+    //   resetDirtyRows(clickedRowId ?? null);
+    // };
 
     window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("pointerdown", handlePointerDown);
+    // window.addEventListener("pointerdown", handlePointerDown);
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("pointerdown", handlePointerDown);
+      // window.removeEventListener("pointerdown", handlePointerDown);
     };
   }, [editableFields]);
 

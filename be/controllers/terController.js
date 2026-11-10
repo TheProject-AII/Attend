@@ -1,5 +1,41 @@
 const pool = require("../config/db");
 
+// GET PTKP MAPPING FOR MASTER TER FILTER
+exports.getPtkpMapping = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `
+      SELECT
+        ptkp_code,
+        description,
+        ter_category,
+        ptkp_amount
+      FROM ter_ptkp_mapping
+      ORDER BY
+        CASE ter_category
+          WHEN 'A' THEN 1
+          WHEN 'B' THEN 2
+          WHEN 'C' THEN 3
+          ELSE 4
+        END,
+        ptkp_code ASC
+      `,
+    );
+
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error("GET PTKP MAPPING:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengambil mapping PTKP.",
+    });
+  }
+};
+
 // GET MASTER TER
 exports.getRates = async (req, res) => {
   try {
@@ -77,6 +113,7 @@ exports.createRate = async (req, res) => {
     const min = Number(min_income);
     const max =
       max_income === "" || max_income == null ? null : Number(max_income);
+
     const percentage = Number(rate);
 
     if (
@@ -147,8 +184,10 @@ exports.updateRate = async (req, res) => {
   } = req.body;
 
   const min = Number(min_income);
+
   const max =
     max_income === "" || max_income == null ? null : Number(max_income);
+
   const percentage = Number(rate);
 
   if (

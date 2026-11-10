@@ -84,6 +84,8 @@ export default function MasterTER() {
 
   const [rates, setRates] = useState([]);
   const [category, setCategory] = useState("ALL");
+  const [ptkpCode, setPtkpCode] = useState("ALL");
+  const [ptkpOptions, setPtkpOptions] = useState([]);
   const [year, setYear] = useState(String(currentYear));
 
   const [loading, setLoading] = useState(false);
@@ -110,13 +112,56 @@ export default function MasterTER() {
     });
   };
 
+  // Label kategori dibuat dinamis dari mapping PTKP di database.
+  const getCategoryLabel = (categoryCode) => {
+    const ptkpCodes = [
+      ...new Set(
+        ptkpOptions
+          .filter((item) => item.ter_category === categoryCode)
+          .map((item) => item.ptkp_code)
+          .filter(Boolean),
+      ),
+    ];
+
+    return `Category ${categoryCode}${
+      ptkpCodes.length ? ` - ${ptkpCodes.join(", ")}` : ""
+    }`;
+  };
+
+  const loadPtkpOptions = async () => {
+    try {
+      // Endpoint backend ini mengambil data dari tabel ter_ptkp_mapping.
+      const response = await api.get("/master-ter/ptkp-mapping");
+      setPtkpOptions(response.data?.data || []);
+    } catch (error) {
+      console.error("LOAD PTKP MAPPING:", error);
+      showNotification(
+        error.response?.data?.message ||
+          "Gagal mengambil pilihan PTKP. Pastikan endpoint /master-ter/ptkp-mapping tersedia.",
+        "error",
+      );
+    }
+  };
+
   const loadRates = async () => {
     try {
       setLoading(true);
 
       const params = {};
 
-      if (category !== "ALL") {
+      if (ptkpCode !== "ALL") {
+        const selectedPtkp = ptkpOptions.find(
+          (item) => item.ptkp_code === ptkpCode,
+        );
+
+        if (!selectedPtkp) {
+          setRates([]);
+          return;
+        }
+
+        // Kategori TER diambil dari mapping PTKP di database.
+        params.category = selectedPtkp.ter_category;
+      } else if (category !== "ALL") {
         params.category = category;
       }
 
@@ -140,8 +185,13 @@ export default function MasterTER() {
   };
 
   useEffect(() => {
+    loadPtkpOptions();
+  }, []);
+
+  useEffect(() => {
+    if (ptkpCode !== "ALL" && ptkpOptions.length === 0) return;
     loadRates();
-  }, [category, year]);
+  }, [category, ptkpCode, ptkpOptions, year]);
 
   const openAddDialog = () => {
     setEditingId(null);
@@ -323,6 +373,33 @@ export default function MasterTER() {
           rowGap: 1.5,
         }}
       >
+        {/* FILTER PTKP */}
+        <FormControl
+          sx={{
+            minWidth: 290,
+            height: 56,
+            flexShrink: 0,
+          }}
+        >
+          <InputLabel>Status PTKP</InputLabel>
+          <Select
+            value={ptkpCode}
+            label="Status PTKP"
+            onChange={(event) => {
+              setPtkpCode(event.target.value);
+              setPage(0);
+            }}
+            sx={{ height: 56 }}
+          >
+            <MenuItem value="ALL">Semua Status PTKP</MenuItem>
+            {ptkpOptions.map((item) => (
+              <MenuItem value={item.ptkp_code} key={item.ptkp_code}>
+                {item.ptkp_code} - {item.description} (TER {item.ter_category})
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
         {/* FILTER CATEGORY */}
         <FormControl
           sx={{
@@ -342,9 +419,9 @@ export default function MasterTER() {
             sx={{ height: 56 }}
           >
             <MenuItem value="ALL">All Categories</MenuItem>
-            <MenuItem value="A">Category A</MenuItem>
-            <MenuItem value="B">Category B</MenuItem>
-            <MenuItem value="C">Category C</MenuItem>
+            <MenuItem value="A">{getCategoryLabel("A")}</MenuItem>
+            <MenuItem value="B">{getCategoryLabel("B")}</MenuItem>
+            <MenuItem value="C">{getCategoryLabel("C")}</MenuItem>
           </Select>
         </FormControl>
 
@@ -401,8 +478,7 @@ export default function MasterTER() {
               <Typography
                 variant="caption"
                 color="text.secondary"
-                sx={{ fontWeight: 700 }}
-                lineHeight={1.2}
+                sx={{ fontWeight: 800 }}
               >
                 TER {item}
               </Typography>
@@ -504,7 +580,7 @@ export default function MasterTER() {
 
                   <TableCell>
                     <Chip
-                      label={`Category ${item.category}`}
+                      label={getCategoryLabel(item.category)}
                       size="small"
                       color={
                         item.category === "A"
@@ -628,9 +704,9 @@ export default function MasterTER() {
                 label="Category"
                 onChange={handleChange}
               >
-                <MenuItem value="A">Category A</MenuItem>
-                <MenuItem value="B">Category B</MenuItem>
-                <MenuItem value="C">Category C</MenuItem>
+                <MenuItem value="A">{getCategoryLabel("A")}</MenuItem>
+                <MenuItem value="B">{getCategoryLabel("B")}</MenuItem>
+                <MenuItem value="C">{getCategoryLabel("C")}</MenuItem>
               </Select>
             </FormControl>
 

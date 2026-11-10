@@ -15,4 +15,11 @@ router.put(
   "/periods/:periodId/details/:detailId",
   payrollController.updatePayrollDetails,
 );
+
+router.post(
+  "/periods/:periodId/submit",
+  payrollController.submitPayrollApproval,
+);
+
+router.post("/periods/:periodId/approve", payrollController.approvePayroll);
 module.exports = router;

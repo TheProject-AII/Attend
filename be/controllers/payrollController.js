@@ -259,28 +259,39 @@ exports.saveSalary = async (req, res) => {
 };
 
 // GET PAYROLL PERIODS
+
 exports.getPeriods = async (req, res) => {
   try {
     const result = await pool.query(`
-  SELECT
-    pp.*,
-    EXISTS (
-      SELECT 1
-      FROM payroll_details pd
-      WHERE pd.payroll_period_id = pp.id
-    ) AS is_generated
-  FROM payroll_periods pp
-  ORDER BY pp.start_date DESC
-`);
+      SELECT
+        pp.id,
+        pp.period_name,
+        TO_CHAR(pp.start_date, 'YYYY-MM-DD') AS start_date,
+        TO_CHAR(pp.end_date, 'YYYY-MM-DD') AS end_date,
+        TO_CHAR(pp.payment_date, 'YYYY-MM-DD') AS payment_date,
+        pp.status,
+        pp.created_by,
+        pp.approved_by,
+        pp.approved_at,
+        pp.created_at,
+        pp.updated_at,
+        EXISTS (
+          SELECT 1
+          FROM payroll_details pd
+          WHERE pd.payroll_period_id = pp.id
+        ) AS is_generated
+      FROM payroll_periods pp
+      ORDER BY pp.start_date DESC
+    `);
 
-    res.json({
+    return res.json({
       success: true,
       data: result.rows,
     });
   } catch (error) {
     console.error("GET PAYROLL PERIODS:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Gagal mengambil periode payroll.",
     });
@@ -288,6 +299,7 @@ exports.getPeriods = async (req, res) => {
 };
 
 // CREATE PAYROLL PERIOD
+
 exports.createPeriod = async (req, res) => {
   const { month } = req.body;
 
@@ -310,12 +322,13 @@ exports.createPeriod = async (req, res) => {
       });
     }
 
-    // Periode 21 bulan sebelumnya sampai 20 bulan ini
+    // Cut-off: tanggal 21 bulan sebelumnya
     const startDate = new Date(Date.UTC(year, monthNumber - 2, 21));
 
+    // Cut-off: tanggal 20 bulan berjalan
     const endDate = new Date(Date.UTC(year, monthNumber - 1, 20));
 
-    // Pembayaran pada akhir bulan berjalan
+    // Pembayaran: hari terakhir bulan berjalan
     const paymentDate = new Date(Date.UTC(year, monthNumber, 0));
 
     const formatDate = (date) => date.toISOString().slice(0, 10);
@@ -335,8 +348,10 @@ exports.createPeriod = async (req, res) => {
     await client.query("BEGIN");
 
     const existing = await client.query(
-      `SELECT id FROM payroll_periods
-       WHERE start_date = $1 AND end_date = $2`,
+      `SELECT id
+       FROM payroll_periods
+       WHERE start_date = $1
+          OR end_date = $2`,
       [start, end],
     );
 
@@ -546,6 +561,154 @@ exports.generatePayroll = async (req, res) => {
       success: false,
       message: "Gagal generate payroll.",
       detail: error.message,
+    });
+  } finally {
+    client.release();
+  }
+};
+
+// SUBMIT PAYROLL FOR APPROVAL
+exports.submitPayrollApproval = async (req, res) => {
+  const { periodId } = req.params;
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const period = await client.query(
+      `SELECT * FROM payroll_periods
+       WHERE id = $1
+       FOR UPDATE`,
+      [periodId],
+    );
+
+    if (!period.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        success: false,
+        message: "Periode payroll tidak ditemukan.",
+      });
+    }
+
+    if (period.rows[0].status !== "DRAFT") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        message: "Hanya payroll DRAFT yang dapat diajukan.",
+      });
+    }
+
+    const details = await client.query(
+      `SELECT COUNT(*)::int AS total
+       FROM payroll_details
+       WHERE payroll_period_id = $1`,
+      [periodId],
+    );
+
+    if (details.rows[0].total === 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        message: "Generate payroll terlebih dahulu.",
+      });
+    }
+
+    await client.query(
+      `UPDATE payroll_periods
+       SET status = 'REVIEW',
+           updated_at = NOW()
+       WHERE id = $1`,
+      [periodId],
+    );
+
+    await client.query("COMMIT");
+
+    return res.json({
+      success: true,
+      message: "Payroll berhasil diajukan untuk approval HR / Finance.",
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("SUBMIT PAYROLL APPROVAL ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengajukan payroll untuk approval.",
+    });
+  } finally {
+    client.release();
+  }
+};
+
+// APPROVE PAYROLL
+exports.approvePayroll = async (req, res) => {
+  const { periodId } = req.params;
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const period = await client.query(
+      `SELECT * FROM payroll_periods
+       WHERE id = $1
+       FOR UPDATE`,
+      [periodId],
+    );
+
+    if (!period.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        success: false,
+        message: "Periode payroll tidak ditemukan.",
+      });
+    }
+
+    if (period.rows[0].status !== "REVIEW") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        message: "Hanya payroll berstatus REVIEW yang dapat disetujui.",
+      });
+    }
+
+    const details = await client.query(
+      `SELECT COUNT(*)::int AS total
+       FROM payroll_details
+       WHERE payroll_period_id = $1`,
+      [periodId],
+    );
+
+    if (details.rows[0].total === 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        message: "Detail payroll tidak ditemukan.",
+      });
+    }
+
+    await client.query(
+      `UPDATE payroll_periods
+       SET status = 'APPROVED',
+           approved_by = $1,
+           approved_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $2`,
+      [req.user.id, periodId],
+    );
+
+    await client.query("COMMIT");
+
+    return res.json({
+      success: true,
+      message: "Payroll berhasil disetujui.",
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("APPROVE PAYROLL ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal menyetujui payroll.",
     });
   } finally {
     client.release();

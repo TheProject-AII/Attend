@@ -49,7 +49,7 @@ export default function Payroll() {
   const [saving, setSaving] = useState(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-
+  const [dialogError, setDialogError] = useState("");
   const [openDialog, setOpenDialog] = useState(false);
   const [periodMonth, setPeriodMonth] = useState(
     new Date().toISOString().slice(0, 7),
@@ -85,6 +85,7 @@ export default function Payroll() {
   const createPeriod = async () => {
     try {
       setSaving("create");
+      setDialogError("");
       setError("");
       setMessage("");
 
@@ -96,9 +97,13 @@ export default function Payroll() {
 
       setMessage("Periode payroll berhasil dibuat.");
       setOpenDialog(false);
+      setDialogError("");
+
       await loadPeriods();
     } catch (err) {
-      setError(err.response?.data?.message || "Gagal membuat periode payroll.");
+      setDialogError(
+        err.response?.data?.message || "Gagal membuat periode payroll.",
+      );
     } finally {
       setSaving(null);
     }
@@ -311,12 +316,21 @@ export default function Payroll() {
         <DialogTitle>Create Payroll Period</DialogTitle>
 
         <DialogContent>
+          {dialogError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {dialogError}
+            </Alert>
+          )}
+
           <TextField
             fullWidth
             type="month"
             label="Payroll Month"
             value={periodMonth}
-            onChange={(e) => setPeriodMonth(e.target.value)}
+            onChange={(e) => {
+              setPeriodMonth(e.target.value);
+              setDialogError("");
+            }}
             InputLabelProps={{ shrink: true }}
             sx={{ mt: 1 }}
           />
