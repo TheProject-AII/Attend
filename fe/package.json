@@ -29,7 +29,7 @@
     "dayjs": "^1.11.21",
     "i18next": "^26.5.3",
     "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.8",
+    "jspdf-autotable": "^5.0.9",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.63.0",
     "react": "^19.2.7",
