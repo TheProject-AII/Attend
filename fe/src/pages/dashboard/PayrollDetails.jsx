@@ -25,6 +25,11 @@ import {
   Typography,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import * as XLSX from "xlsx";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -402,6 +407,204 @@ export default function PayrollDetails() {
   );
   const privateMoney = (v) => (privacyMode ? "••••••" : formatRupiah(v));
 
+  const getPayrollExportData = () => {
+    const headers = [
+      "No",
+      "Nama Karyawan",
+      "NIK",
+      "Work Schedule",
+      "Gaji Pokok",
+      "Tunjangan Jabatan",
+      "Tunjangan Transport",
+      "Tunjangan Makan",
+      "Bruto",
+      "Sakit Tanpa Dokumen (Hari)",
+      "Sakit Dengan Dokumen (Hari)",
+      "Izin (Hari)",
+      "Potongan Absensi",
+      "BPJS JHT",
+      "BPJS JP",
+      "BPJS Kesehatan",
+      "Status PTKP",
+      "Kategori TER",
+      "Tarif PPh 21",
+      "PPh 21",
+      "Total Potongan",
+      "Take Home Pay",
+    ];
+
+    const data = sorted.map((row, index) => {
+      const c = calculationOf(row);
+      return [
+        index + 1,
+        row.name || "",
+        row.nik || row.nip || "",
+        row.work_schedule || "",
+        num(row.basic_salary),
+        num(row.position_allowance),
+        num(row.transport_allowance),
+        num(row.meal_allowance),
+        c.gross,
+        num(row.sick_without_document_days),
+        num(row.sick_with_document_days),
+        num(row.unpaid_leave_days),
+        c.basicDed + c.transportDed + c.mealDed,
+        c.jht,
+        c.jp,
+        c.health,
+        row.ptkp_status || "TK/0",
+        c.category || "",
+        `${formatRate(c.rate)}`,
+        c.pph,
+        c.total,
+        c.net,
+      ];
+    });
+
+    return { headers, data };
+  };
+
+  const getPayrollFileName = (extension) => {
+    const periodName = (period?.period_name || "payroll")
+      .replace(/[^a-z0-9_-]/gi, "_")
+      .replace(/_+/g, "_");
+    return `Payroll_${periodName}.${extension}`;
+  };
+
+  const exportPayrollExcel = () => {
+    if (!sorted.length) {
+      setError("Tidak ada data payroll untuk diekspor.");
+      return;
+    }
+
+    try {
+      const { headers, data } = getPayrollExportData();
+      const worksheet = XLSX.utils.aoa_to_sheet([
+        ["PAYROLL DETAILS"],
+        [`Periode: ${period?.period_name || "-"}`],
+        [`Tanggal pembayaran: ${period?.payment_date || "-"}`],
+        [],
+        headers,
+        ...data,
+      ]);
+
+      worksheet["!cols"] = [
+        { wch: 6 },
+        { wch: 30 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 19 },
+        { wch: 19 },
+        { wch: 17 },
+        { wch: 16 },
+        { wch: 19 },
+        { wch: 21 },
+        { wch: 14 },
+        { wch: 18 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 18 },
+        { wch: 13 },
+        { wch: 12 },
+        { wch: 14 },
+        { wch: 15 },
+        { wch: 17 },
+        { wch: 18 },
+      ];
+
+      // Format angka sebagai numerik agar bisa dihitung/filter di Excel.
+      const firstDataRow = 6;
+      data.forEach((row, rowIndex) => {
+        [4, 5, 6, 7, 8, 12, 13, 14, 15, 19, 20, 21].forEach((columnIndex) => {
+          const address = XLSX.utils.encode_cell({
+            r: firstDataRow - 1 + rowIndex,
+            c: columnIndex,
+          });
+          if (worksheet[address]) worksheet[address].z = "#,##0";
+        });
+      });
+
+      worksheet["!autofilter"] = {
+        ref: XLSX.utils.encode_range({
+          s: { r: 4, c: 0 },
+          e: { r: 4 + data.length, c: headers.length - 1 },
+        }),
+      };
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Payroll");
+      XLSX.writeFile(workbook, getPayrollFileName("xlsx"));
+      setError("");
+    } catch (e) {
+      console.error("Export Excel gagal:", e);
+      setError("Gagal membuat file Excel payroll.");
+    }
+  };
+
+  const exportPayrollPdf = () => {
+    if (!sorted.length) {
+      setError("Tidak ada data payroll untuk diekspor.");
+      return;
+    }
+
+    try {
+      const { headers, data } = getPayrollExportData();
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a3",
+      });
+
+      doc.setFontSize(15);
+      doc.text("PAYROLL DETAILS", 12, 13);
+      doc.setFontSize(9);
+      doc.text(`Periode: ${period?.period_name || "-"}`, 12, 20);
+      doc.text(`Tanggal pembayaran: ${period?.payment_date || "-"}`, 12, 25);
+      doc.text(`Total karyawan: ${data.length}`, 12, 30);
+
+      autoTable(doc, {
+        head: [headers],
+        body: data,
+        startY: 35,
+        theme: "grid",
+        styles: {
+          font: "helvetica",
+          fontSize: 6,
+          cellPadding: 1.5,
+          overflow: "linebreak",
+        },
+        headStyles: {
+          fillColor: [43, 59, 80],
+          textColor: 255,
+          fontStyle: "bold",
+          fontSize: 6,
+        },
+        columnStyles: {
+          0: { cellWidth: 9 },
+          1: { cellWidth: 32 },
+          2: { cellWidth: 22 },
+        },
+        margin: { left: 10, right: 10 },
+        didDrawPage: () => {
+          const pageNumber = doc.internal.getNumberOfPages();
+          doc.setFontSize(7);
+          doc.text(
+            `Halaman ${pageNumber}`,
+            doc.internal.pageSize.getWidth() - 22,
+            doc.internal.pageSize.getHeight() - 7,
+          );
+        },
+      });
+
+      doc.save(getPayrollFileName("pdf"));
+      setError("");
+    } catch (e) {
+      console.error("Export PDF gagal:", e);
+      setError("Gagal membuat file PDF payroll.");
+    }
+  };
+
   const downloadSlip = (row) => {
     const c = calculationOf(row);
     const escapeHtml = (value) =>
@@ -641,15 +844,47 @@ export default function PayrollDetails() {
                 <MenuItem value="6_DAYS">6 Working Days</MenuItem>
               </Select>
             </FormControl>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<FileDownloadIcon />}
+              onClick={exportPayrollExcel}
+              disabled={loading || sorted.length === 0}
+              sx={{
+                textTransform: "none",
+                whiteSpace: "nowrap",
+                minHeight: 40,
+              }}
+            >
+              Export Excel
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              startIcon={<PictureAsPdfIcon />}
+              onClick={exportPayrollPdf}
+              disabled={loading || sorted.length === 0}
+              sx={{
+                textTransform: "none",
+                whiteSpace: "nowrap",
+                minHeight: 40,
+              }}
+            >
+              Export PDF
+            </Button>
           </Stack>
           <Box
             sx={{
               width: "100%",
               overflowX: "auto",
-              scrollbarWidth: "none",
-              msOverflowStyle: "none",
+              scrollbarWidth: "thin",
               "&::-webkit-scrollbar": {
-                display: "none",
+                height: "6px",
+              },
+              "&::-webkit-scrollbar-thumb": {
+                backgroundColor: "#bdbdbd",
+                borderRadius: "10px",
               },
             }}
           >
@@ -683,15 +918,15 @@ export default function PayrollDetails() {
                   </TableCell>
                   <TableCell>{header("Meal", "meal_allowance")}</TableCell>
                   <TableCell>{header("Bruto", "gross_salary")}</TableCell>
-                  <TableCell>Sick (No Doc)</TableCell>
-                  <TableCell>Sick (Doc)</TableCell>
-                  <TableCell>Prmtd</TableCell>
-                  <TableCell>Alpha</TableCell>
+                  <TableCell>Sakit (No Doc)</TableCell>
+                  <TableCell>Sakit (Doc)</TableCell>
+                  <TableCell>Izin</TableCell>
+                  <TableCell>Pot. Absensi</TableCell>
                   <TableCell>JHT</TableCell>
                   <TableCell>JP</TableCell>
                   <TableCell>BPJS Kes.</TableCell>
                   <TableCell>PPh 21 / PTKP</TableCell>
-                  <TableCell>Pay Cut</TableCell>
+                  <TableCell>Total Pot.</TableCell>
                   <TableCell>Take Home Pay</TableCell>
                   <TableCell align="center">Action</TableCell>
                 </TableRow>
@@ -737,7 +972,16 @@ export default function PayrollDetails() {
                             >
                               {row.name?.[0]?.toUpperCase()}
                             </Avatar>
-                            <Typography sx={{ fontSize: 12 }}>
+                            <Typography
+                              title={row.name || ""}
+                              sx={{
+                                fontSize: 12,
+                                maxWidth: 150,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
                               {row.name}
                             </Typography>
                           </Stack>
@@ -799,23 +1043,9 @@ export default function PayrollDetails() {
                             {privacyMode ? "••••" : formatRupiah(c.pph)}
                           </Typography>
                         </TableCell>
-                        <TableCell
-                          sx={{
-                            fontSize: 12,
-                            fontWeight: 700,
-                            color: "#e45615ef  ",
-                          }}
-                        >
-                          {privateMoney(c.total)}
-                        </TableCell>
+                        <TableCell>{privateMoney(c.total)}</TableCell>
                         <TableCell>
-                          <Typography
-                            sx={{
-                              fontSize: 12,
-                              fontWeight: 700,
-                              color: "#089a34ef  ",
-                            }}
-                          >
+                          <Typography sx={{ fontSize: 12, fontWeight: 700 }}>
                             {privateMoney(c.net)}
                           </Typography>
                         </TableCell>
@@ -882,9 +1112,9 @@ export default function PayrollDetails() {
               mt: 1.5,
               width: "100%",
               minHeight: 38,
+              gap: 1,
             }}
           >
-            {/* Total di kiri */}
             <Typography
               sx={{
                 fontSize: 11,
@@ -895,7 +1125,6 @@ export default function PayrollDetails() {
               Total karyawan: {sorted.length}
             </Typography>
 
-            {/* Rows dan pagination di pojok kanan */}
             <Stack
               direction="row"
               alignItems="center"
