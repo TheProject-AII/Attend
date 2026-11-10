@@ -553,6 +553,7 @@ exports.generatePayroll = async (req, res) => {
 };
 
 // GET PAYROLL DETAILS BY PERIOD
+// GET PAYROLL DETAILS BY PERIOD
 exports.getPayrollDetails = async (req, res) => {
   try {
     const { periodId } = req.params;
@@ -591,6 +592,8 @@ exports.getPayrollDetails = async (req, res) => {
           u.nip,
           u.department,
           u.position,
+          u.company_id,
+          c.name AS company_name,
           COALESCE(pd.ptkp_status, u.ptkp_status) AS ptkp_status,
           pd.salary_id,
           pd.basic_salary,
@@ -612,6 +615,7 @@ exports.getPayrollDetails = async (req, res) => {
           pd.net_salary
        FROM payroll_details pd
        JOIN users u ON u.id = pd.user_id
+       LEFT JOIN companies c ON c.id = u.company_id
        WHERE pd.payroll_period_id = $1
        ORDER BY u.name ASC`,
       [periodId],

@@ -607,6 +607,7 @@ export default function PayrollDetails() {
 
   const downloadSlip = (row) => {
     const c = calculationOf(row);
+
     const escapeHtml = (value) =>
       String(value ?? "-").replace(
         /[&<>"']/g,
@@ -619,22 +620,393 @@ export default function PayrollDetails() {
             "'": "&#39;",
           })[ch],
       );
+
     const money = (value) => formatRupiah(value);
+
+    const formatDate = (value) => {
+      if (!value) return "-";
+
+      const date = new Date(value);
+
+      if (Number.isNaN(date.getTime())) return "-";
+
+      return new Intl.DateTimeFormat("id-ID", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+        timeZone: "Asia/Jakarta",
+      }).format(date);
+    };
+    const logoUrl = `${window.location.origin}/icon/pride_dsb.png`;
+
     const popup = window.open("", "_blank", "width=900,height=700");
+
     if (!popup) {
       setError(
         "Popup diblokir browser. Izinkan pop-up untuk mengunduh slip gaji.",
       );
       return;
     }
-    popup.document
-      .write(`<!doctype html><html><head><title>Slip Gaji - ${escapeHtml(row.name)}</title><style>
-      body{font-family:Arial,sans-serif;color:#222;padding:32px;max-width:850px;margin:auto}h2{margin:0 0 6px}small{color:#666}.meta{margin:18px 0;padding:12px;background:#f5f6f8;display:flex;justify-content:space-between}table{width:100%;border-collapse:collapse;margin-top:18px}td,th{border:1px solid #ddd;padding:9px;text-align:left;font-size:13px}th{background:#f2f4f7}.amount{text-align:right}.total{font-weight:bold;background:#f7f7f7}.actions{margin:20px 0}@media print{.actions{display:none}body{padding:0}}
-      </style></head><body><h2>SLIP GAJI</h2><small>${escapeHtml(period?.period_name || "Payroll")}</small><div class="meta"><span>Nama: <b>${escapeHtml(row.name)}</b><br>NIK: ${escapeHtml(row.nik || row.nip || "-")}</span><span>Periode: ${escapeHtml(period?.start_date || "-")} - ${escapeHtml(period?.end_date || "-")}<br>Tanggal pembayaran: ${escapeHtml(period?.payment_date || "-")}</span></div>
-      <table><thead><tr><th>Komponen</th><th class="amount">Jumlah</th></tr></thead><tbody>
-      <tr><td>Gaji Pokok</td><td class="amount">${money(row.basic_salary)}</td></tr><tr><td>Tunjangan Jabatan</td><td class="amount">${money(row.position_allowance)}</td></tr><tr><td>Tunjangan Transport</td><td class="amount">${money(row.transport_allowance)}</td></tr><tr><td>Tunjangan Makan</td><td class="amount">${money(row.meal_allowance)}</td></tr><tr class="total"><td>Bruto</td><td class="amount">${money(c.gross)}</td></tr>
-      <tr><td>Potongan Absensi</td><td class="amount">${money(c.basicDed + c.transportDed + c.mealDed)}</td></tr><tr><td>BPJS JHT (${formatRate(row.bpjs_jht_rate ?? 2)})</td><td class="amount">${money(c.jht)}</td></tr><tr><td>BPJS JP (${formatRate(row.bpjs_jp_rate ?? 1)})</td><td class="amount">${money(c.jp)}</td></tr><tr><td>BPJS Kesehatan (${formatRate(row.bpjs_health_rate ?? 1)})</td><td class="amount">${money(c.health)}</td></tr><tr><td>PPh 21 (${escapeHtml(row.ptkp_status)} / TER ${escapeHtml(c.category || "-")} ${formatRate(c.rate)})</td><td class="amount">${money(c.pph)}</td></tr><tr class="total"><td>Total Potongan</td><td class="amount">${money(c.total)}</td></tr><tr class="total"><td>Take Home Pay</td><td class="amount">${money(c.net)}</td></tr></tbody></table>
-      <div class="actions"><button onclick="window.print()">Cetak / Simpan PDF</button></div><script>window.onload=()=>window.print()</script></body></html>`);
+
+    popup.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8" />
+      <title>Slip Gaji - ${escapeHtml(row.name)}</title>
+
+      
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: Arial, sans-serif;
+    color: #222;
+    padding: 32px;
+    max-width: 850px;
+    margin: auto;
+    font-size: 13px;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #333;
+  }
+
+  .logo {
+    width: 75px;
+    height: 75px;
+    object-fit: contain;
+  }
+
+  .company-info {
+    flex: 1;
+  }
+
+  .company-name {
+    font-size: 17px;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+
+  .slip-title {
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+
+  .period-name {
+    color: #666;
+    margin-top: 5px;
+  }
+
+  .meta {
+    margin: 20px 0;
+    padding: 15px;
+    background: #f5f6f8;
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    line-height: 1.8;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 18px;
+  }
+
+  td, th {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+    font-size: 13px;
+  }
+
+  th {
+    background: #f2f4f7;
+  }
+
+  .amount {
+    text-align: right;
+  }
+
+  .total {
+    font-weight: bold;
+    background: #f7f7f7;
+  }
+
+  .actions {
+    margin: 25px 0;
+    text-align: right;
+  }
+
+  button {
+    padding: 10px 18px;
+    cursor: pointer;
+  }
+
+  .signature {
+    margin-top: 40px;
+    display: flex;
+    justify-content: flex-end;
+    text-align: center;
+  }
+
+  .signature div {
+    width: 200px;
+  }
+
+  .official-note {
+    margin-top: 25px;
+    padding-top: 12px;
+    border-top: 1px solid #ddd;
+    text-align: center;
+    color: #555;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+
+  .official-note strong {
+    color: #222;
+    letter-spacing: 0.5px;
+  }
+
+  /* PRINT SETTINGS */
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+
+  @media print {
+    html, body {
+      width: 100%;
+      height: auto;
+      margin: 0;
+      padding: 0;
+      font-size: 12px;
+    }
+
+    body {
+      zoom: 0.95;
+    }
+
+    .actions {
+      display: none !important;
+    }
+
+    .header {
+      padding-bottom: 15px;
+    }
+
+    .logo {
+      width: 68px;
+      height: 68px;
+    }
+
+    .company-name {
+      font-size: 18px;
+    }
+
+    .slip-title {
+      font-size: 24px;
+    }
+
+    .meta {
+      margin: 16px 0;
+      padding: 12px;
+      line-height: 1.9;
+    }
+
+    table {
+      margin-top: 14px;
+    }
+
+    td, th {
+      padding: 9px;
+      font-size: 12px;
+    }
+
+    .signature {
+      margin-top: 35px;
+    }
+
+    .official-note {
+      margin-top: 22px;
+      padding-top: 12px;
+      font-size: 10px;
+      line-height: 1.6;
+    }
+
+    .official-note,
+    .signature,
+    tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+  }
+</style>
+
+    </head>
+
+    <body>
+
+      <div class="header">
+        <img
+          class="logo"
+          src="${escapeHtml(logoUrl)}"
+          alt="HRIS Logo"
+        />
+
+        <div class="company-info">
+          <div class="company-name">
+            ${escapeHtml(row.company_name || "Nama Perusahaan")}
+          </div>
+
+          <div class="slip-title">SLIP GAJI</div>
+
+          <div class="period-name">
+            ${escapeHtml(period?.period_name || "Payroll")}
+          </div>
+        </div>
+      </div>
+
+      <div class="meta">
+        <div>
+          <b>INFORMASI KARYAWAN</b><br />
+          Nama: <b>${escapeHtml(row.name)}</b><br />
+          NIK: ${escapeHtml(row.nik || "-")}<br />
+          NIP: ${escapeHtml(row.nip || "-")}<br />
+          Departemen: ${escapeHtml(row.department || "-")}<br />
+          Jabatan: ${escapeHtml(row.position || "-")}
+        </div>
+
+       <div>
+  <b>INFORMASI PAYROLL</b><br />
+  Periode:
+  ${formatDate(period?.start_date)}
+  s/d
+  ${formatDate(period?.end_date)}
+  <br />
+  Tanggal pembayaran:
+  ${formatDate(period?.payment_date)}
+</div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Komponen</th>
+            <th class="amount">Jumlah</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td>Gaji Pokok</td>
+            <td class="amount">${money(row.basic_salary)}</td>
+          </tr>
+
+          <tr>
+            <td>Tunjangan Jabatan</td>
+            <td class="amount">${money(row.position_allowance)}</td>
+          </tr>
+
+          <tr>
+            <td>Tunjangan Transport</td>
+            <td class="amount">${money(row.transport_allowance)}</td>
+          </tr>
+
+          <tr>
+            <td>Tunjangan Makan</td>
+            <td class="amount">${money(row.meal_allowance)}</td>
+          </tr>
+
+          <tr class="total">
+            <td>Bruto</td>
+            <td class="amount">${money(c.gross)}</td>
+          </tr>
+
+          <tr>
+            <td>Potongan Absensi</td>
+            <td class="amount">
+              ${money(c.basicDed + c.transportDed + c.mealDed)}
+            </td>
+          </tr>
+
+          <tr>
+            <td>BPJS JHT (${formatRate(row.bpjs_jht_rate ?? 2)})</td>
+            <td class="amount">${money(c.jht)}</td>
+          </tr>
+
+          <tr>
+            <td>BPJS JP (${formatRate(row.bpjs_jp_rate ?? 1)})</td>
+            <td class="amount">${money(c.jp)}</td>
+          </tr>
+
+          <tr>
+            <td>BPJS Kesehatan (${formatRate(row.bpjs_health_rate ?? 1)})</td>
+            <td class="amount">${money(c.health)}</td>
+          </tr>
+
+          <tr>
+            <td>
+              PPh 21 (${escapeHtml(row.ptkp_status)}
+              / TER ${escapeHtml(c.category || "-")}
+              ${formatRate(c.rate)})
+            </td>
+            <td class="amount">${money(c.pph)}</td>
+          </tr>
+
+          <tr class="total">
+            <td>Total Potongan</td>
+            <td class="amount">${money(c.total)}</td>
+          </tr>
+
+          <tr class="total">
+            <td>TAKE HOME PAY</td>
+            <td class="amount">${money(c.net)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="signature">
+        <div>
+          <p>
+            ${escapeHtml(row.company_name || "Perusahaan")}
+          </p>
+          <br /><br /><br />
+          <b>HR / Finance</b>
+        </div>
+      </div>
+<div class="official-note">
+  <strong>DOKUMEN RESMI</strong><br />
+  Slip gaji ini diterbitkan secara elektronik melalui
+  <strong>PRIDE System</strong> dan dinyatakan sah sebagai
+  dokumen informasi penggajian tanpa memerlukan tanda tangan basah.<br />
+  <strong>Generated by PRIDE System</strong>
+</div>
+      <div class="actions">
+        <button onclick="window.print()">
+          Cetak / Simpan PDF
+        </button>
+      </div>
+
+      <script>
+        window.onload = () => {
+          window.print();
+        };
+      </script>
+
+    </body>
+    </html>
+  `);
+
     popup.document.close();
   };
 
@@ -661,14 +1033,6 @@ export default function PayrollDetails() {
         <Box
           sx={{ px: 2, py: 1.5, display: "flex", alignItems: "center", gap: 1 }}
         >
-          <Button
-            size="small"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(-1)}
-            sx={{ textTransform: "none", minWidth: 0 }}
-          >
-            Back
-          </Button>
           <Typography
             sx={{
               fontSize: 16,
