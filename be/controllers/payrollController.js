@@ -1,4 +1,14 @@
 const pool = require("../config/db");
+const PRIDE_ROLES = {
+  ADMIN_HR: 1,
+  HR: 2,
+  FINANCE: 6,
+  DIRECTOR: 7,
+};
+
+const getRoleId = (req) => Number(req.user?.role_id);
+
+const hasRole = (req, ...roleIds) => roleIds.includes(getRoleId(req));
 const roundRupiah = (value) => Math.round(Number(value || 0));
 
 const getTerCategory = (ptkpStatus) => {
@@ -12,17 +22,27 @@ const getTerCategory = (ptkpStatus) => {
 };
 
 const calculatePayroll = async (client, employee, periodEnd) => {
-  const basic = Number(employee.basic_salary || 0);
-  const position = Number(employee.position_allowance || 0);
-  const transport = Number(employee.transport_allowance || 0);
-  const meal = Number(employee.meal_allowance || 0);
+  const employeeType = String(employee.employee_type || "").toUpperCase();
+  const isIntern = employeeType === "KONTRAK_INTERN";
+  const isProbation = ["PROBATION", "KONTRAK_3_BULAN"].includes(employeeType);
+  const divisor = Number(
+    employee.payroll_divisor || (employee.work_schedule === "6_DAYS" ? 26 : 22),
+  );
+  const presentDays = Number(employee.intern_present_days || 0);
+  const internFactor = isIntern && divisor > 0 ? presentDays / divisor : 1;
 
-  const gross = basic + position + transport + meal;
+  const basic = Number(employee.basic_salary || 0) * internFactor;
+  const position = Number(employee.position_allowance || 0) * internFactor;
+  const transport = Number(employee.transport_allowance || 0) * internFactor;
+  const meal = Number(employee.meal_allowance || 0) * internFactor;
 
-  // BPJS berdasarkan gaji pokok sesuai kebijakan payroll ini.
-  const jhtRate = 2;
-  const jpRate = 1;
-  const healthRate = 1;
+  const gross = roundRupiah(basic + position + transport + meal);
+
+  // BPJS tidak dipotong untuk probation dan intern.
+  const hasBpjsDeduction = !isProbation && !isIntern;
+  const jhtRate = hasBpjsDeduction ? 2 : 0;
+  const jpRate = hasBpjsDeduction ? 1 : 0;
+  const healthRate = hasBpjsDeduction ? 1 : 0;
 
   // Plafon JP 2026. Perlu diperbarui mengikuti ketentuan tahun berikutnya.
   const jpCap = 11086300;
@@ -72,8 +92,14 @@ const calculatePayroll = async (client, employee, periodEnd) => {
     category,
     terRate,
     pph21,
+    employeeType,
+    isIntern,
+    isProbation,
+    presentDays,
+    internFactor,
   };
 };
+
 // GET: Daftar karyawan dan master salary
 exports.getEmployees = async (req, res) => {
   try {
@@ -101,6 +127,7 @@ exports.getEmployees = async (req, res) => {
         ON es.user_id = u.id
         AND es.end_date IS NULL
       WHERE u.status = true
+  AND COALESCE(u.is_system_account, FALSE) = FALSE
       ORDER BY u.name ASC
     `);
 
@@ -259,7 +286,6 @@ exports.saveSalary = async (req, res) => {
 };
 
 // GET PAYROLL PERIODS
-
 exports.getPeriods = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -299,7 +325,6 @@ exports.getPeriods = async (req, res) => {
 };
 
 // CREATE PAYROLL PERIOD
-
 exports.createPeriod = async (req, res) => {
   const { month } = req.body;
 
@@ -335,6 +360,7 @@ exports.createPeriod = async (req, res) => {
 
     const start = formatDate(startDate);
     const end = formatDate(endDate);
+
     const payment = formatDate(paymentDate);
 
     const periodName = new Date(
@@ -443,7 +469,20 @@ exports.generatePayroll = async (req, res) => {
       `SELECT
           u.id AS user_id,
           u.ptkp_status,
+          u.employee_type,
           whs.work_schedule,
+          CASE
+            WHEN UPPER(COALESCE(u.employee_type, '')) = 'KONTRAK_INTERN'
+            THEN (
+              SELECT COUNT(DISTINCT a.attendance_date)::int
+              FROM attendance a
+              WHERE a.user_id = u.id
+                AND a.status = 'Hadir'
+                AND a.attendance_date >= $1::date
+                AND a.attendance_date <= $2::date
+            )
+            ELSE 0
+          END AS intern_present_days,
           salary.id AS salary_id,
           COALESCE(salary.basic_salary, 0) AS basic_salary,
           COALESCE(salary.position_allowance, 0) AS position_allowance,
@@ -462,6 +501,7 @@ exports.generatePayroll = async (req, res) => {
           LIMIT 1
        ) salary ON TRUE
        WHERE u.status = TRUE
+  AND COALESCE(u.is_system_account, FALSE) = FALSE
        ORDER BY u.name ASC`,
       [period.start_date, period.end_date],
     );
@@ -475,18 +515,19 @@ exports.generatePayroll = async (req, res) => {
     }
 
     for (const employee of employees.rows) {
+      const divisor = employee.work_schedule === "6_DAYS" ? 26 : 22;
+      const calculation = await calculatePayroll(
+        client,
+        { ...employee, payroll_divisor: divisor },
+        period.end_date,
+      );
+
+      // Simpan nominal master salary sebagai snapshot; prorata intern hanya diterapkan
+      // pada gross_salary melalui calculatePayroll().
       const basic = Number(employee.basic_salary || 0);
       const position = Number(employee.position_allowance || 0);
       const transport = Number(employee.transport_allowance || 0);
       const meal = Number(employee.meal_allowance || 0);
-
-      const calculation = await calculatePayroll(
-        client,
-        employee,
-        period.end_date,
-      );
-
-      const divisor = employee.work_schedule === "6_DAYS" ? 26 : 22;
 
       const totalDeduction =
         calculation.jht +
@@ -499,6 +540,7 @@ exports.generatePayroll = async (req, res) => {
       await client.query(
         `INSERT INTO payroll_details (
           payroll_period_id, user_id, salary_id, ptkp_status,
+          employee_type, intern_present_days,
           basic_salary, position_allowance,
           transport_allowance, meal_allowance,
           work_schedule, payroll_divisor,
@@ -510,15 +552,16 @@ exports.generatePayroll = async (req, res) => {
           gross_salary, total_deduction, net_salary
         )
         VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-          $11,$12,$13,$14,$15,$16,$17,
-          $18,$19,$20,$21,$22,$23,$24
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
+          $13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26
         )`,
         [
           periodId,
           employee.user_id,
           employee.salary_id,
           employee.ptkp_status || null,
+          employee.employee_type || null,
+          calculation.presentDays,
           basic,
           position,
           transport,
@@ -567,8 +610,15 @@ exports.generatePayroll = async (req, res) => {
   }
 };
 
-// SUBMIT PAYROLL FOR APPROVAL
+// SUBMIT PAYROLL: HR -> FINANCE
 exports.submitPayrollApproval = async (req, res) => {
+  if (!hasRole(req, PRIDE_ROLES.HR, PRIDE_ROLES.ADMIN_HR)) {
+    return res.status(403).json({
+      success: false,
+      message: "Hanya HR yang dapat mengajukan payroll.",
+    });
+  }
+
   const { periodId } = req.params;
   const client = await pool.connect();
 
@@ -577,8 +627,7 @@ exports.submitPayrollApproval = async (req, res) => {
 
     const period = await client.query(
       `SELECT * FROM payroll_periods
-       WHERE id = $1
-       FOR UPDATE`,
+       WHERE id = $1 FOR UPDATE`,
       [periodId],
     );
 
@@ -615,34 +664,68 @@ exports.submitPayrollApproval = async (req, res) => {
 
     await client.query(
       `UPDATE payroll_periods
-       SET status = 'REVIEW',
+       SET status = 'PENDING_FINANCE',
            updated_at = NOW()
        WHERE id = $1`,
       [periodId],
+    );
+
+    await client.query(
+      `INSERT INTO payroll_approval_logs
+       (payroll_period_id, approval_stage, action, approved_by, notes)
+       VALUES ($1, 'HR', 'SUBMITTED', $2, $3)`,
+      [periodId, req.user.id, req.body?.notes || "Payroll diajukan oleh HR."],
     );
 
     await client.query("COMMIT");
 
     return res.json({
       success: true,
-      message: "Payroll berhasil diajukan untuk approval HR / Finance.",
+      message: "Payroll berhasil diajukan ke Finance.",
+      data: { status: "PENDING_FINANCE" },
     });
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("SUBMIT PAYROLL APPROVAL ERROR:", error);
+    console.error("SUBMIT PAYROLL ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Gagal mengajukan payroll untuk approval.",
+      message: "Gagal mengajukan payroll.",
+      detail: error.message,
     });
   } finally {
     client.release();
   }
 };
 
-// APPROVE PAYROLL
+// APPROVE PAYROLL: FINANCE -> DIRECTOR -> APPROVED
 exports.approvePayroll = async (req, res) => {
+  const roleId = getRoleId(req);
+
+  let currentStatus;
+  let nextStatus;
+  let approvalStage;
+  let successMessage;
+
+  if (roleId === PRIDE_ROLES.FINANCE) {
+    currentStatus = "PENDING_FINANCE";
+    nextStatus = "PENDING_DIRECTOR";
+    approvalStage = "FINANCE";
+    successMessage = "Payroll disetujui Finance dan diteruskan ke Director.";
+  } else if (roleId === PRIDE_ROLES.DIRECTOR) {
+    currentStatus = "PENDING_DIRECTOR";
+    nextStatus = "APPROVED";
+    approvalStage = "DIRECTOR";
+    successMessage = "Payroll berhasil disetujui Director.";
+  } else {
+    return res.status(403).json({
+      success: false,
+      message: "Hanya Finance atau Director yang dapat menyetujui payroll.",
+    });
+  }
+
   const { periodId } = req.params;
+  const notes = req.body?.notes || null;
   const client = await pool.connect();
 
   try {
@@ -663,11 +746,11 @@ exports.approvePayroll = async (req, res) => {
       });
     }
 
-    if (period.rows[0].status !== "REVIEW") {
+    if (period.rows[0].status !== currentStatus) {
       await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: "Hanya payroll berstatus REVIEW yang dapat disetujui.",
+        message: `Approval tidak sesuai. Status payroll saat ini: ${period.rows[0].status}.`,
       });
     }
 
@@ -686,21 +769,35 @@ exports.approvePayroll = async (req, res) => {
       });
     }
 
+    const isFinalApproval = nextStatus === "APPROVED";
+
+    // Update status payroll
     await client.query(
       `UPDATE payroll_periods
-       SET status = 'APPROVED',
-           approved_by = $1,
-           approved_at = NOW(),
+       SET status = $1,
+           approved_by = CASE WHEN $3 = TRUE THEN $2 ELSE approved_by END,
+           approved_at = CASE WHEN $3 = TRUE THEN NOW() ELSE approved_at END,
            updated_at = NOW()
-       WHERE id = $2`,
-      [req.user.id, periodId],
+       WHERE id = $4`,
+      [nextStatus, req.user.id, isFinalApproval, periodId],
+    );
+
+    // Catat riwayat approval
+    await client.query(
+      `INSERT INTO payroll_approval_logs
+       (payroll_period_id, approval_stage, action, approved_by, notes)
+       VALUES ($1, $2, 'APPROVED', $3, $4)`,
+      [periodId, approvalStage, req.user.id, notes],
     );
 
     await client.query("COMMIT");
 
     return res.json({
       success: true,
-      message: "Payroll berhasil disetujui.",
+      message: successMessage,
+      data: {
+        status: nextStatus,
+      },
     });
   } catch (error) {
     await client.query("ROLLBACK");
@@ -709,13 +806,108 @@ exports.approvePayroll = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Gagal menyetujui payroll.",
+      detail: error.message,
     });
   } finally {
     client.release();
   }
 };
 
-// GET PAYROLL DETAILS BY PERIOD
+// REJECT PAYROLL: FINANCE / DIRECTOR -> DRAFT
+exports.rejectPayroll = async (req, res) => {
+  const roleId = getRoleId(req);
+
+  let currentStatus;
+  let approvalStage;
+
+  if (roleId === PRIDE_ROLES.FINANCE) {
+    currentStatus = "PENDING_FINANCE";
+    approvalStage = "FINANCE";
+  } else if (roleId === PRIDE_ROLES.DIRECTOR) {
+    currentStatus = "PENDING_DIRECTOR";
+    approvalStage = "DIRECTOR";
+  } else {
+    return res.status(403).json({
+      success: false,
+      message: "Hanya Finance atau Director yang dapat menolak payroll.",
+    });
+  }
+
+  const notes = String(req.body?.notes || "").trim();
+
+  if (!notes) {
+    return res.status(400).json({
+      success: false,
+      message: "Alasan penolakan wajib diisi.",
+    });
+  }
+
+  const { periodId } = req.params;
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const period = await client.query(
+      `SELECT * FROM payroll_periods
+       WHERE id = $1 FOR UPDATE`,
+      [periodId],
+    );
+
+    if (!period.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        success: false,
+        message: "Periode payroll tidak ditemukan.",
+      });
+    }
+
+    if (period.rows[0].status !== currentStatus) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        message: "Payroll tidak berada pada tahap approval Anda.",
+      });
+    }
+
+    await client.query(
+      `UPDATE payroll_periods
+       SET status = 'DRAFT',
+           approved_by = NULL,
+           approved_at = NULL,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [periodId],
+    );
+
+    await client.query(
+      `INSERT INTO payroll_approval_logs
+       (payroll_period_id, approval_stage, action, approved_by, notes)
+       VALUES ($1, $2, 'REJECTED', $3, $4)`,
+      [periodId, approvalStage, req.user.id, notes],
+    );
+
+    await client.query("COMMIT");
+
+    return res.json({
+      success: true,
+      message: "Payroll ditolak dan dikembalikan ke HR untuk diperbaiki.",
+      data: { status: "DRAFT" },
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("REJECT PAYROLL ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal menolak payroll.",
+      detail: error.message,
+    });
+  } finally {
+    client.release();
+  }
+};
+
 // GET PAYROLL DETAILS BY PERIOD
 exports.getPayrollDetails = async (req, res) => {
   try {
@@ -741,6 +933,8 @@ exports.getPayrollDetails = async (req, res) => {
           pd.id,
           pd.payroll_period_id,
           pd.user_id,
+          pd.employee_type,
+          COALESCE(pd.intern_present_days, 0) AS intern_present_days,
           pd.position_allowance,
           pd.bpjs_jht_rate,
           pd.bpjs_jp_rate,
@@ -757,6 +951,8 @@ exports.getPayrollDetails = async (req, res) => {
           u.position,
           u.company_id,
           c.name AS company_name,
+          u.bank_name,
+          u.bank_account_number,
           COALESCE(pd.ptkp_status, u.ptkp_status) AS ptkp_status,
           pd.salary_id,
           pd.basic_salary,
@@ -899,9 +1095,34 @@ exports.updatePayrollDetails = async (req, res) => {
     );
 
     const ptkpStatus = req.body.ptkp_status ?? old.ptkp_status;
+    const employeeType = String(old.employee_type || "").toUpperCase();
+    const isIntern = employeeType === "KONTRAK_INTERN";
+    const isProbation = ["PROBATION", "KONTRAK_3_BULAN"].includes(employeeType);
     const divisor = Number(old.payroll_divisor || 22);
 
-    // Potongan absensi
+    // Jumlah hari intern dihitung ulang dari absensi berstatus Hadir.
+    // Hari Dibayar intern:
+    // Gunakan input manual HR jika dikirim.
+    // Jika tidak, pertahankan nilai sebelumnya.
+    let internPresentDays = Number(old.intern_present_days || 0);
+
+    if (isIntern && req.body.intern_present_days !== undefined) {
+      const inputDays = Number(req.body.intern_present_days);
+
+      if (!Number.isInteger(inputDays) || inputDays < 0 || inputDays > 31) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          success: false,
+          message: "Hari Dibayar harus berupa angka bulat antara 0 sampai 31.",
+        });
+      }
+
+      internPresentDays = inputDays;
+    }
+
+    const internFactor =
+      isIntern && divisor > 0 ? internPresentDays / divisor : 1;
+
     const basicDeduction = roundRupiah(
       ((sickWithout + unpaidLeave) * basic) / divisor,
     );
@@ -909,8 +1130,6 @@ exports.updatePayrollDetails = async (req, res) => {
     const transportDeduction = roundRupiah((sickWith * transport) / divisor);
 
     const mealDeduction = roundRupiah((sickWith * meal) / divisor);
-
-    const gross = basic + position + transport + meal;
 
     const calculation = await calculatePayroll(
       client,
@@ -920,15 +1139,20 @@ exports.updatePayrollDetails = async (req, res) => {
         transport_allowance: transport,
         meal_allowance: meal,
         ptkp_status: ptkpStatus,
+        employee_type: employeeType,
+        intern_present_days: internPresentDays,
+        payroll_divisor: divisor,
       },
       old.period_end_date,
     );
+
+    const gross = calculation.gross;
 
     const attendanceDeduction =
       basicDeduction + transportDeduction + mealDeduction;
 
     const totalDeduction =
-      attendanceDeduction +
+      (isIntern ? 0 : attendanceDeduction) +
       calculation.jht +
       calculation.jp +
       calculation.health +
@@ -943,41 +1167,43 @@ exports.updatePayrollDetails = async (req, res) => {
         transport_allowance = $3,
         meal_allowance = $4,
         ptkp_status = $5,
-        sick_without_document_days = $6,
-        sick_with_document_days = $7,
-        unpaid_leave_days = $8,
-        basic_salary_deduction = $9,
-        transport_deduction = $10,
-        meal_deduction = $11,
-        bpjs_jht_rate = $12,
-        bpjs_jp_rate = $13,
-        bpjs_health_rate = $14,
-        bpjs_jp_base = $15,
-        bpjs_health_base = $16,
-        bpjs_tk_deduction = $17,
-        bpjs_health_deduction = $18,
-        pph21_ter_category = $19,
-        pph21_ter_rate = $20,
-        pph21_taxable_income = $21,
-        pph21_deduction = $22,
-        gross_salary = $23,
-        total_deduction = $24,
-        net_salary = $25,
-        updated_by = $26,
+        intern_present_days = $6,
+        sick_without_document_days = $7,
+        sick_with_document_days = $8,
+        unpaid_leave_days = $9,
+        basic_salary_deduction = $10,
+        transport_deduction = $11,
+        meal_deduction = $12,
+        bpjs_jht_rate = $13,
+        bpjs_jp_rate = $14,
+        bpjs_health_rate = $15,
+        bpjs_jp_base = $16,
+        bpjs_health_base = $17,
+        bpjs_tk_deduction = $18,
+        bpjs_health_deduction = $19,
+        pph21_ter_category = $20,
+        pph21_ter_rate = $21,
+        pph21_taxable_income = $22,
+        pph21_deduction = $23,
+        gross_salary = $24,
+        total_deduction = $25,
+        net_salary = $26,
+        updated_by = $27,
         updated_at = NOW()
-       WHERE id = $27`,
+       WHERE id = $28`,
       [
         basic,
         position,
         transport,
         meal,
         ptkpStatus,
-        sickWithout,
-        sickWith,
-        unpaidLeave,
-        basicDeduction,
-        transportDeduction,
-        mealDeduction,
+        internPresentDays,
+        isIntern ? 0 : sickWithout,
+        isIntern ? 0 : sickWith,
+        isIntern ? 0 : unpaidLeave,
+        isIntern ? 0 : basicDeduction,
+        isIntern ? 0 : transportDeduction,
+        isIntern ? 0 : mealDeduction,
         calculation.jhtRate,
         calculation.jpRate,
         calculation.healthRate,

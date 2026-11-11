@@ -328,6 +328,7 @@ exports.createEmployee = async (req, res) => {
   let uploadedKeys = [];
   let transactionStarted = false;
   let committed = false;
+
   try {
     const {
       nik,
@@ -345,12 +346,11 @@ exports.createEmployee = async (req, res) => {
       contract_end_date,
       company_id,
       leader_id,
+      bank_name,
+      bank_account_number,
     } = req.body;
 
-    // =========================
     // VALIDASI
-    // =========================
-
     if (
       !nik ||
       !name ||
@@ -365,6 +365,7 @@ exports.createEmployee = async (req, res) => {
           "NIK, nama, email, department, jabatan, dan jadwal kerja wajib diisi",
       });
     }
+
     if (!/^\d{16}$/.test(nik)) {
       return res.status(400).json({
         success: false,
@@ -372,18 +373,14 @@ exports.createEmployee = async (req, res) => {
       });
     }
 
-    // =========================
     // CEK NIK / EMAIL
-    // =========================
-
     const existing = await pool.query(
       `
-            SELECT id
-            FROM users
-            WHERE nik = $1
-               OR email = $2
-            LIMIT 1
-            `,
+      SELECT id
+      FROM users
+      WHERE nik = $1 OR email = $2
+      LIMIT 1
+      `,
       [nik, email],
     );
 
@@ -394,13 +391,14 @@ exports.createEmployee = async (req, res) => {
       });
     }
 
+    // VALIDASI DEPARTMENT
     const departmentCheck = await pool.query(
       `
-  SELECT id, name
-  FROM departments
-  WHERE id = $1 AND is_active = TRUE
-  LIMIT 1
-  `,
+      SELECT id, name
+      FROM departments
+      WHERE id = $1 AND is_active = TRUE
+      LIMIT 1
+      `,
       [department_id],
     );
 
@@ -411,13 +409,14 @@ exports.createEmployee = async (req, res) => {
       });
     }
 
+    // VALIDASI ROLE
     const roleCheck = await pool.query(
       `
-  SELECT id, name
-  FROM roles
-  WHERE id = $1
-  LIMIT 1
-  `,
+      SELECT id, name
+      FROM roles
+      WHERE id = $1
+      LIMIT 1
+      `,
       [role_id],
     );
 
@@ -431,14 +430,15 @@ exports.createEmployee = async (req, res) => {
     const departmentName = departmentCheck.rows[0].name;
     const roleName = roleCheck.rows[0].name;
 
+    // VALIDASI WORKING HOURS
     const workingHoursCheck = await pool.query(
       `
-    SELECT id
-    FROM working_hours_settings
-    WHERE id = $1
-      AND is_active = TRUE
-    LIMIT 1
-  `,
+      SELECT id
+      FROM working_hours_settings
+      WHERE id = $1
+        AND is_active = TRUE
+      LIMIT 1
+      `,
       [working_hours_setting_id],
     );
 
@@ -448,63 +448,60 @@ exports.createEmployee = async (req, res) => {
         message: "Working hours setting is invalid or inactive.",
       });
     }
-    const defaultPassword = `so-mak${nik.slice(-4)}`;
 
+    const defaultPassword = `so-mak${nik.slice(-4)}`;
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
-    // =========================
     // UPLOAD FILE KE NEON
-    // =========================
-
     const uploaded = await uploadEmployeeDocuments(req.files);
 
-    uploadedKeys = uploaded.uploadedKeys;
+    uploadedKeys = uploaded.uploadedKeys || [];
+    const paths = uploaded.paths || {};
 
-    const paths = uploaded.paths;
-    // =========================
     // TRANSACTION
-    // =========================
-
     await client.query("BEGIN");
     transactionStarted = true;
+
     const result = await client.query(
       `
-  INSERT INTO users (
-    role_id,
-    department_id,
-    nik,
-    name,
-    email,
-    password,
-    phone,
-    department,
-    position,
-    job_description,
-    photo,
-    ktp,
-    npwp,
-    bpjs_kesehatan,
-    bpjs_tk,
-    kk,
-    join_date,
-    address,
-    status,
-    employee_type,
-    contract_start_date,
-    contract_end_date,
-    company_id,
-    leader_id,
-    working_hours_setting_id
-  )
-  VALUES (
-    $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10,
-    $11, $12, $13, $14, $15, $16,
-    $17, $18, TRUE,
-    $19, $20, $21, $22, $23, $24
-  )
-  RETURNING *
-  `,
+      INSERT INTO users (
+        role_id,
+        department_id,
+        nik,
+        name,
+        email,
+        password,
+        phone,
+        department,
+        position,
+        job_description,
+        photo,
+        ktp,
+        npwp,
+        bpjs_kesehatan,
+        bpjs_tk,
+        kk,
+        join_date,
+        address,
+        status,
+        employee_type,
+        contract_start_date,
+        contract_end_date,
+        company_id,
+        leader_id,
+        working_hours_setting_id,
+        bank_name,
+        bank_account_number
+      )
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7,
+        $8, $9, $10, $11, $12, $13,
+        $14, $15, $16, $17, $18, TRUE,
+        $19, $20, $21, $22, $23, $24,
+        $25, $26
+      )
+      RETURNING *
+      `,
       [
         role_id,
         department_id,
@@ -516,12 +513,12 @@ exports.createEmployee = async (req, res) => {
         departmentName,
         roleName,
         job_description || null,
-        paths.photo,
-        paths.ktp,
-        paths.npwp,
-        paths.bpjs_kesehatan,
-        paths.bpjs_tk,
-        paths.kk,
+        paths.photo || null,
+        paths.ktp || null,
+        paths.npwp || null,
+        paths.bpjs_kesehatan || null,
+        paths.bpjs_tk || null,
+        paths.kk || null,
         join_date || null,
         address || null,
         employee_type || "TETAP",
@@ -530,96 +527,89 @@ exports.createEmployee = async (req, res) => {
         company_id || null,
         leader_id || null,
         working_hours_setting_id,
+        bank_name?.trim() || null,
+        bank_account_number?.trim() || null,
       ],
     );
+
     await client.query("COMMIT");
     committed = true;
     transactionStarted = false;
 
+    // KIRIM EMAIL
     try {
       await sendEmail({
         to: email,
-
         subject: "Attendance Account Successfully Created",
-
         html: `
-      <div style="
-        font-family: Arial, sans-serif;
-        max-width: 600px;
-        margin: auto;
-        padding: 24px;
-        color: #333;
-      ">
+          <div style="
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: auto;
+            padding: 24px;
+            color: #333;
+          ">
+            <h2 style="margin-bottom: 20px;">
+              Akun Aplikasi Absensi
+            </h2>
 
-        <h2 style="margin-bottom: 20px;">
-          Akun Aplikasi Absensi
-        </h2>
+            <p>Halo <strong>${name}</strong>,</p>
 
-        <p>
-          Halo <strong>${name}</strong>,
-        </p>
+            <p>
+              Akun Anda telah berhasil dibuat oleh administrator.
+            </p>
 
-        <p>
-          Akun Anda telah berhasil dibuat oleh administrator.
-        </p>
+            <div style="
+              background: #f4f6f8;
+              padding: 18px;
+              border-radius: 8px;
+              margin: 20px 0;
+            ">
+              <p style="margin: 6px 0;">
+                <strong>Email:</strong> ${email}
+              </p>
 
-        <div style="
-          background: #f4f6f8;
-          padding: 18px;
-          border-radius: 8px;
-          margin: 20px 0;
-        ">
+              <p style="margin: 6px 0;">
+                <strong>Password sementara:</strong>
+                ${defaultPassword}
+              </p>
+            </div>
 
-          <p style="margin: 6px 0;">
-            <strong>Email:</strong> ${email}
-          </p>
+            <p>
+              Silakan gunakan email dan password sementara tersebut
+              untuk login ke Aplikasi Attend.
+            </p>
 
-          <p style="margin: 6px 0;">
-            <strong>Password sementara:</strong>
-            ${defaultPassword}
-          </p>
+            <p>
+              Setelah berhasil login, segera ubah password Anda
+              demi keamanan akun.
+            </p>
 
-        </div>
+            <p style="
+              color: #777;
+              font-size: 13px;
+              margin-top: 30px;
+            ">
+              Jangan bagikan password ini kepada orang lain.
+            </p>
 
-        <p>
-          Silakan gunakan email dan password sementara tersebut
-          untuk login ke Aplikasi Attend.
-        </p>
+            <hr style="
+              border: 0;
+              border-top: 1px solid #ddd;
+              margin: 25px 0;
+            ">
 
-        <p>
-          Setelah berhasil login, segera ubah password Anda
-          demi keamanan akun.
-        </p>
-
-        <p style="
-          color: #777;
-          font-size: 13px;
-          margin-top: 30px;
-        ">
-          Jangan bagikan password ini kepada orang lain.
-        </p>
-
-        <hr style="
-          border: 0;
-          border-top: 1px solid #ddd;
-          margin: 25px 0;
-        ">
-
-        <p style="
-          font-size: 12px;
-          color: #888;
-        ">
-          Email ini dikirim otomatis oleh sistem Attendance.
-        </p>
-
-      </div>
-    `,
+            <p style="
+              font-size: 12px;
+              color: #888;
+            ">
+              Email ini dikirim otomatis oleh sistem Attendance.
+            </p>
+          </div>
+        `,
       });
     } catch (emailError) {
       console.error("SEND EMPLOYEE EMAIL ERROR:", emailError);
-
-      // Akun tetap berhasil dibuat.
-      // Email gagal tidak membatalkan INSERT.
     }
 
     return res.status(201).json({
@@ -738,6 +728,10 @@ exports.getEmployees = async (req, res) => {
         u.contract_end_date,
         u.join_date,
 
+        -- Bank Account
+        u.bank_name,
+        u.bank_account_number,
+
         -- Working Hours
         u.working_hours_setting_id,
 
@@ -804,61 +798,13 @@ exports.getEmployees = async (req, res) => {
   }
 };
 
-exports.getRoles = async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT
-        id,
-        name
-      FROM roles
-      ORDER BY id ASC
-    `);
-
-    return res.status(200).json({
-      success: true,
-      data: result.rows,
-    });
-  } catch (err) {
-    console.error("GET ROLES ERROR:", err);
-
-    return res.status(500).json({
-      success: false,
-      message: "Gagal mengambil data jabatan",
-    });
-  }
-};
-
-exports.getDepartments = async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT id, name
-      FROM departments
-      WHERE is_active = TRUE
-      ORDER BY name ASC
-    `);
-
-    return res.json({
-      success: true,
-      data: result.rows,
-    });
-  } catch (err) {
-    console.error("GET DEPARTMENTS ERROR:", err);
-
-    return res.status(500).json({
-      success: false,
-      message: "Gagal mengambil data department",
-    });
-  }
-};
 exports.updateEmployee = async (req, res) => {
   let uploadedKeys = [];
 
   try {
     const { id } = req.params;
 
-    // =====================================
     // AMBIL DATA EMPLOYEE LAMA
-    // =====================================
     const oldEmployeeResult = await pool.query(
       `
       SELECT
@@ -881,9 +827,7 @@ exports.updateEmployee = async (req, res) => {
     const oldEmployee = oldEmployeeResult.rows[0];
     const oldPhoto = oldEmployee.photo;
 
-    // =====================================
     // AMBIL REQUEST BODY
-    // =====================================
     const {
       nik,
       name,
@@ -900,11 +844,11 @@ exports.updateEmployee = async (req, res) => {
       contract_end_date,
       company_id,
       leader_id,
+      bank_name,
+      bank_account_number,
     } = req.body;
 
-    // =====================================
     // VALIDASI DEPARTMENT
-    // =====================================
     if (!department_id) {
       return res.status(400).json({
         success: false,
@@ -932,9 +876,7 @@ exports.updateEmployee = async (req, res) => {
 
     const departmentName = departmentCheck.rows[0].name;
 
-    // =====================================
     // VALIDASI POSITION / ROLE
-    // =====================================
     if (!role_id) {
       return res.status(400).json({
         success: false,
@@ -961,10 +903,7 @@ exports.updateEmployee = async (req, res) => {
 
     const roleName = roleCheck.rows[0].name;
 
-    // =====================================
     // WORKING HOURS
-    // Jika kosong, gunakan nilai sebelumnya
-    // =====================================
     const effectiveWorkingHoursId =
       working_hours_setting_id || oldEmployee.working_hours_setting_id;
 
@@ -993,18 +932,13 @@ exports.updateEmployee = async (req, res) => {
       });
     }
 
-    // =====================================
     // UPLOAD DOKUMEN KE NEON
-    // =====================================
     const uploaded = await uploadEmployeeDocuments(req.files);
 
     uploadedKeys = uploaded.uploadedKeys || [];
-
     const paths = uploaded.paths || {};
 
-    // =====================================
     // VALIDASI JENIS KARYAWAN
-    // =====================================
     const contractTypes = [
       "PROBATION",
       "KONTRAK_3_BULAN",
@@ -1015,9 +949,7 @@ exports.updateEmployee = async (req, res) => {
 
     const isContract = contractTypes.includes(employee_type);
 
-    // =====================================
     // UPDATE EMPLOYEE
-    // =====================================
     const result = await pool.query(
       `
       UPDATE users
@@ -1071,9 +1003,13 @@ exports.updateEmployee = async (req, res) => {
         bpjs_tk = COALESCE($22, bpjs_tk),
         kk = COALESCE($23, kk),
 
+        -- Bank Account
+        bank_name = $24,
+        bank_account_number = $25,
+
         updated_at = NOW()
 
-      WHERE id = $24
+      WHERE id = $26
 
       RETURNING *
       `,
@@ -1110,6 +1046,9 @@ exports.updateEmployee = async (req, res) => {
         paths.bpjs_tk || null,
         paths.kk || null,
 
+        bank_name?.trim() || null,
+        bank_account_number?.trim() || null,
+
         id,
       ],
     );
@@ -1123,9 +1062,7 @@ exports.updateEmployee = async (req, res) => {
       });
     }
 
-    // =====================================
     // INVALIDATE PHOTO CACHE
-    // =====================================
     if (paths.photo) {
       invalidateEmployeePhotoCache(oldPhoto);
     }
@@ -1155,6 +1092,54 @@ exports.updateEmployee = async (req, res) => {
     });
   }
 };
+
+exports.getRoles = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id,
+        name
+      FROM roles
+      ORDER BY id ASC
+    `);
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error("GET ROLES ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil data jabatan",
+    });
+  }
+};
+
+exports.getDepartments = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, name
+      FROM departments
+      WHERE is_active = TRUE
+      ORDER BY name ASC
+    `);
+
+    return res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error("GET DEPARTMENTS ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil data department",
+    });
+  }
+};
+
 exports.getPositions = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -1744,6 +1729,8 @@ exports.updateProfile = async (req, res) => {
       place_of_birth,
       date_of_birth,
       gender,
+      bank_name,
+      bank_account_number,
     } = req.body;
 
     const cleanName = name?.trim();
@@ -1783,8 +1770,10 @@ exports.updateProfile = async (req, res) => {
         address = $4,
         place_of_birth = $5,
         date_of_birth = $6,
-        gender = $7
-      WHERE id = $8
+        gender = $7,
+        bank_name = $8,
+        bank_account_number = $9
+      WHERE id = $10
       RETURNING
         id,
         nik,
@@ -1798,7 +1787,9 @@ exports.updateProfile = async (req, res) => {
         gender,
         department,
         position,
-        photo
+        photo,
+        bank_name,
+        bank_account_number
       `,
       [
         cleanName,
@@ -1808,6 +1799,8 @@ exports.updateProfile = async (req, res) => {
         place_of_birth?.trim() || null,
         date_of_birth || null,
         gender || null,
+        bank_name?.trim() || null,
+        bank_account_number?.trim() || null,
         req.user.id,
       ],
     );

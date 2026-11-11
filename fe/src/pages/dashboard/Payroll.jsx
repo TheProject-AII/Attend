@@ -23,6 +23,7 @@ import {
   TableRow,
   Typography,
   TextField,
+  DialogContentText,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -54,13 +55,33 @@ export default function Payroll() {
   const [periodMonth, setPeriodMonth] = useState(
     new Date().toISOString().slice(0, 7),
   );
-
+  const [openGenerateDialog, setOpenGenerateDialog] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState(null);
   const token = localStorage.getItem("token");
+
+  let currentUser = null;
+  try {
+    currentUser = JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    currentUser = null;
+  }
+
+  const currentRole = String(currentUser?.role || "")
+    .trim()
+    .toUpperCase();
+
+  const isFinance =
+    Number(currentUser?.role_id) === 6 || currentRole === "FINANCE";
+
+  const canManagePayrollPeriod = !isFinance;
 
   const authConfig = {
     headers: { Authorization: `Bearer ${token}` },
   };
-
+  const handleConfirmGenerate = (period) => {
+    setSelectedPeriod(period);
+    setOpenGenerateDialog(true);
+  };
   const loadPeriods = async () => {
     try {
       setLoading(true);
@@ -83,6 +104,13 @@ export default function Payroll() {
   }, []);
 
   const createPeriod = async () => {
+    if (!canManagePayrollPeriod) {
+      setError(
+        "Akun Finance tidak memiliki akses untuk membuat periode payroll.",
+      );
+      return;
+    }
+
     try {
       setSaving("create");
       setDialogError("");
@@ -96,6 +124,9 @@ export default function Payroll() {
       );
 
       setMessage("Periode payroll berhasil dibuat.");
+      setTimeout(() => {
+        setMessage("");
+      }, 3000);
       setOpenDialog(false);
       setDialogError("");
 
@@ -110,11 +141,7 @@ export default function Payroll() {
   };
 
   const generatePayroll = async (period) => {
-    const confirmed = window.confirm(
-      `Generate payroll untuk ${period.period_name}?\n\nData payroll akan dibuat sebagai snapshot dan tidak bisa di-generate ulang.`,
-    );
-
-    if (!confirmed) return;
+    if (!canManagePayrollPeriod || !period?.id) return;
 
     try {
       setSaving(period.id);
@@ -129,8 +156,12 @@ export default function Payroll() {
 
       setMessage(
         response.data.message ||
-          `Payroll berhasil dibuat untuk ${response.data.data?.total_employees || 0} karyawan.`,
+          `Payroll berhasil dibuat untuk ${
+            response.data.data?.total_employees || 0
+          } karyawan.`,
       );
+
+      setTimeout(() => setMessage(""), 3000);
 
       await loadPeriods();
     } catch (err) {
@@ -171,23 +202,16 @@ export default function Payroll() {
         spacing={2}
         sx={{ mb: 3 }}
       >
-        <Box>
-          <Typography variant="h6" fontWeight={700}>
-            Payroll Period
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Manage payroll periods and employee salary processing.
-          </Typography>
-        </Box>
-
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setOpenDialog(true)}
-          sx={{ textTransform: "none" }}
-        >
-          Create Period
-        </Button>
+        {canManagePayrollPeriod && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setOpenDialog(true)}
+            sx={{ textTransform: "none" }}
+          >
+            Create Period
+          </Button>
+        )}
       </Stack>
 
       <Card elevation={0} sx={{ border: "1px solid #E5E7EB" }}>
@@ -271,20 +295,22 @@ export default function Payroll() {
                             Details
                           </Button>
 
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="success"
-                            disabled={
-                              !canGenerate(period) || saving === period.id
-                            }
-                            onClick={() => generatePayroll(period)}
-                            sx={{ textTransform: "none" }}
-                          >
-                            {saving === period.id
-                              ? "Generating..."
-                              : "Generate"}
-                          </Button>
+                          {canManagePayrollPeriod && (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="success"
+                              disabled={
+                                !canGenerate(period) || saving === period.id
+                              }
+                              onClick={() => handleConfirmGenerate(period)}
+                              sx={{ textTransform: "none" }}
+                            >
+                              {saving === period.id
+                                ? "Generating..."
+                                : "Generate"}
+                            </Button>
+                          )}
                         </Stack>
                       </TableCell>
                     </TableRow>
@@ -294,8 +320,9 @@ export default function Payroll() {
                     <TableRow>
                       <TableCell colSpan={8} align="center">
                         <Typography color="text.secondary" py={4}>
-                          No payroll period found. Create a new period to get
-                          started.
+                          {canManagePayrollPeriod
+                            ? "No payroll period found. Create a new period to get started."
+                            : "No payroll period available."}
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -351,6 +378,48 @@ export default function Payroll() {
             disabled={saving === "create" || !periodMonth}
           >
             {saving === "create" ? "Creating..." : "Create"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={openGenerateDialog}
+        onClose={() => setOpenGenerateDialog(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Konfirmasi Generate Payroll</DialogTitle>
+
+        <DialogContent>
+          <DialogContentText>
+            Generate payroll untuk{" "}
+            <strong>{selectedPeriod?.period_name}</strong>?
+            <br />
+            <br />
+            Data payroll akan dibuat sebagai snapshot dan tidak bisa di-generate
+            ulang.
+          </DialogContentText>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setOpenGenerateDialog(false)} color="inherit">
+            Batal
+          </Button>
+
+          <Button
+            variant="contained"
+            color="success"
+            disabled={!selectedPeriod || saving === selectedPeriod?.id}
+            onClick={async () => {
+              const periodToGenerate = selectedPeriod;
+
+              setOpenGenerateDialog(false);
+
+              await generatePayroll(periodToGenerate);
+
+              setSelectedPeriod(null);
+            }}
+          >
+            {saving === selectedPeriod?.id ? "Generating..." : "Ya, Generate"}
           </Button>
         </DialogActions>
       </Dialog>

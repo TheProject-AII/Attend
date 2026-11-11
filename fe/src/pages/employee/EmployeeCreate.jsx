@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import {
+  Autocomplete,
   Box,
   Button,
   Dialog,
@@ -20,6 +21,83 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 
+const INDONESIAN_BANKS = [
+  "Bank Central Asia (BCA)",
+  "Bank Mandiri",
+  "Bank Rakyat Indonesia (BRI)",
+  "Bank Negara Indonesia (BNI)",
+  "Bank Tabungan Negara (BTN)",
+  "Bank Syariah Indonesia (BSI)",
+  "Bank CIMB Niaga",
+  "Bank Danamon",
+  "Bank Permata",
+  "Bank Panin",
+  "Bank OCBC",
+  "Bank Maybank Indonesia",
+  "Bank Mega",
+  "Bank Sinarmas",
+  "Bank BTPN",
+  "Bank Jago",
+  "Bank Neo Commerce",
+  "SeaBank",
+  "Allo Bank",
+  "Bank Amar Indonesia",
+  "Bank Raya Indonesia",
+  "Bank Mestika Dharma",
+  "Bank Ina Perdana",
+  "Bank Victoria International",
+  "Bank Mayapada",
+  "Bank UOB Indonesia",
+  "HSBC Indonesia",
+  "Standard Chartered Indonesia",
+  "Citibank Indonesia",
+  "MUFG Bank",
+  "Deutsche Bank Indonesia",
+  "Bank DBS Indonesia",
+  "Bank ANZ Indonesia",
+  "Bank Woori Saudara",
+  "Bank KEB Hana Indonesia",
+  "Bank ICBC Indonesia",
+  "Bank China Construction Bank Indonesia",
+  "Bank QNB Indonesia",
+  "Bank Commonwealth",
+  "Bank SBI Indonesia",
+  "Bank Resona Perdania",
+  "Bank Mizuho Indonesia",
+  "Bank Sumitomo Mitsui Indonesia",
+  "Bank BTPN Syariah",
+  "Bank Muamalat Indonesia",
+  "Bank Mega Syariah",
+  "Bank BCA Syariah",
+  "Bank Panin Dubai Syariah",
+  "Bank Victoria Syariah",
+  "Bank KB Bukopin Syariah",
+  "Bank BJB Syariah",
+  "Bank Aceh Syariah",
+  "Bank NTB Syariah",
+  "Bank Nagari",
+  "Bank Sumut",
+  "Bank Riau Kepri Syariah",
+  "Bank Jambi",
+  "Bank Bengkulu",
+  "Bank Sumsel Babel",
+  "Bank Lampung",
+  "Bank DKI",
+  "Bank BJB",
+  "Bank Jateng",
+  "Bank Jatim",
+  "Bank DIY",
+  "Bank Kalbar",
+  "Bank Kalteng",
+  "Bank Kalsel Syariah",
+  "Bank Kaltimtara",
+  "Bank Sulselbar",
+  "Bank SulutGo",
+  "Bank Sulteng",
+  "Bank Maluku Malut",
+  "Bank Papua",
+];
+
 export default function EmployeeCreate({
   open,
   onClose,
@@ -38,6 +116,8 @@ export default function EmployeeCreate({
     name: "",
     email: "",
     phone: "",
+    bank_name: "",
+    bank_account_number: "",
     department_id: "",
     role_id: "",
     join_date: "",
@@ -173,6 +253,8 @@ export default function EmployeeCreate({
         name: employee.name || "",
         email: employee.email || "",
         phone: employee.phone || "",
+        bank_name: employee.bank_name || "",
+        bank_account_number: employee.bank_account_number || "",
         department_id: employee.department_id
           ? String(employee.department_id)
           : "",
@@ -278,6 +360,8 @@ export default function EmployeeCreate({
       formData.append("name", form.name);
       formData.append("email", form.email);
       formData.append("phone", form.phone);
+      formData.append("bank_name", form.bank_name || "");
+      formData.append("bank_account_number", form.bank_account_number || "");
       formData.append("department_id", form.department_id);
       formData.append("role_id", form.role_id);
       formData.append("join_date", form.join_date);
@@ -517,6 +601,49 @@ export default function EmployeeCreate({
                 name="phone"
                 value={form.phone}
                 onChange={handleChange}
+              />
+            </Grid>
+
+            {/* BANK ACCOUNT */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Autocomplete
+                options={INDONESIAN_BANKS}
+                value={form.bank_name || null}
+                onChange={(_, value) =>
+                  setForm((prev) => ({ ...prev, bank_name: value || "" }))
+                }
+                onInputChange={(_, value, reason) => {
+                  if (reason === "input") {
+                    setForm((prev) => ({ ...prev, bank_name: value }));
+                  }
+                }}
+                freeSolo
+                selectOnFocus
+                clearOnBlur={false}
+                handleHomeEndKeys
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    label="Bank Name"
+                    placeholder="Search or type bank name"
+                    helperText="Ketik nama bank untuk mencari, atau isi bank lain."
+                  />
+                )}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                label="Bank Account Number"
+                name="bank_account_number"
+                value={form.bank_account_number}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, "");
+                  setForm((prev) => ({ ...prev, bank_account_number: value }));
+                }}
+                inputProps={{ inputMode: "numeric", maxLength: 50 }}
+                placeholder="Enter bank account number"
               />
             </Grid>
 

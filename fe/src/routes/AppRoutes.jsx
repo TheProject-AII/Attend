@@ -69,7 +69,8 @@ export default function AppRoutes() {
     role,
   });
 
-  const DASHBOARD_ROLES = ["ADMIN", "HR", "ADMIN HR"];
+  const DASHBOARD_ROLES = ["ADMIN", "HR", "ADMIN HR", "FINANCE", "DIRECTOR"];
+  const isFinance = Number(user?.role_id) === 6 || role === "FINANCE";
   return (
     <BrowserRouter>
       <Routes>
@@ -79,6 +80,8 @@ export default function AppRoutes() {
           element={
             !token || !user?.role ? (
               <Login />
+            ) : isFinance ? (
+              <Navigate to="/payroll" replace />
             ) : DASHBOARD_ROLES.includes(role) ? (
               <Navigate to="/dashboard" replace />
             ) : (

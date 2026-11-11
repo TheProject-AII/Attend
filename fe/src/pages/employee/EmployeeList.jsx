@@ -42,6 +42,41 @@ import EmployeeDetail from "./EmployeeDetail";
 import BlockIcon from "@mui/icons-material/Block";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
+// Normalisasi tipe employee agar nilai lama dan baru tetap terbaca konsisten.
+const normalizeEmployeeType = (value) => {
+  const type = String(value || "")
+    .trim()
+    .toUpperCase();
+
+  if (["INTERN", "KONTRAK_INTERN"].includes(type)) return "INTERN";
+  if (["TETAP", "PERMANENT"].includes(type)) return "TETAP";
+  if (type === "KONTRAK_3_BULAN") return "KONTRAK_3_BULAN";
+  if (type === "KONTRAK_6_BULAN") return "KONTRAK_6_BULAN";
+  if (type === "KONTRAK_12_BULAN") return "KONTRAK_12_BULAN";
+  if (type === "KONTRAK") return "KONTRAK";
+
+  return type;
+};
+
+const getEmployeeTypeLabel = (value) => {
+  const type = normalizeEmployeeType(value);
+
+  switch (type) {
+    case "INTERN":
+      return "Intern";
+    case "TETAP":
+      return "Permanent";
+    case "KONTRAK_3_BULAN":
+      return "Probation";
+    case "KONTRAK_6_BULAN":
+    case "KONTRAK_12_BULAN":
+    case "KONTRAK":
+      return "Contract";
+    default:
+      return value || "—";
+  }
+};
+
 export default function EmployeeList() {
   const [search, setSearch] = useState("");
   // filter
@@ -147,7 +182,10 @@ export default function EmployeeList() {
         ? item.status === true
         : item.status === false);
 
-    const matchType = typeFilter === "ALL" || item.employee_type === typeFilter;
+    const matchType =
+      typeFilter === "ALL" ||
+      normalizeEmployeeType(item.employee_type) ===
+        normalizeEmployeeType(typeFilter);
 
     return matchSearch && matchDepartment && matchStatus && matchType;
   });
@@ -186,8 +224,7 @@ export default function EmployeeList() {
       Department: item.department || "-",
       Position: item.position || "-",
       Status: item.status ? "Active" : "Inactive",
-      "Employee Type":
-        item.employee_type === "KONTRAK" ? "Contract" : "Permanent",
+      "Employee Type": getEmployeeTypeLabel(item.employee_type),
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -626,19 +663,7 @@ export default function EmployeeList() {
                         {/* TYPE */}
                         <TableCell>
                           <Chip
-                            label={
-                              item.employee_type === "KONTRAK"
-                                ? "Contract"
-                                : item.employee_type === "KONTRAK_3_BULAN"
-                                  ? "Probation"
-                                  : item.employee_type === "KONTRAK_6_BULAN"
-                                    ? "Contract"
-                                    : item.employee_type === "KONTRAK_12_BULAN"
-                                      ? "Contract"
-                                      : item.employee_type === "INTERN"
-                                        ? "Intern"
-                                        : "Permanent"
-                            }
+                            label={getEmployeeTypeLabel(item.employee_type)}
                             size="small"
                             variant="outlined"
                           />
