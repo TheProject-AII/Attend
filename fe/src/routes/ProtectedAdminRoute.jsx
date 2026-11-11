@@ -1,40 +1,39 @@
+import { Navigate, useLocation } from "react-router-dom";
 
-import { Navigate } from "react-router-dom";
-
-const DASHBOARD_ROLES = ["ADMIN", "HR", "ADMIN HR"];
+const DASHBOARD_ROLES = ["ADMIN", "HR", "ADMIN HR", "FINANCE", "DIRECTOR"];
 
 export default function ProtectedAdminRoute({ children }) {
-    const token = localStorage.getItem("token");
+  const location = useLocation();
+  const token = localStorage.getItem("token");
 
-    let user = null;
+  let user = null;
 
-    try {
-        user = JSON.parse(
-            localStorage.getItem("user") || "null"
-        );
-    } catch {
-        user = null;
-    }
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    user = null;
+  }
 
-    // Tidak ada token atau data user
-    if (!token || !user) {
-        return <Navigate to="/" replace />;
-    }
+  if (!token || !user) {
+    return <Navigate to="/" replace />;
+  }
 
-    // Normalisasi role
-    const role = String(user.role || "")
-        .trim()
-        .toUpperCase();
+  const role = String(user.role || "")
+    .trim()
+    .toUpperCase();
 
-    // Admin dan HR boleh masuk dashboard
-    if (!DASHBOARD_ROLES.includes(role)) {
-        return (
-            <Navigate
-                to="/employee/attendance"
-                replace
-            />
-        );
-    }
+  if (!DASHBOARD_ROLES.includes(role)) {
+    return <Navigate to="/employee/attendance" replace />;
+  }
 
-    return children;
+  // Finance hanya boleh membuka Payroll dan Payroll Details.
+  const isFinance = Number(user.role_id) === 6 || role === "FINANCE";
+
+  const financeAllowedPaths = ["/payroll", "/payroll/details"];
+
+  if (isFinance && !financeAllowedPaths.includes(location.pathname)) {
+    return <Navigate to="/payroll" replace />;
+  }
+
+  return children;
 }

@@ -27,6 +27,42 @@ const sections = [
 export default function Sidebar() {
   const { t } = useTranslation();
 
+  let user = null;
+
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    user = null;
+  }
+
+  const roleId = Number(user?.role_id);
+  const role = String(user?.role || "")
+    .trim()
+    .toUpperCase();
+
+  const isFinance = roleId === 6 || role === "FINANCE";
+  const isDirector = roleId === 7 || role === "DIRECTOR";
+
+  let visibleMenu = menu;
+
+  // FINANCE: hanya Payroll dan Payroll Details.
+  if (isFinance) {
+    visibleMenu = menu.filter((item) =>
+      ["/payroll", "/payroll/details"].includes(item.path),
+    );
+  }
+
+  // DIRECTOR: hanya menu Payroll Approval.
+  if (isDirector) {
+    visibleMenu = menu
+      .filter((item) => item.path === "/payroll/details")
+      .map((item) => ({
+        ...item,
+        title: "Payroll Approval",
+        translationKey: "menu.payrollApproval",
+      }));
+  }
+
   return (
     <Drawer
       variant="permanent"
@@ -67,7 +103,7 @@ export default function Sidebar() {
       {/* MENU BY SECTION */}
       <Box sx={{ px: 1, pb: 3 }}>
         {sections.map((section, index) => {
-          const sectionMenus = menu.filter(
+          const sectionMenus = visibleMenu.filter(
             (item) => item.section === section.key,
           );
 

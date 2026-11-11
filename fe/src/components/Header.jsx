@@ -166,38 +166,23 @@ export default function Header({ title = "Dashboard", subtitle }) {
       {/* HEADER */}
       <Box
         sx={{
-          position: "sticky",
+          position: "fixed",
           top: 0,
+          left: { xs: 0, md: "250px" },
+          right: 0,
+          width: { xs: "100%", md: "calc(100% - 250px)" },
           zIndex: 1200,
-
           boxSizing: "border-box",
-          width: "100%",
-          height: "auto",
-
-          // Safe area normal
+          minHeight: "80px",
           pt: "calc(env(safe-area-inset-top, 0px) + 8px)",
-          minHeight: "calc(80px + env(safe-area-inset-top, 0px))",
-
-          // Fallback untuk iPhone saat aplikasi dibuka dari Home Screen
-          "@supports (-webkit-touch-callout: none)": {
-            "@media (display-mode: standalone)": {
-              pt: "max(env(safe-area-inset-top, 0px), 59px)",
-              minHeight: "139px",
-            },
-          },
-
           px: { xs: 2, sm: 4 },
-
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-
           bgcolor: "rgba(255,255,255,.95)",
           backdropFilter: "blur(10px)",
           WebkitBackdropFilter: "blur(10px)",
-
           borderBottom: "1px solid #E5E7EB",
-          transition: ".25s",
         }}
       >
         {/* LEFT */}
