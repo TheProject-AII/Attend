@@ -6,7 +6,7 @@ const fsPromises = require("fs/promises");
 const {
   processLateCompensation,
 } = require("../services/lateCompensationService");
-
+const dayjs = require("dayjs");
 const {
   uploadToStorage,
   deleteFromStorage,
@@ -731,18 +731,19 @@ exports.list = async (req, res) => {
   }
 };
 
-function getWorkingDays(year, month) {
+function getWorkingDays(fromDate, toDate) {
   let total = 0;
 
-  const lastDay = new Date(year, month, 0).getDate();
+  const start = new Date(`${fromDate}T00:00:00`);
+  const end = new Date(`${toDate}T00:00:00`);
 
-  for (let day = 1; day <= lastDay; day++) {
-    const date = new Date(year, month - 1, day);
-
+  for (
+    const date = new Date(start);
+    date <= end;
+    date.setDate(date.getDate() + 1)
+  ) {
     const weekDay = date.getDay();
 
-    // Minggu = 0
-    // Sabtu = 6
     if (weekDay !== 0 && weekDay !== 6) {
       total++;
     }
@@ -752,207 +753,249 @@ function getWorkingDays(year, month) {
 }
 
 async function getSummaryData(
-  month,
-  year,
+  fromDate,
+  toDate,
   workingDays,
   department = "",
   search = "",
 ) {
   const result = await pool.query(
     `
-            SELECT
-                u.id,
-                u.name,
-                u.department,
-
-               COUNT(DISTINCT a.attendance_date) AS present,
-
-                SUM(
-                    CASE
-                        WHEN a.is_late = true THEN 1
-                        ELSE 0
-                    END
-                ) AS late,
-
-                SUM(
-                    COALESCE(a.late_minutes, 0)
-                ) AS late_minutes,
-COALESCE(leave_summary.cuti,0) AS leave,
-
-COALESCE(leave_summary.izin,0) AS permission,
-
-COALESCE(leave_summary.sakit,0) AS sick,(
-   COUNT(DISTINCT a.attendance_date)
-    +
-    COALESCE(leave_summary.cuti,0)
-    +
-    COALESCE(leave_summary.izin,0)
-    +
-    COALESCE(leave_summary.sakit,0)
-) AS attendance_total,
-
-GREATEST(
-
-0,
-
-$3
--
-(
-    COUNT(DISTINCT a.attendance_date)
-        +
-    COALESCE(leave_summary.cuti,0)
-    +
-    COALESCE(leave_summary.izin,0)
-    +
-    COALESCE(leave_summary.sakit,0)
-)
-
-) AS alpha,
-
-ROUND(
-
-(
-(
-COUNT(a.id)
-+
-COALESCE(leave_summary.cuti,0)
-+
-COALESCE(leave_summary.izin,0)
-+
-COALESCE(leave_summary.sakit,0)
-)::numeric
-
-/
-
-NULLIF($3,0)
-
-)*100
-
-,2)
-
-AS percent
-            FROM users u
-LEFT JOIN attendance a
-ON
-    a.user_id = u.id
-
-AND EXTRACT(MONTH FROM a.attendance_date) = $1
-
-AND EXTRACT(YEAR FROM a.attendance_date) = $2
-                LEFT JOIN (
-
     SELECT
+      u.id,
+      u.name,
+      u.department,
 
-        user_id,
+      COUNT(DISTINCT a.attendance_date)::integer AS present,
+
+      COUNT(a.id) FILTER (
+        WHERE a.is_late = true
+      )::integer AS late,
+
+      COALESCE(SUM(a.late_minutes), 0)::integer AS late_minutes,
+
+      COALESCE(leave_summary.cuti, 0)::integer AS leave,
+
+      COALESCE(leave_summary.izin, 0)::integer AS permission,
+
+      COALESCE(leave_summary.sakit, 0)::integer AS sick,
+
+      (
+        COUNT(DISTINCT a.attendance_date)
+        + COALESCE(leave_summary.cuti, 0)
+        + COALESCE(leave_summary.izin, 0)
+        + COALESCE(leave_summary.sakit, 0)
+      )::integer AS attendance_total,
+
+      GREATEST(
+        0,
+        $3::integer - (
+          COUNT(DISTINCT a.attendance_date)
+          + COALESCE(leave_summary.cuti, 0)
+          + COALESCE(leave_summary.izin, 0)
+          + COALESCE(leave_summary.sakit, 0)
+        )
+      )::integer AS alpha,
+
+      ROUND(
+        (
+          (
+            COUNT(DISTINCT a.attendance_date)
+            + COALESCE(leave_summary.cuti, 0)
+            + COALESCE(leave_summary.izin, 0)
+            + COALESCE(leave_summary.sakit, 0)
+          )::numeric / NULLIF($3::integer, 0)
+        ) * 100,
+        2
+      ) AS percent
+
+    FROM users u
+
+    LEFT JOIN attendance a
+      ON a.user_id = u.id
+      AND a.attendance_date BETWEEN $1::date AND $2::date
+
+    LEFT JOIN (
+      SELECT
+        lr.user_id,
 
         SUM(
-            CASE
-                WHEN leave_type='CUTI'
-                AND status='APPROVED'
-                 AND approved_by IS NOT NULL
-                THEN (end_date-start_date)+1
-                ELSE 0
-            END
+          CASE
+            WHEN lr.leave_type = 'CUTI'
+            THEN GREATEST(
+              0,
+              LEAST(lr.end_date, $2::date)
+              - GREATEST(lr.start_date, $1::date) + 1
+            )
+            ELSE 0
+          END
         ) AS cuti,
 
         SUM(
-            CASE
-                WHEN leave_type='IZIN'
-                AND status='APPROVED'
-                 AND approved_by IS NOT NULL
-                THEN (end_date-start_date)+1
-                ELSE 0
-            END
+          CASE
+            WHEN lr.leave_type = 'IZIN'
+            THEN GREATEST(
+              0,
+              LEAST(lr.end_date, $2::date)
+              - GREATEST(lr.start_date, $1::date) + 1
+            )
+            ELSE 0
+          END
         ) AS izin,
 
         SUM(
-            CASE
-                WHEN leave_type='SAKIT'
-                AND status='APPROVED'
-                 AND approved_by IS NOT NULL
-                THEN (end_date-start_date)+1
-                ELSE 0
-            END
+          CASE
+            WHEN lr.leave_type = 'SAKIT'
+            THEN GREATEST(
+              0,
+              LEAST(lr.end_date, $2::date)
+              - GREATEST(lr.start_date, $1::date) + 1
+            )
+            ELSE 0
+          END
         ) AS sakit
 
-  FROM leave_requests
+      FROM leave_requests lr
 
-WHERE
+      WHERE lr.status = 'APPROVED'
+        AND lr.approved_by IS NOT NULL
+        AND lr.start_date <= $2::date
+        AND lr.end_date >= $1::date
+        AND lr.leave_type IN ('CUTI', 'IZIN', 'SAKIT')
 
-EXTRACT(MONTH FROM start_date) = $1
+      GROUP BY lr.user_id
+    ) leave_summary
+      ON leave_summary.user_id = u.id
 
-AND
+    WHERE u.role_id = 3
+      AND (
+        $4 = ''
+        OR u.department = $4
+      )
+      AND (
+        $5 = ''
+        OR LOWER(u.name) LIKE LOWER('%' || $5 || '%')
+      )
 
-EXTRACT(YEAR FROM start_date) = $2
+    GROUP BY
+      u.id,
+      u.name,
+      u.department,
+      leave_summary.cuti,
+      leave_summary.izin,
+      leave_summary.sakit
 
-GROUP BY user_id
-
-) leave_summary
-
-ON leave_summary.user_id = u.id
-
-           WHERE
-    u.role_id = 3
-
-AND
-(
-    $4 = ''
-    OR u.department = $4
-) AND
-(
-    $5 = ''
-
-    OR LOWER(u.name)
-
-    LIKE LOWER('%' || $5 || '%')
-)
-
-          GROUP BY
-    u.id,
-    u.name,
-    u.department,
-    leave_summary.cuti,
-    leave_summary.izin,
-    leave_summary.sakit
-
-            ORDER BY
-                u.name
-        `,
-    [month, year, workingDays, department || "", search || ""],
+    ORDER BY u.name
+    `,
+    [fromDate, toDate, workingDays, department || "", search || ""],
   );
+
   return result;
 }
 
 exports.getAttendanceSummary = async (req, res) => {
-  const month = Number(req.query.month) || new Date().getMonth() + 1;
-
-  const year = Number(req.query.year) || new Date().getFullYear();
-
-  const department = req.query.department || "";
-
-  const search = req.query.search || "";
-  const workingDays = getWorkingDays(year, month);
   try {
-    const result = await getSummaryData(
+    const {
       month,
-
       year,
+      fromDate,
+      toDate,
+      department = "",
+      search = "",
+      mode = "month",
+    } = req.query;
 
+    let startDate;
+    let endDate;
+
+    if (mode === "month") {
+      const selectedMonth = Number(month);
+      const selectedYear = Number(year);
+
+      if (
+        !Number.isInteger(selectedMonth) ||
+        selectedMonth < 1 ||
+        selectedMonth > 12 ||
+        !Number.isInteger(selectedYear) ||
+        selectedYear < 2000
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid month or year.",
+        });
+      }
+
+      startDate = dayjs(
+        `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`,
+      ).format("YYYY-MM-DD");
+
+      endDate = dayjs(startDate).endOf("month").format("YYYY-MM-DD");
+    } else if (mode === "range") {
+      startDate = fromDate;
+      endDate = toDate;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          success: false,
+          message: "From Date and To Date are required.",
+        });
+      }
+
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+      if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date format. Use YYYY-MM-DD.",
+        });
+      }
+
+      const parsedFrom = new Date(`${startDate}T00:00:00Z`);
+      const parsedTo = new Date(`${endDate}T00:00:00Z`);
+
+      if (
+        Number.isNaN(parsedFrom.getTime()) ||
+        Number.isNaN(parsedTo.getTime()) ||
+        parsedFrom.toISOString().slice(0, 10) !== startDate ||
+        parsedTo.toISOString().slice(0, 10) !== endDate
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date value.",
+        });
+      }
+
+      if (startDate > endDate) {
+        return res.status(400).json({
+          success: false,
+          message: "From Date cannot be later than To Date.",
+        });
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid filter mode.",
+      });
+    }
+
+    const workingDays = getWorkingDays(startDate, endDate);
+
+    const result = await getSummaryData(
+      startDate,
+      endDate,
       workingDays,
-
       department,
-
       search,
     );
 
-    res.json({
+    return res.json({
       success: true,
       data: result.rows,
     });
   } catch (err) {
-    console.error(err);
+    console.error("GET ATTENDANCE SUMMARY ERROR:", err);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: err.message,
     });

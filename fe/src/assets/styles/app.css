@@ -43,3 +43,41 @@ select {
 .safe-area-top {
   padding-top: var(--safe-area-top);
 }
+
+
+/* Responsive tables: keep columns readable and scroll inside the table on phones. */
+.MuiTableContainer-root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto !important;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.MuiTable-root {
+  min-width: 650px;
+}
+
+.MuiTableCell-root {
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .MuiTableContainer-root {
+    border-radius: 8px;
+  }
+
+  .MuiTable-root {
+    min-width: 680px;
+  }
+
+  .MuiTableCell-root {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+
+  /* Allow page-level action/filter toolbars to wrap instead of overflowing. */
+  .MuiTablePagination-root {
+    overflow-x: auto;
+  }
+}
