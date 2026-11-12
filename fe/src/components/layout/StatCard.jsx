@@ -47,46 +47,64 @@ export default function StatCard({
           : {},
       }}
     >
-      <CardContent sx={{ p: 3 }}>
+      <CardContent
+        sx={{
+          p: { xs: 1.5, sm: 1.75, lg: 1.5 },
+          "&:last-child": { pb: { xs: 1.5, sm: 1.75, lg: 1.5 } },
+        }}
+      >
         <Box
           sx={{
             display: "flex",
             alignItems: "flex-start",
+            minWidth: 0,
+            gap: 1,
           }}
         >
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography
               variant="body2"
               color={isBlinking ? "#ee1b1b" : "text.secondary"}
-              fontWeight={isBlinking ? 700 : 400}
+              fontWeight={isBlinking ? 700 : 500}
+              sx={{
+                fontSize: { xs: 11, sm: 12, lg: 12 },
+                lineHeight: 1.35,
+                minHeight: 32,
+                overflowWrap: "anywhere",
+              }}
             >
               {title}
             </Typography>
 
             <Typography
               sx={{
-                fontSize: 42,
+                fontSize: { xs: 28, sm: 32, lg: 32 },
                 fontWeight: 700,
-                lineHeight: 1.2,
-                mt: 0.5,
+                lineHeight: 1.1,
+                mt: 0.35,
                 color: isBlinking ? "#E65100" : "inherit",
               }}
             >
               {value}
             </Typography>
 
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontSize: 10.5, lineHeight: 1.35, display: "block", mt: 0.5 }}
+            >
               {subtitle}
             </Typography>
           </Box>
 
           <Avatar
             sx={{
-              width: 54,
-              height: 54,
+              width: { xs: 36, sm: 40, lg: 42 },
+              height: { xs: 36, sm: 40, lg: 42 },
+              flexShrink: 0,
               bgcolor: isBlinking ? "#FFCC80" : `${color}20`,
               color: isBlinking ? "#E65100" : color,
-              ml: 2,
+              ml: 0.5,
             }}
           >
             {icon}

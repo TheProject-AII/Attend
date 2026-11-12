@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Avatar,
@@ -26,13 +26,14 @@ import PasswordRoundedIcon from "@mui/icons-material/PasswordRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import LanguageIcon from "@mui/icons-material/Language";
+import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import authService from "../services/authService";
 
-export default function Header({ title = "Dashboard", subtitle }) {
+export default function Header({ title = "Dashboard", subtitle, onMenuClick }) {
   const [notifAnchor, setNotifAnchor] = useState(null);
   const [profileAnchor, setProfileAnchor] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -41,6 +42,34 @@ export default function Header({ title = "Dashboard", subtitle }) {
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
   const { i18n } = useTranslation();
+
+  // Admin HR header information
+  const roleName = String(user?.role || user?.role_name || "").toUpperCase();
+  const isAdminHR =
+    ["HR", "ADMIN HR", "ADMIN_HR", "ADMINHR"].includes(roleName) ||
+    [1, 2].includes(Number(user?.role_id));
+
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const dateTimeText =
+    new Intl.DateTimeFormat("en-GB", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      timeZone: "Asia/Jakarta",
+    }).format(currentDateTime) + " WIB";
+
+  const workingHoursText = "08:00 - 17:00 WIB";
 
   const [hrgaLeader, setHrgaLeader] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -173,9 +202,13 @@ export default function Header({ title = "Dashboard", subtitle }) {
           width: { xs: "100%", md: "calc(100% - 250px)" },
           zIndex: 1200,
           boxSizing: "border-box",
-          minHeight: "80px",
-          pt: "calc(env(safe-area-inset-top, 0px) + 8px)",
-          px: { xs: 2, sm: 4 },
+          minHeight: { xs: "64px", sm: "72px", md: "80px" },
+          pt: {
+            xs: "calc(env(safe-area-inset-top, 0px) + 4px)",
+            md: "calc(env(safe-area-inset-top, 0px) + 8px)",
+          },
+          px: { xs: 1, sm: 2, lg: 3 },
+          gap: { xs: 1, md: 1.5 },
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -186,30 +219,105 @@ export default function Header({ title = "Dashboard", subtitle }) {
         }}
       >
         {/* LEFT */}
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h4" fontWeight={700}>
-            {title}
-          </Typography>
+        <Box
+          sx={{
+            minWidth: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: { xs: 0.75, md: 1.5 },
+            flex: 1,
+          }}
+        >
+          <IconButton
+            onClick={onMenuClick}
+            sx={{ display: { xs: "inline-flex", md: "none" }, flexShrink: 0 }}
+            aria-label="Open navigation"
+          >
+            <MenuRoundedIcon />
+          </IconButton>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              sx={{
+                fontSize: { xs: 22, sm: 26, lg: 30 },
+                fontWeight: 700,
+                lineHeight: 1.15,
+              }}
+            >
+              {title}
+            </Typography>
 
-          <Typography variant="body2" color="text.secondary">
-            {subtitle || `Welcome, ${user?.name} 👋`}
-          </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                display: { xs: "none", sm: "block" },
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {subtitle || `Welcome, ${user?.name} 👋`}
+            </Typography>
+          </Box>
         </Box>
+
+        {/* ADMIN HR DATE, TIME, AND WORKING HOURS */}
+        {isAdminHR && (
+          <Box
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              display: { xs: "none", md: "flex" },
+              flexDirection: "column",
+              justifyContent: "center",
+              px: 2,
+              textAlign: "center",
+              gap: 0.35,
+            }}
+          >
+            <Typography
+              sx={{
+                color: "#DC2626",
+                fontWeight: 700,
+                fontSize: { md: 12, lg: 14 },
+                lineHeight: 1.4,
+                whiteSpace: "nowrap",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {dateTimeText}
+            </Typography>
+            <Typography
+              sx={{
+                color: "#F59E0B",
+                fontWeight: 700,
+                fontSize: { md: 11, lg: 13 },
+                lineHeight: 1.4,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Working Hours: {workingHoursText}
+            </Typography>
+          </Box>
+        )}
 
         {/* RIGHT */}
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
-            gap: { xs: 0.5, sm: 2 },
+            gap: { xs: 0.25, sm: 1, lg: 1.5 },
+            flexShrink: 0,
           }}
         >
-          {/* NOTIFICATION */}
-          <IconButton onClick={(e) => setNotifAnchor(e.currentTarget)}>
-            <Badge badgeContent={notifications.length} color="error">
-              <NotificationsNoneRoundedIcon />
-            </Badge>
-          </IconButton>
+          {/* NOTIFICATION: tetap tersedia untuk role selain Admin HR */}
+          {!isAdminHR && (
+            <IconButton onClick={(e) => setNotifAnchor(e.currentTarget)}>
+              <Badge badgeContent={notifications.length} color="error">
+                <NotificationsNoneRoundedIcon />
+              </Badge>
+            </IconButton>
+          )}
 
           {/* PROFILE */}
           <Box
@@ -217,9 +325,9 @@ export default function Header({ title = "Dashboard", subtitle }) {
             sx={{
               display: "flex",
               alignItems: "center",
-              gap: 1.5,
-              px: 1.5,
-              py: 1,
+              gap: { xs: 0.5, sm: 1 },
+              px: { xs: 0.5, sm: 1.5 },
+              py: 0.5,
               borderRadius: 3,
               cursor: "pointer",
               "&:hover": {
@@ -229,19 +337,28 @@ export default function Header({ title = "Dashboard", subtitle }) {
           >
             <Avatar
               sx={{
-                width: 42,
-                height: 42,
+                width: { xs: 34, sm: 42 },
+                height: { xs: 34, sm: 42 },
                 bgcolor: "#0F766E",
               }}
             >
               {initial}
             </Avatar>
 
-            <Box>
+            <Box
+              sx={{
+                display: { xs: "none", sm: "block" },
+                minWidth: 0,
+                maxWidth: 130,
+              }}
+            >
               <Typography
                 sx={{
                   fontWeight: 600,
                   lineHeight: 1.2,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
               >
                 {user?.name}
@@ -252,16 +369,28 @@ export default function Header({ title = "Dashboard", subtitle }) {
               </Typography>
             </Box>
 
-            <KeyboardArrowDownRoundedIcon sx={{ color: "#9CA3AF" }} />
+            <KeyboardArrowDownRoundedIcon
+              sx={{ color: "#9CA3AF", display: { xs: "none", sm: "block" } }}
+            />
           </Box>
 
           {/* LANGUAGE */}
           <Button
             startIcon={<LanguageIcon />}
             onClick={(event) => setLanguageAnchor(event.currentTarget)}
-            sx={{ textTransform: "none" }}
+            sx={{
+              textTransform: "none",
+              minWidth: { xs: 36, sm: "auto" },
+              px: { xs: 0.75, sm: 1.5 },
+              "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 } },
+            }}
           >
-            {i18n.language === "id" ? "Bahasa" : "English"}
+            <Box
+              component="span"
+              sx={{ display: { xs: "none", sm: "inline" } }}
+            >
+              {i18n.language === "id" ? "Bahasa" : "English"}
+            </Box>
           </Button>
 
           <Menu
@@ -279,29 +408,31 @@ export default function Header({ title = "Dashboard", subtitle }) {
       </Box>
 
       {/* NOTIFICATION MENU */}
-      <Menu
-        anchorEl={notifAnchor}
-        open={Boolean(notifAnchor)}
-        onClose={() => setNotifAnchor(null)}
-        PaperProps={{
-          sx: {
-            width: 280,
-            borderRadius: 3,
-          },
-        }}
-      >
-        <Typography px={2} py={1.5} fontWeight={700}>
-          Notifications
-        </Typography>
+      {!isAdminHR && (
+        <Menu
+          anchorEl={notifAnchor}
+          open={Boolean(notifAnchor)}
+          onClose={() => setNotifAnchor(null)}
+          PaperProps={{
+            sx: {
+              width: 280,
+              borderRadius: 3,
+            },
+          }}
+        >
+          <Typography px={2} py={1.5} fontWeight={700}>
+            Notifications
+          </Typography>
 
-        <Divider />
+          <Divider />
 
-        {notifications.map((item, index) => (
-          <MenuItem key={index} onClick={() => setNotifAnchor(null)}>
-            {item}
-          </MenuItem>
-        ))}
-      </Menu>
+          {notifications.map((item, index) => (
+            <MenuItem key={index} onClick={() => setNotifAnchor(null)}>
+              {item}
+            </MenuItem>
+          ))}
+        </Menu>
+      )}
 
       {/* PROFILE MENU */}
       <Menu

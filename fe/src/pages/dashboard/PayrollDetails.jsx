@@ -387,38 +387,32 @@ export default function PayrollDetails() {
                 ? 0
                 : Math.min(
                     num(row.basic_salary),
-                    num(row.bpjs_jp_base || 11086300),
+                    num(row.bpjs_jp_base) > 0
+                      ? num(row.bpjs_jp_base)
+                      : 11086300,
                   );
               const jp = noBpjs ? 0 : Math.round(jpBase * 0.01);
               const health = noBpjs
                 ? 0
                 : Math.round(num(row.basic_salary) * 0.01);
               const pph = Math.round((gross * num(ter?.rate)) / 100);
-              const basicDed =
-                employeeType === "KONTRAK_INTERN"
-                  ? 0
-                  : Math.round(
-                      ((num(row.sick_without_document_days) +
-                        num(row.unpaid_leave_days)) *
-                        num(row.basic_salary)) /
-                        (divisor || 1),
-                    );
-              const transportDed =
-                employeeType === "KONTRAK_INTERN"
-                  ? 0
-                  : Math.round(
-                      (num(row.sick_with_document_days) *
-                        num(row.transport_allowance)) /
-                        (divisor || 1),
-                    );
-              const mealDed =
-                employeeType === "KONTRAK_INTERN"
-                  ? 0
-                  : Math.round(
-                      (num(row.sick_with_document_days) *
-                        num(row.meal_allowance)) /
-                        (divisor || 1),
-                    );
+              const basicDed = Math.round(
+                ((num(row.sick_without_document_days) +
+                  num(row.unpaid_leave_days)) *
+                  num(row.basic_salary)) /
+                  (divisor || 1),
+              );
+
+              const transportDed = Math.round(
+                (num(row.sick_with_document_days) *
+                  num(row.transport_allowance)) /
+                  (divisor || 1),
+              );
+
+              const mealDed = Math.round(
+                (num(row.sick_with_document_days) * num(row.meal_allowance)) /
+                  (divisor || 1),
+              );
               grossTotal += gross;
               deductionTotal +=
                 jht + jp + health + pph + basicDed + transportDed + mealDed;
@@ -491,7 +485,10 @@ export default function PayrollDetails() {
     const jht = noBpjs ? 0 : Math.round(num(r.basic_salary) * 0.02);
     const jpBase = noBpjs
       ? 0
-      : Math.min(num(r.basic_salary), num(r.bpjs_jp_base || 11086300));
+      : Math.min(
+          num(r.basic_salary),
+          num(r.bpjs_jp_base) > 0 ? num(r.bpjs_jp_base) : 11086300,
+        );
     const jp = noBpjs ? 0 : Math.round(jpBase * 0.01);
     const health = noBpjs ? 0 : Math.round(num(r.basic_salary) * 0.01);
     const pph = Math.round((gross * rate) / 100);
@@ -499,24 +496,20 @@ export default function PayrollDetails() {
       r.payroll_divisor || (r.work_schedule === "6_DAYS" ? 26 : 22),
     );
     const isIntern = employeeType === "KONTRAK_INTERN";
-    const basicDed = isIntern
-      ? 0
-      : Math.round(
-          ((num(r.sick_without_document_days) + num(r.unpaid_leave_days)) *
-            num(r.basic_salary)) /
-            divisor,
-        );
-    const transportDed = isIntern
-      ? 0
-      : Math.round(
-          (num(r.sick_with_document_days) * num(r.transport_allowance)) /
-            divisor,
-        );
-    const mealDed = isIntern
-      ? 0
-      : Math.round(
-          (num(r.sick_with_document_days) * num(r.meal_allowance)) / divisor,
-        );
+    const basicDed = Math.round(
+      ((num(r.sick_without_document_days) + num(r.unpaid_leave_days)) *
+        num(r.basic_salary)) /
+        (divisor || 1),
+    );
+
+    const transportDed = Math.round(
+      (num(r.sick_with_document_days) * num(r.transport_allowance)) /
+        (divisor || 1),
+    );
+
+    const mealDed = Math.round(
+      (num(r.sick_with_document_days) * num(r.meal_allowance)) / (divisor || 1),
+    );
     const total = jht + jp + health + pph + basicDed + transportDed + mealDed;
     return {
       gross,

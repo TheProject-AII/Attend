@@ -1150,9 +1150,8 @@ exports.updatePayrollDetails = async (req, res) => {
 
     const attendanceDeduction =
       basicDeduction + transportDeduction + mealDeduction;
-
     const totalDeduction =
-      (isIntern ? 0 : attendanceDeduction) +
+      attendanceDeduction +
       calculation.jht +
       calculation.jp +
       calculation.health +
@@ -1198,12 +1197,12 @@ exports.updatePayrollDetails = async (req, res) => {
         meal,
         ptkpStatus,
         internPresentDays,
-        isIntern ? 0 : sickWithout,
-        isIntern ? 0 : sickWith,
-        isIntern ? 0 : unpaidLeave,
-        isIntern ? 0 : basicDeduction,
-        isIntern ? 0 : transportDeduction,
-        isIntern ? 0 : mealDeduction,
+        sickWithout,
+        sickWith,
+        unpaidLeave,
+        basicDeduction,
+        transportDeduction,
+        mealDeduction,
         calculation.jhtRate,
         calculation.jpRate,
         calculation.healthRate,

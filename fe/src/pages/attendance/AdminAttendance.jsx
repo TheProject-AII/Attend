@@ -41,15 +41,14 @@ export default function AdminAttendance() {
   });
 
   const [summaryData, setSummaryData] = useState([]);
-
   const [summaryFilters, setSummaryFilters] = useState({
     month: dayjs().month() + 1,
-
     year: dayjs().year(),
-
+    fromDate: "",
+    toDate: "",
     department: "",
-
     search: "",
+    mode: null,
   });
 
   const [departments, setDepartments] = useState([]);
@@ -63,10 +62,14 @@ export default function AdminAttendance() {
   useEffect(() => {
     loadDailySummary();
 
-    loadSummary(summaryFilters);
+    loadSummary({
+      ...summaryFilters,
+      month: dayjs().month() + 1,
+      year: dayjs().year(),
+      mode: "month",
+    });
 
     loadDepartments();
-
     loadDailyAttendance(filters);
   }, []);
 
@@ -181,6 +184,9 @@ export default function AdminAttendance() {
       .format("MMMM");
   };
 
+  const getPeriodLabel = () => {
+    return `${dayjs(summaryFilters.fromDate).format("DD MMM YYYY")} - ${dayjs(summaryFilters.toDate).format("DD MMM YYYY")}`;
+  };
   // =====================================================
   // EXPORT DATA
   // =====================================================
@@ -855,17 +861,33 @@ export default function AdminAttendance() {
   return (
     <>
       {/* ================= HEADER ================= */}
-      {tab === 1 && (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "flex-end",
-            mb: 3,
-          }}
+
+      {/* ================= TABS & EXPORT ================= */}
+      <Box
+        sx={{
+          mb: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+          gap: 2,
+          flexWrap: "wrap",
+        }}
+      >
+        <Tabs
+          value={tab}
+          onChange={(e, value) => setTab(value)}
+          sx={{ minHeight: 44 }}
         >
-          <Stack direction="row" spacing={2}>
+          <Tab label="Daily Attendance" />
+          <Tab label="Attendance Summary" />
+        </Tabs>
+
+        {tab === 1 && (
+          <Stack direction="row" spacing={1}>
             <Button
               variant="outlined"
+              size="small"
               startIcon={<DownloadIcon />}
               onClick={handleExportExcel}
             >
@@ -874,23 +896,15 @@ export default function AdminAttendance() {
 
             <Button
               variant="contained"
+              size="small"
+              sx={{ bgcolor: "red" }}
               startIcon={<PictureAsPdfIcon />}
               onClick={handleExportPDF}
             >
               Export PDF
             </Button>
           </Stack>
-        </Box>
-      )}
-
-      {/* ================= FILTER ================= */}
-
-      <Box sx={{ mb: 3 }}>
-        <Tabs value={tab} onChange={(e, value) => setTab(value)}>
-          <Tab label="Daily Attendance" />
-
-          <Tab label="Attendance Summary" />
-        </Tabs>
+        )}
       </Box>
 
       {/* ================= DAILY ================= */}

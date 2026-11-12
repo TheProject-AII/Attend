@@ -492,7 +492,12 @@ export default function EmployeeList() {
                     </TableSortLabel>
                   </TableCell>
 
-                  <TableCell align="center">Actions</TableCell>
+                  <TableCell
+                    align="center"
+                    sx={{ width: 124, minWidth: 124, whiteSpace: "nowrap" }}
+                  >
+                    Actions
+                  </TableCell>
                 </TableRow>
               </TableHead>
 
@@ -670,9 +675,21 @@ export default function EmployeeList() {
                         </TableCell>
 
                         {/* ACTION */}
-                        <TableCell align="center">
+                        <TableCell
+                          align="center"
+                          sx={{ width: 124, minWidth: 124, whiteSpace: "nowrap", px: 1 }}
+                        >
+                          <Stack
+                            direction="row"
+                            spacing={0.25}
+                            alignItems="center"
+                            justifyContent="center"
+                            flexWrap="nowrap"
+                            sx={{ width: "100%", whiteSpace: "nowrap" }}
+                          >
                           <IconButton
                             size="small"
+                            sx={{ p: 0.75, flex: "0 0 auto" }}
                             color="primary"
                             onClick={() => {
                               setSelectedEmployee(item);
@@ -684,6 +701,7 @@ export default function EmployeeList() {
 
                           <IconButton
                             size="small"
+                            sx={{ p: 0.75, flex: "0 0 auto" }}
                             onClick={() => {
                               setSelectedEmployee(item);
                               setOpenEdit(true);
@@ -693,6 +711,7 @@ export default function EmployeeList() {
                           </IconButton>
                           <IconButton
                             size="small"
+                            sx={{ p: 0.75, flex: "0 0 auto" }}
                             color={item.status ? "error" : "success"}
                             onClick={() => {
                               setDeactivateEmployee(item);
@@ -701,6 +720,7 @@ export default function EmployeeList() {
                           >
                             {item.status ? <BlockIcon /> : <CheckCircleIcon />}
                           </IconButton>
+                          </Stack>
                         </TableCell>
                       </TableRow>
                     ))}
