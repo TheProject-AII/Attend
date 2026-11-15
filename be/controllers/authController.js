@@ -82,27 +82,27 @@ exports.login = async (req, res) => {
     }
 
     const sessionId = crypto.randomUUID();
-
     await client.query(
       `
-      INSERT INTO active_sessions (
-        user_id,
-        session_id,
-        created_at,
-        last_activity_at,
-        expires_at
-      )
-      VALUES (
-        $1, $2, NOW(), NOW(), NOW() + INTERVAL '1 day'
-      )
-      ON CONFLICT (user_id)
-      DO UPDATE SET
-        session_id = EXCLUDED.session_id,
-        created_at = NOW(),
-        last_activity_at = NOW(),
-        expires_at = EXCLUDED.expires_at
-      `,
-      [user.id, sessionId],
+  INSERT INTO active_sessions (
+    user_id,
+    session_id,
+    created_at,
+    last_activity_at,
+    expires_at
+  )
+  VALUES (
+    $1, $2, NOW(), NOW(),
+    NOW() + ($3 * INTERVAL '1 day')
+  )
+  ON CONFLICT (user_id)
+  DO UPDATE SET
+    session_id = EXCLUDED.session_id,
+    created_at = NOW(),
+    last_activity_at = NOW(),
+    expires_at = EXCLUDED.expires_at
+  `,
+      [user.id, sessionId, isEmployee ? 30 : 1],
     );
 
     await client.query("COMMIT");
@@ -115,7 +115,9 @@ exports.login = async (req, res) => {
         sessionId,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" },
+      {
+        expiresIn: isEmployee ? "30d" : "1d",
+      },
     );
 
     return res.json({
