@@ -1,7 +1,7 @@
 const fs = require("fs");
 const pool = require("../config/db");
 const haversine = require("../utils/haversine");
-// const { verifyAttendanceFace } = require("../services/faceRecognitionService");
+const { verifyAttendanceFace } = require("../services/faceRecognitionService");
 const fsPromises = require("fs/promises");
 const {
   processLateCompensation,
@@ -438,7 +438,24 @@ exports.checkIn = async (req, res) => {
         message: "You have already checked in today.",
       });
     }
+    const faceStart = performance.now();
 
+    const faceResult = await verifyAttendanceFace(userId, req.file.path);
+
+    console.log(
+      `[CHECK-IN] Face Recognition: ${(
+        (performance.now() - faceStart) /
+        1000
+      ).toFixed(2)} detik`,
+    );
+
+    if (!faceResult?.matched) {
+      return res.status(403).json({
+        success: false,
+        code: "FACE_NOT_MATCHED",
+        message: "Wajah tidak cocok. Silakan ulangi foto selfie.",
+      });
+    }
     const uploadStart = performance.now();
 
     uploadedPhotoKey = await uploadAttendanceSelfie(req.file);
@@ -620,7 +637,24 @@ exports.checkOut = async (req, res) => {
         message: "You have not checked in or have already checked out.",
       });
     }
+    const faceStart = performance.now();
 
+    const faceResult = await verifyAttendanceFace(userId, selfiePath);
+
+    console.log(
+      `[CHECK-OUT] Face Recognition: ${(
+        (performance.now() - faceStart) /
+        1000
+      ).toFixed(2)} detik`,
+    );
+
+    if (!faceResult?.matched) {
+      return res.status(403).json({
+        success: false,
+        code: "FACE_NOT_MATCHED",
+        message: "Wajah tidak cocok. Silakan ulangi foto selfie.",
+      });
+    }
     // Upload foto setelah wajah terverifikasi.
     uploadedPhotoKey = await uploadAttendanceSelfie(req.file);
     client = await pool.connect();
