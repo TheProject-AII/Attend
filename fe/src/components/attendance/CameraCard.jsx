@@ -25,7 +25,6 @@ const CameraCard = forwardRef(({ photo, setPhoto }, ref) => {
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState("");
 
-  // Load face detection model
   useEffect(() => {
     let mounted = true;
 
@@ -52,7 +51,6 @@ const CameraCard = forwardRef(({ photo, setPhoto }, ref) => {
     };
   }, []);
 
-  // Capture photo after validating face count
   const capture = async () => {
     setError("");
 
@@ -114,7 +112,7 @@ const CameraCard = forwardRef(({ photo, setPhoto }, ref) => {
     capture,
 
     showError: (message) => {
-      setError(message);
+      setError(message || "Verifikasi wajah gagal. Silakan coba kembali.");
       setPhoto(null);
     },
 
@@ -155,7 +153,19 @@ const CameraCard = forwardRef(({ photo, setPhoto }, ref) => {
         )}
 
         {error && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
+          <Alert
+            severity="error"
+            variant="filled"
+            sx={{
+              mb: 2,
+              borderRadius: 2,
+              alignItems: "center",
+              "& .MuiAlert-message": {
+                fontSize: "0.875rem",
+                fontWeight: 500,
+              },
+            }}
+          >
             {error}
           </Alert>
         )}
