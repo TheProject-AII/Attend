@@ -555,8 +555,26 @@ RETURNING
       });
     }
 
+    // Teruskan pesan validasi dari Face Recognition
+    if (err.code === "FACE_VALIDATION_FAILED") {
+      return res.status(422).json({
+        success: false,
+        code: err.code,
+        message: err.message,
+      });
+    }
+
+    if (err.code === "FACE_API_UNAUTHORIZED") {
+      return res.status(502).json({
+        success: false,
+        code: err.code,
+        message: "Face Recognition authentication failed.",
+      });
+    }
+
     return res.status(500).json({
       success: false,
+      code: err.code || "CHECK_IN_ERROR",
       message: "Check-in failed. Please try again.",
     });
   } finally {
