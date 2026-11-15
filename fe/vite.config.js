@@ -7,18 +7,23 @@ export default defineConfig({
     react(),
 
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
+
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
         navigateFallback: "/index.html",
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
       },
+
       includeAssets: [
         "favicon.svg",
         "icons.svg",
         "tapin.png",
         "icon_pride.png",
       ],
+
       manifest: {
         id: "/",
         name: "So-Mak Attendance",
