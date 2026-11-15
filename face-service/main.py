@@ -54,24 +54,36 @@ face_lock = threading.Lock()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Muat semua model yang dipakai saat absensi sebelum menerima request.
-    # DeepFace menyimpan model sebagai singleton, sehingga request pertama
-    # tidak perlu menanggung biaya inisialisasi model.
-    from deepface.modules import modeling
-
     start = time.perf_counter()
+
+    # 1. Load model pengenalan wajah
     DeepFace.build_model("ArcFace")
-    logger.info("ArcFace model loaded: %.2fs", time.perf_counter() - start)
+    logger.info(
+        "ArcFace model loaded: %.2fs",
+        time.perf_counter() - start
+    )
 
-    start = time.perf_counter()
-    modeling.build_model(task="face_detector", model_name="retinaface")
-    logger.info("RetinaFace detector loaded: %.2fs", time.perf_counter() - start)
+    # 2. Load model deteksi wajah
+    detector_start = time.perf_counter()
+    DeepFace.build_model("retinaface", task="face_detector")
+    logger.info(
+        "RetinaFace model loaded: %.2fs",
+        time.perf_counter() - detector_start
+    )
 
-    start = time.perf_counter()
-    modeling.build_model(task="spoofing", model_name="Fasnet")
-    logger.info("Fasnet anti-spoofing model loaded: %.2fs", time.perf_counter() - start)
+    # 3. Load model anti-spoofing
+    spoof_start = time.perf_counter()
+    DeepFace.build_model("Fasnet", task="spoofing")
+    logger.info(
+        "Fasnet model loaded: %.2fs",
+        time.perf_counter() - spoof_start
+    )
 
-    logger.info("All face models are initialized and ready")
+    logger.info(
+        "All face recognition models are ready. Total: %.2fs",
+        time.perf_counter() - start
+    )
+
     yield
 
 
