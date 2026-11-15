@@ -171,17 +171,16 @@ export default function Attendance() {
       await loadToday();
       await loadLocation();
     } catch (err) {
+      console.error("CHECK IN ERROR:", err.response?.data || err);
+
       const message =
         err.response?.data?.message ||
         err.response?.data?.detail ||
         err.message ||
-        "Check-in failed.";
+        "Check-in failed. Please try again.";
 
-      Swal.fire({
-        icon: "error",
-        title: "Check-in Failed",
-        text: message,
-      });
+      // Tampilkan error langsung di dalam dialog kamera.
+      cameraRef.current?.showError(message);
     } finally {
       submittingCheckInRef.current = false;
       setLoading(false);
