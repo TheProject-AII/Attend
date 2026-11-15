@@ -5,13 +5,15 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { AuthProvider } from "./context/AuthContext";
 import App from "./App";
 import theme from "./config/theme";
-import { registerSW } from "virtual:pwa-register";
+// import { registerSW } from "virtual:pwa-register";
+import PWAUpdatePrompt from "./components/PWAUpdatePrompt";
+
 import "./i18n";
 import "./assets/styles/app.css";
 
-registerSW({
-  immediate: true,
-});
+// registerSW({
+//   immediate: true,
+// });
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -19,6 +21,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <App />
+        <PWAUpdatePrompt />
       </ThemeProvider>
     </AuthProvider>
   </React.StrictMode>,
