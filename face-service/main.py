@@ -54,10 +54,24 @@ face_lock = threading.Lock()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Warm-up model saat service mulai, bukan saat pengguna check-in.
+    # Muat semua model yang dipakai saat absensi sebelum menerima request.
+    # DeepFace menyimpan model sebagai singleton, sehingga request pertama
+    # tidak perlu menanggung biaya inisialisasi model.
+    from deepface.modules import modeling
+
     start = time.perf_counter()
     DeepFace.build_model("ArcFace")
     logger.info("ArcFace model loaded: %.2fs", time.perf_counter() - start)
+
+    start = time.perf_counter()
+    modeling.build_model(task="face_detector", model_name="retinaface")
+    logger.info("RetinaFace detector loaded: %.2fs", time.perf_counter() - start)
+
+    start = time.perf_counter()
+    modeling.build_model(task="spoofing", model_name="Fasnet")
+    logger.info("Fasnet anti-spoofing model loaded: %.2fs", time.perf_counter() - start)
+
+    logger.info("All face models are initialized and ready")
     yield
 
 
