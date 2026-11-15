@@ -1,5 +1,23 @@
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Header
+
+import os
+
+# Optimasi CPU VPS 2 vCPU
+os.environ["OMP_NUM_THREADS"] = "2"
+os.environ["TF_NUM_INTRAOP_THREADS"] = "2"
+os.environ["TF_NUM_INTEROP_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+
+import tensorflow as tf
+
+try:
+    tf.config.threading.set_intra_op_parallelism_threads(2)
+    tf.config.threading.set_inter_op_parallelism_threads(1)
+except RuntimeError:
+    pass
+
 from deepface import DeepFace
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -238,6 +256,11 @@ async def read_valid_image(photo: UploadFile):
 
 
 def extract_face_embedding(image_path: str, anti_spoofing: bool):
+    total_start = time.perf_counter()
+
+    # Tahap 1: Deteksi wajah + anti-spoofing
+    detect_start = time.perf_counter()
+
     faces = DeepFace.extract_faces(
         img_path=image_path,
         detector_backend="retinaface",
@@ -246,13 +269,25 @@ def extract_face_embedding(image_path: str, anti_spoofing: bool):
         align=True,
     )
 
+    detect_time = time.perf_counter() - detect_start
+
+    logger.info(
+        "Face detection + anti-spoofing: %.2fs",
+        detect_time,
+    )
+
     if len(faces) != 1:
-        raise ValueError("Pastikan hanya ada satu wajah di dalam foto.")
+        raise ValueError(
+            "Pastikan hanya ada satu wajah di dalam foto."
+        )
 
     if anti_spoofing and not bool(faces[0].get("is_real", False)):
         raise ValueError(
             "Wajah tidak valid. Gunakan wajah asli, bukan foto atau layar HP."
         )
+
+    # Tahap 2: ArcFace embedding
+    embedding_start = time.perf_counter()
 
     representations = DeepFace.represent(
         img_path=faces[0]["face"],
@@ -260,6 +295,13 @@ def extract_face_embedding(image_path: str, anti_spoofing: bool):
         detector_backend="skip",
         enforce_detection=False,
         normalization="ArcFace",
+    )
+
+    embedding_time = time.perf_counter() - embedding_start
+
+    logger.info(
+        "ArcFace embedding: %.2fs",
+        embedding_time,
     )
 
     if not representations:
@@ -275,6 +317,11 @@ def extract_face_embedding(image_path: str, anti_spoofing: bool):
         for value in vector
     ):
         raise ValueError("Nilai embedding wajah tidak valid.")
+
+    logger.info(
+        "Total face extraction: %.2fs",
+        time.perf_counter() - total_start,
+    )
 
     return [float(value) for value in vector]
 
