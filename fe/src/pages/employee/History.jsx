@@ -686,9 +686,14 @@ export default function History() {
               <Divider />
 
               {/* REQUEST CHANGE */}
-              <Box>
+              <Box sx={{ textAlign: "center" }}>
                 {detailDialog.edit_request_status === "PENDING_SUPERVISOR" ? (
-                  <Chip label="Pending Approval" color="warning" size="small" />
+                  <Chip
+                    sx={{ borderRadius: 1 }}
+                    label="Correction Pending Approval"
+                    color="warning"
+                    size="small"
+                  />
                 ) : detailDialog.edit_request_status === "APPROVED" ? (
                   <Chip label="Corrected" color="success" size="small" />
                 ) : (
