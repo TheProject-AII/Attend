@@ -10,7 +10,7 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
+import CorrectionRequests from "../../components/attendance/CorrectionRequests";
 import AttendanceSummaryTable from "../../components/attendance/AttendanceSummaryTable";
 import DailyFilter from "../../components/layout/DailyFilter";
 import SummaryFilter from "../../components/attendance/SummaryFilter";
@@ -880,10 +880,11 @@ export default function AdminAttendance() {
           sx={{ minHeight: 44 }}
         >
           <Tab label="Daily Attendance" />
+          <Tab label="Correction Requests" />
           <Tab label="Attendance Summary" />
         </Tabs>
 
-        {tab === 1 && (
+        {tab === 2 && (
           <Stack direction="row" spacing={1}>
             <Button
               variant="outlined"
@@ -923,10 +924,10 @@ export default function AdminAttendance() {
           <DailyAttendanceTable data={dailyAttendance} loading={loadingDaily} />
         </>
       )}
-
+      {tab === 1 && <CorrectionRequests />}
       {/* ================= SUMMARY ================= */}
 
-      {tab === 1 && (
+      {tab === 2 && (
         <>
           <SummaryFilter
             filters={summaryFilters}

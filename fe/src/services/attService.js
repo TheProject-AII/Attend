@@ -163,6 +163,21 @@ const attendanceService = {
 
     return data;
   },
+  getCorrectionRequests: (params = {}) =>
+    api.get("/leader/leave-history", {
+      params: {
+        ...params,
+        leave_type: "ATTENDANCE_EDIT",
+      },
+    }),
+
+  getCorrectionDetail: (id) => api.get(`/leader/attendance/${id}`),
+
+  approveAttendanceEdit: (id, note = "") =>
+    api.patch(`/leader/attendance/${id}/approve`, { note }),
+
+  rejectAttendanceEdit: (id, note = "") =>
+    api.patch(`/leader/attendance/${id}/reject`, { note }),
 };
 
 export default attendanceService;
