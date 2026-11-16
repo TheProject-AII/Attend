@@ -26,7 +26,7 @@ export default defineConfig({
 
       manifest: {
         id: "/",
-        name: "So-Mak Attendance",
+        name: "PRIDE",
         short_name: "Pride",
         description: "Attendance and Leave Management System",
         theme_color: "#0d439a",

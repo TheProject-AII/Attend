@@ -35,6 +35,28 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [appVersion, setAppVersion] = useState({
+    version: "1.0.0",
+    build: "1",
+  });
+
+  useEffect(() => {
+    const loadAppVersion = async () => {
+      try {
+        const info = await App.getInfo();
+
+        setAppVersion({
+          version: info.version,
+          build: info.build,
+        });
+      } catch (error) {
+        console.error("Gagal mengambil versi aplikasi:", error);
+      }
+    };
+
+    loadAppVersion();
+  }, []);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -276,8 +298,9 @@ export default function Login() {
             color: "rgba(255,255,255,0.48)",
           }}
         >
-          ©{new Date().getFullYear()} PRIDE. All rights reserved. | Version
-          1.0.0 Beta
+          © {new Date().getFullYear()} PRIDE. All rights reserved.
+          {" | Version "}
+          {appVersion.version} ({appVersion.build})
         </Typography>
       </Box>
 
@@ -524,8 +547,9 @@ export default function Login() {
               color: "#94A3B8",
             }}
           >
-            ©{new Date().getFullYear()} PRIDE. All rights reserved. | Version
-            1.0.0 Beta
+            © {new Date().getFullYear()} PRIDE. All rights reserved.
+            {" | Version "}
+            {appVersion.version} ({appVersion.build})
           </Typography>
         </Box>
       </Box>
