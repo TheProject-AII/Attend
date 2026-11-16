@@ -195,6 +195,7 @@ const CameraCard = forwardRef(({ photo, setPhoto }, ref) => {
           ) : (
             <Webcam
               ref={webcamRef}
+              mirrored={false}
               screenshotFormat="image/jpeg"
               screenshotQuality={0.95}
               audio={false}
@@ -207,6 +208,7 @@ const CameraCard = forwardRef(({ photo, setPhoto }, ref) => {
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
+                transform: "none",
               }}
             />
           )}

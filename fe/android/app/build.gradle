@@ -1,21 +1,51 @@
+
+import java.util.Properties
+
 apply plugin: 'com.android.application'
+
+// ==========================================
+// AUTO VERSIONING CONFIGURATION
+// ==========================================
+
+def versionPropsFile = rootProject.file("version.properties")
+def versionProps = new Properties()
+
+if (!versionPropsFile.exists()) {
+    throw new RuntimeException(
+        "File android/version.properties tidak ditemukan!"
+    )
+}
+
+versionPropsFile.withInputStream {
+    versionProps.load(it)
+}
+
+def appVersionCode = versionProps.getProperty("VERSION_CODE").toInteger()
+def appVersionName = versionProps.getProperty("VERSION_NAME")
+
+// ==========================================
+// ANDROID CONFIGURATION
+// ==========================================
 
 android {
     namespace = "com.hris.mui"
     compileSdk = rootProject.ext.compileSdkVersion
+
     defaultConfig {
         applicationId "com.hris.mui"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+
+        versionCode appVersionCode
+        versionName appVersionName
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
         aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -24,11 +54,19 @@ android {
     }
 }
 
+// ==========================================
+// REPOSITORIES
+// ==========================================
+
 repositories {
-    flatDir{
+    flatDir {
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
     }
 }
+
+// ==========================================
+// DEPENDENCIES
+// ==========================================
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
@@ -36,20 +74,93 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+
     implementation project(':capacitor-cordova-android-plugins')
     implementation "androidx.work:work-runtime:2.10.1"
 }
 
+// ==========================================
+// CAPACITOR
+// ==========================================
+
 apply from: 'capacitor.build.gradle'
+
+// ==========================================
+// AUTO INCREMENT AFTER DEBUG APK BUILD
+// ==========================================
+
+// configureEach menghindari error task belum terdaftar
+tasks.configureEach { task ->
+
+    if (task.name == "assembleDebug") {
+
+        task.doLast {
+
+            // Naikkan versionCode
+            def nextCode = appVersionCode + 1
+
+            // Naikkan patch version
+            def versionParts = appVersionName.tokenize('.').collect {
+                it.toInteger()
+            }
+
+            while (versionParts.size() < 3) {
+                versionParts.add(0)
+            }
+
+            versionParts[2]++
+
+            def nextName = versionParts.join('.')
+
+            // Simpan versi berikutnya
+            def updatedProps = new Properties()
+
+            updatedProps.setProperty(
+                "VERSION_CODE",
+                nextCode.toString()
+            )
+
+            updatedProps.setProperty(
+                "VERSION_NAME",
+                nextName
+            )
+
+            versionPropsFile.withOutputStream { output ->
+                updatedProps.store(
+                    output,
+                    "HRIS Android Auto Version"
+                )
+            }
+
+            println ""
+            println "======================================"
+            println "       HRIS ANDROID VERSION"
+            println "======================================"
+            println "APK BUILD  : ${appVersionName} (${appVersionCode})"
+            println "NEXT BUILD : ${nextName} (${nextCode})"
+            println "======================================"
+            println ""
+        }
+    }
+}
+
+// ==========================================
+// GOOGLE SERVICES
+// ==========================================
 
 try {
     def servicesJSON = file('google-services.json')
+
     if (servicesJSON.text) {
         apply plugin: 'com.google.gms.google-services'
     }
+
 } catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+    logger.info(
+        "google-services.json not found, google-services plugin not applied. Push Notifications won't work"
+    )
 }
