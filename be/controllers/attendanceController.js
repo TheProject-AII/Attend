@@ -136,117 +136,93 @@ exports.history = async (req, res) => {
 
     const result = await pool.query(
       `
-            SELECT
-                a.id,
-                a.attendance_date,
+          SELECT
+    a.id,
+    a.id AS attendance_id,
+    a.attendance_date,
 
-                a.check_in AT TIME ZONE 'Asia/Jakarta'
-                    AS check_in,
+    a.check_in AT TIME ZONE 'Asia/Jakarta' AS check_in,
+    a.check_out AT TIME ZONE 'Asia/Jakarta' AS check_out,
 
-                a.check_out AT TIME ZONE 'Asia/Jakarta'
-                    AS check_out,
+    a.status,
+    a.attendance_type,
+    a.notes,
+    u.name,
+    u.department,
 
-                a.status,
-                a.attendance_type,
-                a.notes,
+    a.photo_path,
+    a.check_out_photo_path,
 
-                -- =========================
-                -- EDIT REQUEST TERAKHIR
-                -- =========================
+    a.check_in_lat,
+    a.check_in_lng,
+    a.check_out_lat,
+    a.check_out_lng,
 
-                aer.id AS edit_request_id,
+    ac.auto_checkout_time AT TIME ZONE 'Asia/Jakarta'
+        AS auto_checkout_time,
+    ac.latitude AS auto_checkout_lat,
+    ac.longitude AS auto_checkout_lng,
+    ac.location_accuracy AS auto_checkout_accuracy,
+    ac.gps_captured_at,
 
-                aer.status AS edit_request_status,
+    aer.id AS edit_request_id,
+    aer.status AS edit_request_status,
+    aer.reason AS edit_request_reason,
+    aer.new_check_in AS edit_new_check_in,
+    aer.new_check_out AS edit_new_check_out,
+    aer.rejection_reason AS edit_rejection_reason,
 
-                aer.reason AS edit_request_reason,
+    CASE
+        WHEN (a.check_in AT TIME ZONE 'Asia/Jakarta')::time
+             <= TIME '08:00:00'
+        THEN 'Tepat Waktu'
+        ELSE 'Terlambat'
+    END AS attendance_status,
 
-                aer.new_check_in AS edit_new_check_in,
+    CASE
+        WHEN (a.check_in AT TIME ZONE 'Asia/Jakarta')::time
+             > TIME '08:00:00'
+        THEN FLOOR(
+            EXTRACT(
+                EPOCH FROM (
+                    (a.check_in AT TIME ZONE 'Asia/Jakarta')::time
+                    - TIME '08:00:00'
+                )
+            ) / 60
+        )::int
+        ELSE 0
+    END AS late_minutes,
 
-                aer.new_check_out AS edit_new_check_out,
+    CASE
+        WHEN a.check_out IS NOT NULL
+        THEN CONCAT(
+            EXTRACT(HOUR FROM (a.check_out - a.check_in))::int,
+            'j ',
+            EXTRACT(MINUTE FROM (a.check_out - a.check_in))::int,
+            'm'
+        )
+        ELSE '-'
+    END AS working_hours
 
-                aer.rejection_reason
-                    AS edit_rejection_reason,
+FROM attendance a
 
-                -- =========================
-                -- STATUS ABSENSI
-                -- =========================
+JOIN users u ON u.id = a.user_id
 
-                CASE
-                    WHEN
-                        (
-                            a.check_in
-                            AT TIME ZONE 'Asia/Jakarta'
-                        )::time <= TIME '08:00:00'
+LEFT JOIN attendance_auto_checkouts ac
+    ON ac.attendance_id = a.id
 
-                    THEN 'Tepat Waktu'
+LEFT JOIN LATERAL (
+    SELECT aer.*
+    FROM attendance_edit_requests aer
+    WHERE aer.attendance_id = a.id
+      AND aer.user_id = a.user_id
+    ORDER BY aer.created_at DESC
+    LIMIT 1
+) aer ON true
 
-                    ELSE 'Terlambat'
-                END AS attendance_status,
+WHERE a.user_id = $1
 
-                -- =========================
-                -- MENIT TERLAMBAT
-                -- =========================
-
-                CASE
-                    WHEN
-                        (
-                            a.check_in
-                            AT TIME ZONE 'Asia/Jakarta'
-                        )::time > TIME '08:00:00'
-
-                    THEN FLOOR(
-                        EXTRACT(
-                            EPOCH FROM (
-                                (
-                                    a.check_in
-                                    AT TIME ZONE 'Asia/Jakarta'
-                                )::time
-                                - TIME '08:00:00'
-                            )
-                        ) / 60
-                    )::int
-
-                    ELSE 0
-                END AS late_minutes,
-
-                -- =========================
-                -- JAM KERJA
-                -- =========================
-
-                CASE
-                    WHEN a.check_out IS NOT NULL
-
-                    THEN CONCAT(
-                        EXTRACT(
-                            HOUR FROM
-                            (a.check_out - a.check_in)
-                        )::int,
-                        'j ',
-                        EXTRACT(
-                            MINUTE FROM
-                            (a.check_out - a.check_in)
-                        )::int,
-                        'm'
-                    )
-
-                    ELSE '-'
-                END AS working_hours
-
-            FROM attendance a
-
-            LEFT JOIN LATERAL (
-                SELECT
-                    aer.*
-                FROM attendance_edit_requests aer
-                WHERE aer.attendance_id = a.id
-                  AND aer.user_id = a.user_id
-                ORDER BY aer.created_at DESC
-                LIMIT 1
-            ) aer ON true
-
-            WHERE a.user_id = $1
-
-            ORDER BY a.attendance_date DESC
+ORDER BY a.attendance_date DESC
             `,
       [userId],
     );

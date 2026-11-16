@@ -32,7 +32,7 @@ function FitBounds({ positions }) {
       map.setView(positions[0], 17);
     } else if (positions.length > 1) {
       map.fitBounds(positions, {
-        padding: [40, 40],
+        padding: [30, 30],
         maxZoom: 17,
       });
     }
@@ -50,6 +50,12 @@ export default function AttendanceLocationMap({
   autoCheckoutLng,
   autoCheckoutTime,
   gpsCapturedAt,
+
+  // Default true agar tampilan Admin HR tetap seperti sebelumnya
+  showAutoCheckout = true,
+
+  // Tinggi peta bisa disesuaikan dari pemanggil komponen
+  height = 320,
 }) {
   const validCoordinate = (lat, lng) =>
     lat !== null &&
@@ -65,7 +71,9 @@ export default function AttendanceLocationMap({
 
   const hasCheckIn = validCoordinate(checkInLat, checkInLng);
   const hasCheckOut = validCoordinate(checkOutLat, checkOutLng);
-  const hasAutoCheckout = validCoordinate(autoCheckoutLat, autoCheckoutLng);
+
+  const hasAutoCheckout =
+    showAutoCheckout && validCoordinate(autoCheckoutLat, autoCheckoutLng);
 
   if (!hasCheckIn && !hasCheckOut && !hasAutoCheckout) {
     return <div>Attendance location is unavailable.</div>;
@@ -92,7 +100,7 @@ export default function AttendanceLocationMap({
         zoom={16}
         scrollWheelZoom={false}
         style={{
-          height: 320,
+          height,
           width: "100%",
           borderRadius: 12,
         }}
@@ -148,13 +156,14 @@ export default function AttendanceLocationMap({
           display: "flex",
           flexWrap: "wrap",
           gap: 16,
-          marginTop: 12,
+          marginTop: 10,
           fontSize: 13,
         }}
       >
         <span>🟢 Check In</span>
         <span>🔴 Check Out</span>
-        <span>🟠 Auto Checkout</span>
+
+        {showAutoCheckout && <span>🟠 Auto Checkout</span>}
       </div>
     </div>
   );
