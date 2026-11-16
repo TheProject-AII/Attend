@@ -79,7 +79,7 @@ function makeBlob(buffer, mimeType) {
 async function parseFaceApiResponse(response) {
   const raw = await response.text();
 
-  let data;
+  let data = {};
   try {
     data = raw ? JSON.parse(raw) : {};
   } catch {
@@ -87,15 +87,17 @@ async function parseFaceApiResponse(response) {
   }
 
   if (!response.ok) {
-    let message =
-      data.detail || data.message || `Face API error (${response.status})`;
+    let message = data.detail ?? data.message;
 
-    if (
-      response.status === 422 &&
-      String(message).toLowerCase().includes("face could not be detected")
-    ) {
-      message =
-        "No face detected. Make sure your face is clearly visible and in front of the camera.";
+    // FastAPI bisa mengirim detail dalam bentuk string atau object.
+    if (typeof message !== "string") {
+      message = Array.isArray(message)
+        ? message.map((item) => item.msg || JSON.stringify(item)).join(", ")
+        : message?.message || message?.msg || null;
+    }
+
+    if (!message) {
+      message = `Face API error (${response.status})`;
     }
 
     const error = new Error(message);
@@ -107,6 +109,12 @@ async function parseFaceApiResponse(response) {
         : response.status === 401
           ? "FACE_API_UNAUTHORIZED"
           : "FACE_API_ERROR";
+
+    console.error("[FACE API ERROR]", {
+      status: response.status,
+      code: error.code,
+      message: error.message,
+    });
 
     throw error;
   }
