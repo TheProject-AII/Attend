@@ -24,6 +24,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import authService from "../../services/authService";
 import { useAuth } from "../../context/AuthContext";
+import { App } from "@capacitor/app";
 
 export default function Login() {
   const navigate = useNavigate();

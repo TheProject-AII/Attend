@@ -13,6 +13,7 @@ const attachmentController = require("../controllers/businessTripAttachmentContr
 const balanceController = require("../controllers/businessTripBalanceController");
 const cancellationController = require("../controllers/businessTripCancellationController");
 const dashboardController = require("../controllers/businessTripDashboardController");
+
 // ======================================
 // EMPLOYEE
 // ======================================
@@ -22,61 +23,18 @@ router.get("/me/context", auth, businessTripController.getMyContext);
 router.post("/", auth, businessTripController.create);
 
 // ======================================
-// MANAGER / SUPERVISOR
+// BUSINESS TRIP DASHBOARD
+// ======================================
+
+router.get("/dashboard/summary", auth, dashboardController.getDashboardSummary);
+
+router.get("/history/me", auth, dashboardController.getMyTripHistory);
+
+// ======================================
+// MANAGER / SUPERVISOR APPROVAL
 // ======================================
 
 router.get("/approvals/manager", auth, approvalController.getManagerApprovals);
-
-// ======================================
-// FINANCE - DISBURSEMENT
-// ======================================
-// Business Trip Dashboard
-router.get("/dashboard/summary", auth, dashboardController.getDashboardSummary);
-
-// Employee: personal trip history
-router.get("/history/me", auth, dashboardController.getMyTripHistory);
-// Daftar pengajuan yang siap dicairkan
-router.get("/approvals/finance/queue", auth, financeController.getFinanceQueue);
-// Employee: mengajukan atau mengajukan ulang settlement
-router.post("/:id/settlement", auth, settlementController.submitSettlement);
-
-// Finance: antrean settlement
-router.get(
-  "/finance/settlements",
-  auth,
-  settlementController.getFinanceSettlementQueue,
-);
-
-// Finance: detail settlement
-router.get(
-  "/finance/settlements/:id",
-  auth,
-  settlementController.getFinanceSettlementDetail,
-);
-
-// Finance: verifikasi settlement
-router.post(
-  "/finance/settlements/:id/verify",
-  auth,
-  settlementController.verifySettlement,
-);
-
-// Finance: seluruh saldo outstanding
-router.get("/finance/balances", auth, balanceController.getAllBalances);
-
-// Finance: detail saldo per karyawan
-router.get(
-  "/finance/balances/:employeeId",
-  auth,
-  balanceController.getEmployeeBalanceDetail,
-);
-// Detail pencairan
-router.get("/finance/:id", auth, financeController.getFinanceDetail);
-
-// Proses pencairan 100%
-router.post("/finance/:id/disburse", auth, financeController.disburse);
-
-router.get("/approvals/:id", auth, approvalController.getApprovalDetail);
 
 router.post(
   "/approvals/:id/manager-action",
@@ -85,7 +43,7 @@ router.post(
 );
 
 // ======================================
-// HR
+// HR APPROVAL
 // ======================================
 
 router.get(
@@ -101,7 +59,7 @@ router.post(
 );
 
 // ======================================
-// DIRECTOR
+// DIRECTOR APPROVAL
 // ======================================
 
 router.get(
@@ -116,7 +74,67 @@ router.post(
   administrativeApprovalController.directorAction,
 );
 
-// Business Trip Attachments
+// ======================================
+// APPROVAL DETAIL
+// Route dinamis harus setelah route statis
+// ======================================
+
+router.get("/approvals/:id", auth, approvalController.getApprovalDetail);
+
+// ======================================
+// FINANCE - DISBURSEMENT
+// ======================================
+
+router.get("/approvals/finance/queue", auth, financeController.getFinanceQueue);
+
+router.get(
+  "/finance/settlements",
+  auth,
+  settlementController.getFinanceSettlementQueue,
+);
+
+router.get(
+  "/finance/settlements/:id",
+  auth,
+  settlementController.getFinanceSettlementDetail,
+);
+
+router.post(
+  "/finance/settlements/:id/verify",
+  auth,
+  settlementController.verifySettlement,
+);
+
+// ======================================
+// FINANCE - BALANCE
+// ======================================
+
+router.get("/finance/balances", auth, balanceController.getAllBalances);
+
+router.get(
+  "/finance/balances/:employeeId",
+  auth,
+  balanceController.getEmployeeBalanceDetail,
+);
+
+// ======================================
+// FINANCE - DETAIL & DISBURSEMENT
+// ======================================
+
+router.get("/finance/:id", auth, financeController.getFinanceDetail);
+
+router.post("/finance/:id/disburse", auth, financeController.disburse);
+
+// ======================================
+// EMPLOYEE - SETTLEMENT
+// ======================================
+
+router.post("/:id/settlement", auth, settlementController.submitSettlement);
+
+// ======================================
+// BUSINESS TRIP ATTACHMENTS
+// ======================================
+
 router.post(
   "/:id/attachments",
   auth,
@@ -132,17 +150,26 @@ router.get(
   attachmentController.getAttachmentUrl,
 );
 
-// Employee: saldo outstanding milik sendiri
+// ======================================
+// EMPLOYEE - BALANCE
+// ======================================
+
 router.get("/balance/me", auth, balanceController.getMyBalance);
 
-// Employee: request cancellation
+// ======================================
+// EMPLOYEE - CANCELLATION
+// ======================================
+
 router.post(
   "/:id/cancellation",
   auth,
   cancellationController.requestCancellation,
 );
 
-// Manager/SPV: cancellation queue and approval
+// ======================================
+// MANAGER / SUPERVISOR - CANCELLATION
+// ======================================
+
 router.get(
   "/cancellations/manager",
   auth,
@@ -155,7 +182,10 @@ router.post(
   cancellationController.managerAction,
 );
 
-// HR: cancellation queue and approval
+// ======================================
+// HR - CANCELLATION
+// ======================================
+
 router.get("/cancellations/hr", auth, cancellationController.getHRQueue);
 
 router.post(
@@ -164,7 +194,10 @@ router.post(
   cancellationController.hrAction,
 );
 
-// Finance: refund queue and confirmation
+// ======================================
+// FINANCE - REFUND
+// ======================================
+
 router.get(
   "/cancellations/finance",
   auth,
