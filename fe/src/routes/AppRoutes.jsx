@@ -43,6 +43,9 @@ import PayrollDetails from "../pages/dashboard/PayrollDetails";
 import MasterTER from "../pages/dashboard/MasterTER";
 import BusinessTripEmployee from "../pages/business-trip/BusinessTripEmployee";
 import BusinessTripApprovalDetail from "../pages/business-trip/BusinessTripApprovalDetail";
+import AndroidUpdatePrompt from "../components/AndroidUpdatePrompt";
+import BusinessTripHRDetail from "../pages/business-trip/BusinessTripHRDetail";
+import BusinessTripHR from "../pages/business-trip/BusinessTripHR";
 
 export default function AppRoutes() {
   const token = localStorage.getItem("token");
@@ -169,7 +172,33 @@ export default function AppRoutes() {
                 title="Business Trip"
                 subtitle="Manage employee business trips"
               >
-                <BusinessTripEmployee />
+                <BusinessTripHR />
+              </DashboardLayout>
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/business-trip/hr"
+          element={
+            <ProtectedAdminRoute>
+              <DashboardLayout
+                title="Business Trip"
+                subtitle="Manage employee business trips"
+              >
+                <BusinessTripHR />
+              </DashboardLayout>
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/business-trip/hr/:id"
+          element={
+            <ProtectedAdminRoute>
+              <DashboardLayout
+                title="Business Trip"
+                subtitle="Manage employee business trips"
+              >
+                <BusinessTripHRDetail />
               </DashboardLayout>
             </ProtectedAdminRoute>
           }
@@ -337,6 +366,7 @@ export default function AppRoutes() {
         <Route path="/overtime" element={<OvertimeHistory />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <AndroidUpdatePrompt />
     </BrowserRouter>
   );
 }

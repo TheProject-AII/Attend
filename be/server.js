@@ -52,8 +52,10 @@ const startAutoCheckoutJob = require("./jobs/attendanceAutoCheckout");
 const payrollRoutes = require("./routes/payrollRoutes");
 const terRoutes = require("./routes/terRoutes");
 const businessTripRoutes = require("./routes/businessTripRoutes");
+const appVersionRoutes = require("./routes/appVersionRoutes");
 
 startAutoCheckoutJob();
+app.use("/api/app-version", appVersionRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/overtime", overtimeRoutes);
 app.use("/api/payroll", payrollRoutes);

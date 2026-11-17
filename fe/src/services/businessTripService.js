@@ -19,13 +19,6 @@ const businessTripService = {
   managerAction: (id, payload) =>
     api.post(`/business-trips/approvals/${id}/manager-action`, payload),
 
-  submitSettlement: (id, payload) =>
-    api.post(`/business-trips/${id}/settlement`, payload),
-
-  uploadAttachments: (id, formData) =>
-    api.post(`/business-trips/${id}/attachments`, formData),
-
-  getAttachments: (id) => api.get(`/business-trips/${id}/attachments`),
   // HR Approval
   getHRApprovals: () => api.get("/business-trips/approvals/hr"),
 
@@ -37,6 +30,14 @@ const businessTripService = {
 
   directorAction: (id, payload) =>
     api.post(`/business-trips/approvals/${id}/director-action`, payload),
+
+  submitSettlement: (id, payload) =>
+    api.post(`/business-trips/${id}/settlement`, payload),
+
+  uploadAttachments: (id, formData) =>
+    api.post(`/business-trips/${id}/attachments`, formData),
+
+  getAttachments: (id) => api.get(`/business-trips/${id}/attachments`),
 };
 
 export default businessTripService;
