@@ -41,6 +41,7 @@ import RequireFaceEnrollment from "../routes/RequireFaceEnrollment";
 import Payroll from "../pages/dashboard/Payroll";
 import PayrollDetails from "../pages/dashboard/PayrollDetails";
 import MasterTER from "../pages/dashboard/MasterTER";
+import BusinessTripEmployee from "../pages/business-trip/BusinessTripEmployee";
 
 export default function AppRoutes() {
   const token = localStorage.getItem("token");
@@ -159,7 +160,19 @@ export default function AppRoutes() {
             </ProtectedAdminRoute>
           }
         />
-
+        <Route
+          path="/business-trips"
+          element={
+            <ProtectedAdminRoute>
+              <DashboardLayout
+                title="Business Trip"
+                subtitle="Manage employee business trips"
+              >
+                <BusinessTripEmployee />
+              </DashboardLayout>
+            </ProtectedAdminRoute>
+          }
+        />
         <Route
           path="/admin/recap"
           element={

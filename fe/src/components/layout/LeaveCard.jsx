@@ -12,68 +12,85 @@ const leaveTypeLabel = {
   LEMBUR: "Overtime",
 };
 
-const getStatusLabel = (status) => {
-  switch (status) {
-    case "PENDING":
-    case "PENDING_SUPERVISOR":
-    case "PENDING_MANAGER":
-      return "Pending";
-
-    case "APPROVED":
-      return "Approved";
-
-    case "REJECTED":
-      return "Rejected";
-
-    case "CANCELLED":
-      return "Cancelled";
-
-    default:
-      return status || "-";
-  }
+const statusLabels = {
+  DRAFT: "Draft",
+  PENDING: "Pending",
+  PENDING_SUPERVISOR: "Pending Supervisor",
+  PENDING_MANAGER: "Pending Manager",
+  PENDING_HR: "Pending HR",
+  PENDING_DIRECTOR: "Pending Director",
+  PENDING_FINANCE: "Pending Finance",
+  APPROVED: "Approved",
+  ON_TRIP: "On Trip",
+  SETTLEMENT: "Settlement",
+  COMPLETED: "Completed",
+  REJECTED: "Rejected",
+  CANCELLED: "Cancelled",
 };
 
-export default function LeaveCard({ item, onClick }) {
-  const isOvertime = item.leave_type === "LEMBUR";
+const getStatusColor = (status) => {
+  if (["APPROVED", "COMPLETED"].includes(status)) return "success";
+  if (["REJECTED", "CANCELLED"].includes(status)) return "error";
+  if (status === "ON_TRIP") return "info";
+  if (status === "SETTLEMENT") return "secondary";
+  if (status === "DRAFT") return "default";
+
+  return "warning";
+};
+
+const formatDate = (date) => {
+  if (!date) return "-";
+
+  const parsedDate = new Date(date);
+
+  if (Number.isNaN(parsedDate.getTime())) return "-";
+
+  return parsedDate.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+};
+
+const formatTime = (time) => (time ? String(time).substring(0, 5) : "-");
+
+const formatDuration = (minutes) => {
+  if (minutes == null) return "-";
+
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+
+  if (!hours) return `${remaining} min`;
+  if (!remaining) return `${hours} hr`;
+
+  return `${hours} hr ${remaining} min`;
+};
+
+const formatCurrency = (value) =>
+  `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
+
+export default function LeaveCard({ item = {}, onClick }) {
+  const type = String(item.leave_type || item.request_type || "").toUpperCase();
+
+  const isOvertime = type === "LEMBUR";
+  const isBusinessTrip = ["BUSINESS_TRIP", "DINAS"].includes(type);
+
   const displayLeaveType =
-    item.leave_type === "CUTI"
+    type === "CUTI"
       ? `Leave - ${item.leave_type_name || "Cuti"}`
-      : leaveTypeLabel[item.leave_type] || item.leave_type;
-  const formatDate = (date) => {
-    if (!date) return "-";
+      : leaveTypeLabel[type] || type || "Request";
 
-    return new Date(date).toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  };
+  const status = String(item.status || "").toUpperCase();
 
-  const formatTime = (time) => {
-    if (!time) return "-";
+  const departureDate = item.departure_date || item.start_date;
+  const returnDate = item.return_date || item.end_date;
 
-    return time.substring(0, 5);
-  };
-
-  const formatDuration = (minutes) => {
-    if (minutes === undefined || minutes === null) {
-      return "-";
-    }
-
-    const hours = Math.floor(minutes / 60);
-
-    const remainingMinutes = minutes % 60;
-
-    if (hours === 0) {
-      return `${remainingMinutes} min`;
-    }
-
-    if (remainingMinutes === 0) {
-      return `${hours} hr`;
-    }
-
-    return `${hours} hr ${remainingMinutes} min`;
-  };
+  const estimatedCost =
+    item.total_estimate ??
+    item.total_estimated ??
+    item.total_amount ??
+    item.total_cost ??
+    0;
 
   return (
     <Card
@@ -83,9 +100,9 @@ export default function LeaveCard({ item, onClick }) {
         borderRadius: 1,
         cursor: "pointer",
         transition: ".2s",
-
         "&:hover": {
           transform: "translateY(-2px)",
+          boxShadow: 3,
         },
       }}
     >
@@ -94,6 +111,7 @@ export default function LeaveCard({ item, onClick }) {
           direction="row"
           justifyContent="space-between"
           alignItems="center"
+          spacing={1}
         >
           <Typography
             sx={{
@@ -107,31 +125,21 @@ export default function LeaveCard({ item, onClick }) {
           </Typography>
 
           <Chip
-            label={getStatusLabel(item.status)}
+            label={statusLabels[status] || status || "-"}
             size="small"
-            color={
-              item.status === "APPROVED"
-                ? "success"
-                : item.status === "REJECTED"
-                  ? "error"
-                  : "warning"
-            }
+            color={getStatusColor(status)}
           />
         </Stack>
-
-        {/* ===================== */}
-        {/* LEMBUR */}
-        {/* ===================== */}
 
         {isOvertime ? (
           <Box sx={{ mt: 1.5 }}>
             <Typography variant="body2">
-              <strong>Date:</strong> {formatDate(item.overtime_date)}
+              <strong>Date:</strong>{" "}
+              {formatDate(item.overtime_date || item.start_date)}
             </Typography>
 
             <Typography variant="body2">
-              <strong>Time:</strong> {formatTime(item.start_time)}
-              {" - "}
+              <strong>Time:</strong> {formatTime(item.start_time)} -{" "}
               {formatTime(item.end_time)}
             </Typography>
 
@@ -143,21 +151,40 @@ export default function LeaveCard({ item, onClick }) {
               <strong>Work:</strong> {item.reason || "-"}
             </Typography>
           </Box>
-        ) : (
-          /* ===================== */
-          /* LEAVE / PERMISSION / SICK LEAVE */
-          /* ===================== */
-
+        ) : isBusinessTrip ? (
           <Box sx={{ mt: 1.5 }}>
-            <Typography variant="body2" sx={{ mb: 0 }}>
-              <strong>Date:</strong> {formatDate(item.start_date)}
-              {" - "}
+            <Typography variant="body2">
+              <strong>Trip Number:</strong> {item.trip_number || "-"}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Destination:</strong> {item.destination || "-"}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Period:</strong> {formatDate(departureDate)} -{" "}
+              {formatDate(returnDate)}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Estimated Cost:</strong> {formatCurrency(estimatedCost)}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Purpose:</strong> {item.purpose || item.reason || "-"}
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ mt: 1.5 }}>
+            <Typography variant="body2">
+              <strong>Date:</strong> {formatDate(item.start_date)} -{" "}
               {formatDate(item.end_date)}
             </Typography>
 
-            <Typography variant="body2" sx={{ mb: 0 }}>
+            <Typography variant="body2">
               <strong>Duration:</strong> {item.leave_days ?? "-"} days
             </Typography>
+
             <Typography variant="body2">
               <strong>Details:</strong> {item.reason || "-"}
             </Typography>

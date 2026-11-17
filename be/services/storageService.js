@@ -20,6 +20,7 @@ const allowedFolders = new Set([
   "announcements",
   "attendance",
   "leave",
+  "business_trips",
 ]);
 
 async function uploadToStorage(file, folder) {

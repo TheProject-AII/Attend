@@ -51,6 +51,7 @@ const settingsRoutes = require("./routes/settingsRoutes");
 const startAutoCheckoutJob = require("./jobs/attendanceAutoCheckout");
 const payrollRoutes = require("./routes/payrollRoutes");
 const terRoutes = require("./routes/terRoutes");
+const businessTripRoutes = require("./routes/businessTripRoutes");
 
 startAutoCheckoutJob();
 app.use("/api/settings", settingsRoutes);
@@ -74,6 +75,7 @@ app.use("/api/leave", leaveRoutes);
 app.use("/api/leader", supervisorRoutes);
 app.use("/api/notification", notificationRoutes);
 app.use("/api/late-compensation", require("./routes/lateCompensation.routes"));
+app.use("/api/business-trips", businessTripRoutes);
 // ==============================
 // Root
 // ==============================
