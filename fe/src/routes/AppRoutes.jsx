@@ -42,6 +42,7 @@ import Payroll from "../pages/dashboard/Payroll";
 import PayrollDetails from "../pages/dashboard/PayrollDetails";
 import MasterTER from "../pages/dashboard/MasterTER";
 import BusinessTripEmployee from "../pages/business-trip/BusinessTripEmployee";
+import BusinessTripApprovalDetail from "../pages/business-trip/BusinessTripApprovalDetail";
 
 export default function AppRoutes() {
   const token = localStorage.getItem("token");
@@ -308,12 +309,17 @@ export default function AppRoutes() {
               element={<OvertimeApprovalDetail />}
             />
 
-            <Route path="approval/:id" element={<ApprovalDetail />} />
+            <Route
+              path="approval/business-trip/:id"
+              element={<BusinessTripApprovalDetail />}
+            />
 
             <Route
               path="approval/attendance/:id"
               element={<ApprovalDetail />}
             />
+
+            <Route path="approval/:id" element={<ApprovalDetail />} />
 
             <Route path="about-company" element={<AboutCompany />} />
 
