@@ -10,6 +10,7 @@ import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import PercentIcon from "@mui/icons-material/Percent";
+import FlightTakeoffIcon from "@mui/icons-material/FlightTakeoff";
 
 const menu = [
   {
@@ -33,7 +34,6 @@ const menu = [
     path: "/admin/employees",
     section: "management",
   },
-
   {
     title: "Late Compensation",
     translationKey: "menu.lateCompensation",
@@ -46,6 +46,13 @@ const menu = [
     translationKey: "menu.leaveHistory",
     icon: <AssignmentIndIcon />,
     path: "/admin/leave-history",
+    section: "management",
+  },
+  {
+    title: "Business Trip",
+    translationKey: "menu.businessTrip",
+    icon: <FlightTakeoffIcon />,
+    path: "/business-trips",
     section: "management",
   },
   {
@@ -69,21 +76,6 @@ const menu = [
     path: "/master-ter",
     section: "management",
   },
-
-  // {
-  //   title: "Overtime",
-  //   translationKey: "menu.overtime",
-  //   icon: <AccessTimeIcon />,
-  //   path: "/admin/recap",
-  //   section: "management",
-  // },
-  // {
-  //   title: "Reports",
-  //   translationKey: "menu.reports",
-  //   icon: <BarChartIcon />,
-  //   path: "/report",
-  //   section: "reports",
-  // },
   {
     title: "Announcements",
     translationKey: "menu.announcements",

@@ -20,6 +20,8 @@ import Swal from "sweetalert2";
 import notificationService from "../../services/notificationService";
 import overtimeService from "../../services/overtimeService";
 import OvertimeDetailDialog from "../../components/layout/OvertimeDetailDialog";
+import businessTripService from "../../services/businessTripService";
+import BusinessTripDetailDialog from "../../components/layout/BusinessTripDetailDialog";
 
 const countWorkingDays = (startDate, endDate, workDays) => {
   if (!startDate || !endDate || !Array.isArray(workDays)) {
@@ -84,6 +86,14 @@ export default function Leave() {
   const [leaveTypeId, setLeaveTypeId] = useState("");
   const [openDetail, setOpenDetail] = useState(false);
   const [openOvertimeDetail, setOpenOvertimeDetail] = useState(false);
+  const [businessTripContext, setBusinessTripContext] = useState(null);
+  const [openBusinessTripDetail, setOpenBusinessTripDetail] = useState(false);
+  const [businessTrip, setBusinessTrip] = useState({
+    destination: "",
+    departureDate: "",
+    returnDate: "",
+    transportEstimate: "",
+  });
   const [summary, setSummary] = useState({
     leave_balance: 0,
     cuti_taken_days: 0,
@@ -100,7 +110,16 @@ export default function Leave() {
     endDate,
     selectedLeaveType?.work_days,
   );
+  const loadBusinessTripContext = async () => {
+    try {
+      const response = await businessTripService.getContext();
 
+      setBusinessTripContext(response.data?.data || response.data || null);
+    } catch (err) {
+      console.error("LOAD BUSINESS TRIP CONTEXT ERROR:", err);
+      setBusinessTripContext(null);
+    }
+  };
   const maxLeaveDays = Number(selectedLeaveType?.entitlement_days || 0);
 
   const isSpecialLeave =
@@ -110,26 +129,34 @@ export default function Leave() {
     isSpecialLeave && maxLeaveDays > 0 && selectedLeaveDays > maxLeaveDays;
 
   const [statusFilter, setStatusFilter] = useState("ALL");
+
   const normalizeStatus = (status) => {
-    if (!status) {
-      return "";
-    }
+    if (!status) return "";
 
-    const value = status.toString().toUpperCase();
+    const value = String(status).toUpperCase();
 
-    if (
-      value === "PENDING" ||
-      value === "PENDING_SUPERVISOR" ||
-      value === "PENDING_MANAGER"
-    ) {
+    // Semua tahapan approval yang masih berjalan
+    const pendingStatuses = [
+      "PENDING",
+      "PENDING_SUPERVISOR",
+      "PENDING_MANAGER",
+      "PENDING_HR",
+      "PENDING_DIRECTOR",
+      "PENDING_FINANCE",
+      "DRAFT",
+      "ON_TRIP",
+      "SETTLEMENT",
+    ];
+
+    if (pendingStatuses.includes(value)) {
       return "PENDING";
     }
 
-    if (value === "APPROVED") {
+    if (["APPROVED", "COMPLETED"].includes(value)) {
       return "APPROVED";
     }
 
-    if (value === "REJECTED" || value === "REJECT") {
+    if (["REJECTED", "REJECT"].includes(value)) {
       return "REJECTED";
     }
 
@@ -139,6 +166,7 @@ export default function Leave() {
 
     return value;
   };
+
   const loadLeaveTypes = async () => {
     try {
       const response = await leaveService.types();
@@ -213,6 +241,8 @@ export default function Leave() {
   useEffect(() => {
     loadHistory();
     loadLeaveTypes();
+    loadBusinessTripContext();
+
     const markNotificationsAsRead = async () => {
       try {
         await notificationService.readResult();
@@ -228,61 +258,78 @@ export default function Leave() {
     try {
       setLoading(true);
 
-      const [leaveResult, overtimeResult] = await Promise.all([
+      const results = await Promise.allSettled([
         leaveService.history(),
         overtimeService.history(),
+        businessTripService.history(),
       ]);
 
-      const leaveData = leaveResult.data?.data || leaveResult.data || [];
+      const parseData = (result) => {
+        if (result.status !== "fulfilled") {
+          console.error("HISTORY API ERROR:", result.reason);
+          return [];
+        }
 
-      setSummary({
-        leave_balance: leaveResult.data?.summary?.leave_balance ?? 0,
+        const response = result.value?.data;
 
-        cuti_taken_days: leaveResult.data?.summary?.cuti_taken_days ?? 0,
+        if (Array.isArray(response)) return response;
+        if (Array.isArray(response?.data)) return response.data;
 
-        sick_deduction_days:
-          leaveResult.data?.summary?.sick_deduction_days ?? 0,
+        return [];
+      };
 
-        special_leave_days: leaveResult.data?.summary?.special_leave_days ?? 0,
-      });
+      // Ambil ringkasan cuti dari response API leave/history.
+      // Backend mengirim summary dan data dalam satu response.
+      const leaveResponse =
+        results[0].status === "fulfilled" ? results[0].value?.data : null;
 
-      const overtimeData =
-        overtimeResult.data?.data || overtimeResult.data || [];
+      if (leaveResponse?.summary) {
+        setSummary({
+          leave_balance: Number(leaveResponse.summary.leave_balance ?? 0),
+          cuti_taken_days: Number(leaveResponse.summary.cuti_taken_days ?? 0),
+          sick_deduction_days: Number(
+            leaveResponse.summary.sick_deduction_days ?? 0,
+          ),
+          special_leave_days: Number(
+            leaveResponse.summary.special_leave_days ?? 0,
+          ),
+        });
+      }
+
+      const leaveData = parseData(results[0]);
+      const overtimeData = parseData(results[1]);
+      const businessTripData = parseData(results[2]);
 
       const overtimeHistory = overtimeData.map((item) => ({
         ...item,
-
-        // supaya gampang dibedakan
         leave_type: "LEMBUR",
-
-        // sesuaikan field yang dipakai
-        // komponen history lu
         start_date: item.overtime_date,
         end_date: item.overtime_date,
-
-        // keterangan
-        reason: item.reason,
-
-        // tambahan khusus lembur
-        start_time: item.start_time,
-        end_time: item.end_time,
-
-        duration_minutes: item.duration_minutes,
       }));
 
-      const combinedHistory = [...leaveData, ...overtimeHistory].sort(
-        (a, b) => {
-          const dateA = new Date(
-            a.leave_type === "LEMBUR" ? a.overtime_date : a.start_date,
-          );
+      const businessTripHistory = businessTripData.map((item) => ({
+        ...item,
+        leave_type: "BUSINESS_TRIP",
+        start_date: item.departure_date,
+        end_date: item.return_date,
+        reason: item.purpose,
+      }));
 
-          const dateB = new Date(
-            b.leave_type === "LEMBUR" ? b.overtime_date : b.start_date,
-          );
+      const combinedHistory = [
+        ...leaveData,
+        ...overtimeHistory,
+        ...businessTripHistory,
+      ].sort((a, b) => {
+        const dateA = new Date(
+          a.departure_date || a.overtime_date || a.start_date || 0,
+        );
 
-          return dateB - dateA;
-        },
-      );
+        const dateB = new Date(
+          b.departure_date || b.overtime_date || b.start_date || 0,
+        );
+
+        return dateB - dateA;
+      });
 
       setHistory(combinedHistory);
     } catch (err) {
@@ -315,6 +362,91 @@ export default function Leave() {
 
   const handleSubmit = async () => {
     setSubmitError("");
+    if (leaveType === "BUSINESS_TRIP") {
+      if (
+        !businessTrip.destination.trim() ||
+        !businessTrip.departureDate ||
+        !businessTrip.returnDate ||
+        !reason.trim() ||
+        businessTrip.transportEstimate === ""
+      ) {
+        Swal.fire({
+          icon: "warning",
+          title: "Data belum lengkap",
+          text: "Lengkapi tujuan, tanggal perjalanan, estimasi transportasi, dan keperluan perjalanan.",
+        });
+        return;
+      }
+
+      if (businessTrip.returnDate < businessTrip.departureDate) {
+        Swal.fire({
+          icon: "warning",
+          title: "Tanggal tidak valid",
+          text: "Tanggal kembali tidak boleh lebih awal dari tanggal berangkat.",
+        });
+        return;
+      }
+
+      if (
+        !Number.isFinite(Number(businessTrip.transportEstimate)) ||
+        Number(businessTrip.transportEstimate) < 0
+      ) {
+        Swal.fire({
+          icon: "warning",
+          title: "Estimasi transportasi tidak valid",
+        });
+        return;
+      }
+
+      try {
+        setSubmitLoading(true);
+
+        await businessTripService.create({
+          destination: businessTrip.destination.trim(),
+          purpose: reason.trim(),
+          departure_date: businessTrip.departureDate,
+          return_date: businessTrip.returnDate,
+          transport_estimate: Number(businessTrip.transportEstimate),
+        });
+
+        setOpenDialog(false);
+
+        await Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "Business Trip request submitted successfully.",
+        });
+
+        setLeaveType("SAKIT");
+        setStartDate("");
+        setEndDate("");
+        setReason("");
+        setAttachment(null);
+
+        setBusinessTrip({
+          destination: "",
+          departureDate: "",
+          returnDate: "",
+          transportEstimate: "",
+        });
+
+        await loadHistory();
+      } catch (err) {
+        console.error("BUSINESS TRIP SUBMIT ERROR:", err);
+
+        Swal.fire({
+          icon: "error",
+          title: "Failed",
+          text:
+            err.response?.data?.message ||
+            "Failed to submit Business Trip request.",
+        });
+      } finally {
+        setSubmitLoading(false);
+      }
+
+      return;
+    }
     // =====================================
     // VALIDASI UMUM
     // =====================================
@@ -373,7 +505,7 @@ export default function Leave() {
           end_time: endTime,
           reason: reason,
         });
-
+        await loadHistory();
         setOpenDialog(false);
         await Swal.fire({
           icon: "success",
@@ -657,11 +789,9 @@ export default function Leave() {
             <Chip
               label={`Pending (${statusCount.PENDING})`}
               clickable
-              sx={chipStyle("PENDING_SUPERVISOR")}
-              color={
-                statusFilter === "PENDING_SUPERVISOR" ? "warning" : "default"
-              }
-              onClick={() => setStatusFilter("PENDING_SUPERVISOR")}
+              sx={chipStyle("PENDING")}
+              color={statusFilter === "PENDING" ? "warning" : "default"}
+              onClick={() => setStatusFilter("PENDING")}
             />
 
             <Chip
@@ -762,6 +892,12 @@ export default function Leave() {
 
                   if (item.leave_type === "LEMBUR") {
                     setOpenOvertimeDetail(true);
+                  } else if (
+                    ["BUSINESS_TRIP", "DINAS"].includes(
+                      String(item.leave_type || "").toUpperCase(),
+                    )
+                  ) {
+                    setOpenBusinessTripDetail(true);
                   } else {
                     setOpenDetail(true);
                   }
@@ -770,6 +906,11 @@ export default function Leave() {
             );
           })
         )}
+        <BusinessTripDetailDialog
+          open={openBusinessTripDetail}
+          onClose={() => setOpenBusinessTripDetail(false)}
+          data={selectedLeave}
+        />
       </Box>
       <Fab
         color="primary"
@@ -796,6 +937,12 @@ export default function Leave() {
         setEndTime={setEndTime}
         open={openDialog}
         onClose={() => {
+          setBusinessTrip({
+            destination: "",
+            departureDate: "",
+            returnDate: "",
+            transportEstimate: "",
+          });
           setOpenDialog(false);
           setSubmitError("");
           setLeaveType("SAKIT");
@@ -832,6 +979,9 @@ export default function Leave() {
         maxLeaveDays={maxLeaveDays}
         isSpecialLeave={isSpecialLeave}
         isLeaveExceeded={isLeaveExceeded}
+        businessTrip={businessTrip}
+        setBusinessTrip={setBusinessTrip}
+        businessTripContext={businessTripContext}
       />
       <LeaveDetailDialog
         open={openDetail}
