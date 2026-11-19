@@ -56,10 +56,6 @@ async function main() {
     (name) => !files.includes(name),
   );
 
-  console.log(`Mode: ${EXECUTE ? "EXECUTE" : "DRY-RUN"}`);
-  console.log(`Folder foto: ${PHOTO_DIR}`);
-  console.log(`Total file dalam folder: ${files.length}\n`);
-
   // Pastikan ID tujuan benar-benar ada dan nama file terpetakan
   // tidak diarahkan ke ID karyawan yang salah.
   const ids = [...new Set(Object.values(PHOTO_MAP))];

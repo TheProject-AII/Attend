@@ -1,9 +1,8 @@
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 
-const DASHBOARD_ROLES = ["ADMIN", "HR", "ADMIN HR", "FINANCE", "DIRECTOR"];
+const DASHBOARD_ALLOWED_ROLE_IDS = [2, 6, 7];
 
 export default function ProtectedAdminRoute({ children }) {
-  const location = useLocation();
   const token = localStorage.getItem("token");
 
   let user = null;
@@ -18,16 +17,23 @@ export default function ProtectedAdminRoute({ children }) {
     return <Navigate to="/" replace />;
   }
 
-  const role = String(user.role || "")
-    .trim()
-    .toUpperCase();
+  const roleId = Number(user.role_id);
 
-  if (!DASHBOARD_ROLES.includes(role)) {
-    return <Navigate to="/employee/attendance" replace />;
+  // Role tidak memiliki akses dashboard
+  if (!DASHBOARD_ALLOWED_ROLE_IDS.includes(roleId)) {
+    sessionStorage.setItem(
+      "access_denied_message",
+      "Anda tidak memiliki otorisasi untuk masuk ke sistem ini.",
+    );
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    return <Navigate to="/" replace />;
   }
 
-  // Finance hanya boleh membuka Payroll dan Payroll Details.
-  const isFinance = Number(user.role_id) === 6 || role === "FINANCE";
+  // Finance hanya boleh membuka halaman tertentu
+  const isFinance = roleId === 6;
 
   const financeAllowedPaths = [
     "/payroll",
@@ -35,7 +41,7 @@ export default function ProtectedAdminRoute({ children }) {
     "/business-trip/finance",
   ];
 
-  if (isFinance && !financeAllowedPaths.includes(location.pathname)) {
+  if (isFinance && !financeAllowedPaths.includes(window.location.pathname)) {
     return <Navigate to="/payroll" replace />;
   }
 

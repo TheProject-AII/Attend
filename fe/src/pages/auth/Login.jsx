@@ -25,6 +25,7 @@ import { useNavigate } from "react-router-dom";
 import authService from "../../services/authService";
 import { useAuth } from "../../context/AuthContext";
 import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -35,7 +36,14 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    const deniedMessage = sessionStorage.getItem("access_denied_message");
 
+    if (deniedMessage) {
+      setError(`Akses Ditolak! ${deniedMessage}`);
+      sessionStorage.removeItem("access_denied_message");
+    }
+  }, []);
   const [appVersion, setAppVersion] = useState({
     version: "1.0.0",
     build: "1",
@@ -44,12 +52,20 @@ export default function Login() {
   useEffect(() => {
     const loadAppVersion = async () => {
       try {
-        const info = await App.getInfo();
+        if (Capacitor.isNativePlatform()) {
+          const info = await App.getInfo();
 
-        setAppVersion({
-          version: info.version,
-          build: info.build,
-        });
+          setAppVersion({
+            version: info.version,
+            build: info.build,
+          });
+        } else {
+          // Versi untuk Web / PWA
+          setAppVersion({
+            version: import.meta.env.VITE_APP_VERSION || "1.0.0",
+            build: import.meta.env.VITE_APP_BUILD || "1",
+          });
+        }
       } catch (error) {
         console.error("Gagal mengambil versi aplikasi:", error);
       }
@@ -66,7 +82,7 @@ export default function Login() {
       const user = JSON.parse(localStorage.getItem("user") || "null");
 
       if (user?.role) {
-        navigate(getRedirectPath(user.role), { replace: true });
+        navigate(getRedirectPath(user), { replace: true });
       }
     } catch (err) {
       console.error("Invalid stored user:", err);
@@ -134,12 +150,13 @@ export default function Login() {
   };
 
   const getRedirectPath = (user) => {
-    const role = String(user?.role || "")
-      .trim()
-      .toUpperCase();
-    const isAdminOrHr = ["ADMIN", "HR", "ADMIN HR"].includes(role);
+    const roleId = Number(user?.role_id);
 
-    if (isAdminOrHr) {
+    if (roleId === 6) {
+      return "/payroll";
+    }
+
+    if (roleId === 2 || roleId === 7) {
       return "/dashboard";
     }
 
