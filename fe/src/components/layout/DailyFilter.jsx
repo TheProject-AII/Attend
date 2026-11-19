@@ -7,7 +7,6 @@ import {
   Button,
 } from "@mui/material";
 
-import SearchIcon from "@mui/icons-material/Search";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import dayjs from "dayjs";
 
@@ -15,12 +14,24 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 
-export default function DailyFilter({
-  filters,
-  setFilters,
-  onSearch,
-  departments = [],
-}) {
+const STATUS_OPTIONS = [
+  { value: "", label: "All Statuses" },
+  { value: "Hadir", label: "Present" },
+  { value: "Terlambat", label: "Late" },
+  { value: "Belum Pulang", label: "Not Checked Out" },
+  { value: "Belum Check In", label: "Not Checked In" },
+];
+
+export default function DailyFilter({ filters, setFilters, departments = [] }) {
+  const handleReset = () => {
+    setFilters({
+      date: dayjs(),
+      department: "",
+      status: "",
+      search: "",
+    });
+  };
+
   return (
     <Card
       elevation={0}
@@ -33,9 +44,7 @@ export default function DailyFilter({
       <CardContent
         sx={{
           py: 2,
-          "&:last-child": {
-            pb: 2,
-          },
+          "&:last-child": { pb: 2 },
         }}
       >
         <Grid container spacing={2} alignItems="center">
@@ -46,17 +55,11 @@ export default function DailyFilter({
                 label="Date"
                 value={filters.date}
                 onChange={(value) =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    date: value,
-                  }))
+                  setFilters((prev) => ({ ...prev, date: value }))
                 }
                 format="DD/MM/YYYY"
                 slotProps={{
-                  textField: {
-                    fullWidth: true,
-                    size: "small",
-                  },
+                  textField: { fullWidth: true, size: "small" },
                 }}
               />
             </LocalizationProvider>
@@ -69,16 +72,21 @@ export default function DailyFilter({
               size="small"
               select
               label="Department"
-              value={filters.department || ""}
+              value={filters.department ?? ""}
               onChange={(e) =>
                 setFilters((prev) => ({
                   ...prev,
                   department: e.target.value,
                 }))
               }
+              SelectProps={{
+                displayEmpty: true,
+                renderValue: (selected) =>
+                  selected === "" ? "All Departments" : selected,
+              }}
+              InputLabelProps={{ shrink: true }}
             >
               <MenuItem value="">All Departments</MenuItem>
-
               {departments.map((item) => (
                 <MenuItem key={item.id} value={item.name}>
                   {item.name}
@@ -88,21 +96,44 @@ export default function DailyFilter({
           </Grid>
 
           {/* STATUS */}
+          {/* STATUS */}
           <Grid size={{ xs: 12, md: 2 }}>
             <TextField
               fullWidth
               size="small"
               select
               label="Status"
-              value={filters.status}
-              onChange={(e) =>
+              value={filters.status || "ALL"}
+              onChange={(e) => {
+                const value = e.target.value;
+
                 setFilters((prev) => ({
                   ...prev,
-                  status: e.target.value,
-                }))
-              }
+                  status: value === "ALL" ? "" : value,
+                }));
+              }}
+              SelectProps={{
+                displayEmpty: true,
+                renderValue: (selected) => {
+                  if (selected === "ALL" || selected === "") {
+                    return "All Status";
+                  }
+
+                  const labels = {
+                    Hadir: "Present",
+                    Terlambat: "Late",
+                    "Belum Pulang": "Not Checked Out",
+                    "Belum Check In": "Not Checked In",
+                  };
+
+                  return labels[selected] || selected;
+                },
+              }}
+              InputLabelProps={{
+                shrink: true,
+              }}
             >
-              <MenuItem value="">All Statuses</MenuItem>
+              <MenuItem value="ALL">All Status</MenuItem>
               <MenuItem value="Hadir">Present</MenuItem>
               <MenuItem value="Terlambat">Late</MenuItem>
               <MenuItem value="Belum Pulang">Not Checked Out</MenuItem>
@@ -110,55 +141,30 @@ export default function DailyFilter({
             </TextField>
           </Grid>
 
-          {/* SEARCH */}
+          {/* SEARCH - auto filter with debounce in parent */}
           <Grid size={{ xs: 12, md: 3 }}>
             <TextField
               fullWidth
               size="small"
               label="Search Employees"
-              value={filters.search}
+              value={filters.search ?? ""}
               onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  search: e.target.value,
-                }))
+                setFilters((prev) => ({ ...prev, search: e.target.value }))
               }
             />
           </Grid>
 
-          {/* ACTIONS */}
+          {/* RESET */}
           <Grid
             size={{ xs: 12, md: 2.5 }}
-            sx={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 1,
-            }}
+            sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}
           >
             <Button
               variant="outlined"
               startIcon={<RefreshIcon />}
-              onClick={() => {
-                const reset = {
-                  date: dayjs(),
-                  department: "",
-                  status: "",
-                  search: "",
-                };
-
-                setFilters(reset);
-                onSearch(reset);
-              }}
+              onClick={handleReset}
             >
               Reset
-            </Button>
-
-            <Button
-              variant="contained"
-              startIcon={<SearchIcon />}
-              onClick={() => onSearch(filters)}
-            >
-              Search
             </Button>
           </Grid>
         </Grid>

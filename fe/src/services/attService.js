@@ -178,6 +178,11 @@ const attendanceService = {
 
   rejectAttendanceEdit: (id, note = "") =>
     api.patch(`/leader/attendance/${id}/reject`, { note }),
+
+  getCompanies: async () => {
+    const { data } = await api.get("/auth/companies");
+    return data;
+  },
 };
 
 export default attendanceService;

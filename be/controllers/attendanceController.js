@@ -1121,10 +1121,17 @@ exports.getDailyAttendance = async (req, res) => {
 
         AND ($2 = '' OR u.department = $2)
 
-        AND (
-          $3 = ''
-          OR COALESCE(a.status, 'Belum Check In') = $3
-        )
+       AND (
+  $3 = ''
+  OR (
+    $3 IN ('Late', 'Terlambat')
+    AND COALESCE(a.is_late, FALSE) = TRUE
+  )
+  OR (
+    $3 NOT IN ('Late', 'Terlambat')
+    AND COALESCE(a.status, 'Belum Check In') = $3
+  )
+)
 
         AND (
           $4 = ''

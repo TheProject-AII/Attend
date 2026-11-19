@@ -70,8 +70,20 @@ export default function AdminAttendance() {
     });
 
     loadDepartments();
-    loadDailyAttendance(filters);
   }, []);
+
+  // =========================
+  // AUTO FILTER DAILY ATTENDANCE
+  // =========================
+
+  useEffect(() => {
+    // Debounce pencarian nama agar request tidak dikirim setiap ketikan.
+    const timer = setTimeout(() => {
+      loadDailyAttendance(filters);
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [filters.date, filters.department, filters.status, filters.search]);
 
   // =========================
   // DEPARTMENTS
