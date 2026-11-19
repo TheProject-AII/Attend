@@ -60,7 +60,7 @@ exports.getDashboard = async (req, res) => {
         WHERE attendance_date =
           (NOW() AT TIME ZONE 'Asia/Jakarta')::date
           AND check_in IS NOT NULL
-          AND check_in::time > '09:00:00'
+          AND is_late = TRUE
       `),
 
       // ATTENDANCE TODAY
@@ -74,9 +74,9 @@ exports.getDashboard = async (req, res) => {
             WHEN a.check_out IS NULL THEN NULL
             ELSE TO_CHAR(a.check_out, 'HH24:MI')
           END AS check_out,
-          CASE
+         CASE
             WHEN a.check_out IS NOT NULL THEN 'Pulang'
-            WHEN a.check_in::time > '09:00:00' THEN 'Terlambat'
+            WHEN a.is_late = TRUE THEN 'Terlambat'
             ELSE 'Hadir'
           END AS status
         FROM attendance a

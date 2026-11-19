@@ -759,6 +759,7 @@ exports.getEmployees = async (req, res) => {
         u.role_id = 3
         OR u.nip IS NOT NULL
         OR LOWER(TRIM(r.name)) = 'manager'
+        AND COALESCE(is_system_account, FALSE) = FALSE
       )
 
       ORDER BY u.name ASC
@@ -1825,6 +1826,29 @@ exports.updateProfile = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Gagal memperbarui profil",
+    });
+  }
+};
+
+exports.getCompanies = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, name
+      FROM companies
+      WHERE status = TRUE
+      ORDER BY id ASC
+    `);
+
+    return res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error("GET COMPANIES ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil data perusahaan",
     });
   }
 };

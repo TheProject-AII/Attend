@@ -111,6 +111,7 @@ export default function EmployeeCreate({
   const [employees, setEmployees] = useState([]);
   const [workingHours, setWorkingHours] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [form, setForm] = useState({
     nik: "",
     name: "",
@@ -146,6 +147,7 @@ export default function EmployeeCreate({
       loadEmployees();
       loadDepartments();
       loadWorkingHours();
+      loadCompanies();
     }
   }, [open]);
 
@@ -230,7 +232,20 @@ export default function EmployeeCreate({
       console.error("GET WORKING HOURS ERROR:", err);
     }
   };
+  const loadCompanies = async () => {
+    try {
+      const result = await attendanceService.getCompanies();
 
+      if (result?.success) {
+        setCompanies(result.data || []);
+      } else {
+        setCompanies([]);
+      }
+    } catch (err) {
+      console.error("GET COMPANIES ERROR:", err);
+      setCompanies([]);
+    }
+  };
   const loadDepartments = async () => {
     try {
       const result = await attendanceService.getDepartments();
@@ -799,17 +814,14 @@ export default function EmployeeCreate({
                 select
                 label="Placement"
                 name="company_id"
-                value={form.company_id ?? ""}
+                value={String(form.company_id ?? "")}
                 onChange={handleChange}
               >
-                <MenuItem value={7}>PT. Mitra Untuk Indonesia</MenuItem>
-                <MenuItem value={8}>PT. Mega Trans Indotama</MenuItem>
-                <MenuItem value={9}>PT. Asia Investment Indonesia</MenuItem>
-                <MenuItem value={10}>PT. Meraki Asa Khatulistiwa</MenuItem>
-                <MenuItem value={11}>PT. Indo Auto Service</MenuItem>
-                <MenuItem value={12}>
-                  PT. Meraki Asa Khatulistiwa GANBARU
-                </MenuItem>
+                {companies.map((item) => (
+                  <MenuItem key={item.id} value={String(item.id)}>
+                    {item.name}
+                  </MenuItem>
+                ))}
               </TextField>
             </Grid>
 

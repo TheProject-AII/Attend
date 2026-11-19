@@ -100,5 +100,10 @@ router.post(
   adminMiddleware,
   authController.createEmployeeJobDescription,
 );
-
+router.get(
+  "/companies",
+  authMiddleware,
+  adminMiddleware,
+  authController.getCompanies,
+);
 module.exports = router;
