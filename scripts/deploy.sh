@@ -61,12 +61,40 @@ rsync -a "$SOURCE/face-service/" "$PROD/face-service/" \
   --exclude='.env*' --exclude='.venv' \
   --exclude='__pycache__' --exclude='.deepface'
 
+
 echo "===== BUILD ====="
-if ! docker compose -p "$PROJECT" build \
-  hris-backend hris-frontend hris-face; then
+
+# Ambil versi utama dari package.json frontend
+APP_VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' \
+  "$PROD/fe/package.json" | head -n 1)
+
+APP_BUILD_NUMBER="${APP_BUILD_NUMBER:-1}"
+
+if [[ -z "$APP_VERSION" ]]; then
+  echo "ERROR: PWA version not found in fe/package.json"
   rollback
   exit 1
 fi
+
+echo "PWA Version: $APP_VERSION"
+echo "PWA Build: $APP_BUILD_NUMBER"
+
+# Build backend dan face service
+if ! docker compose -p "$PROJECT" build \
+  hris-backend hris-face; then
+  rollback
+  exit 1
+fi
+
+# Build frontend dengan versi otomatis
+if ! docker compose -p "$PROJECT" build \
+  --build-arg "VITE_APP_VERSION=$APP_VERSION" \
+  --build-arg "VITE_APP_BUILD=$APP_BUILD_NUMBER" \
+  hris-frontend; then
+  rollback
+  exit 1
+fi
+
 
 echo "===== DEPLOY ====="
 if ! docker compose -p "$PROJECT" up -d --no-deps \

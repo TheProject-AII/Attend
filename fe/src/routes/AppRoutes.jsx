@@ -40,6 +40,7 @@ import AboutCompany from "../pages/employee/AboutCompany";
 import RequireFaceEnrollment from "../routes/RequireFaceEnrollment";
 import Payroll from "../pages/dashboard/Payroll";
 import PayrollDetails from "../pages/dashboard/PayrollDetails";
+import PaySlipRequests from "../pages/dashboard/PaySlipRequests";
 import MasterTER from "../pages/dashboard/MasterTER";
 import BusinessTripEmployee from "../pages/business-trip/BusinessTripEmployee";
 import BusinessTripApprovalDetail from "../pages/business-trip/BusinessTripApprovalDetail";
@@ -49,6 +50,9 @@ import BusinessTripHR from "../pages/business-trip/BusinessTripHR";
 import BusinessTripFinance from "../pages/business-trip/BusinessTripFinance";
 import BusinessTripDirector from "../pages/business-trip/BusinessTripDirector";
 import BusinessTripDirectorDetail from "../pages/business-trip/BusinessTripDirectorDetail";
+import PaySlip from "../pages/employee/PaySlip";
+import AccountBank from "../pages/employee/AccountBank";
+import ProtectedDashboardRoute from "./ProtectedDashboardRoute";
 
 export default function AppRoutes() {
   const token = localStorage.getItem("token");
@@ -77,8 +81,8 @@ export default function AppRoutes() {
     role,
   });
 
-  const DASHBOARD_ROLES = ["ADMIN", "HR", "ADMIN HR", "FINANCE", "DIRECTOR"];
-  const isFinance = Number(user?.role_id) === 6 || role === "FINANCE";
+  const isFinance = Number(user?.role_id) === 6;
+  const isDashboardRole = [2, 7].includes(Number(user?.role_id));
   return (
     <BrowserRouter>
       <Routes>
@@ -90,7 +94,7 @@ export default function AppRoutes() {
               <Login />
             ) : isFinance ? (
               <Navigate to="/payroll" replace />
-            ) : DASHBOARD_ROLES.includes(role) ? (
+            ) : isDashboardRole ? (
               <Navigate to="/dashboard" replace />
             ) : (
               <Navigate to="/employee/attendance" replace />
@@ -103,14 +107,14 @@ export default function AppRoutes() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedAdminRoute>
+            <ProtectedDashboardRoute>
               <DashboardLayout
                 title="Dashboard"
                 subtitle={`Welcome, ${user?.name} 👋`}
               >
                 <Dashboard />
               </DashboardLayout>
-            </ProtectedAdminRoute>
+            </ProtectedDashboardRoute>
           }
         />
         <Route
@@ -286,6 +290,20 @@ export default function AppRoutes() {
             </ProtectedAdminRoute>
           }
         />
+
+        <Route
+          path="/admin/pay-slip-requests"
+          element={
+            <ProtectedAdminRoute>
+              <DashboardLayout
+                title="Pay Slip Requests"
+                subtitle="Manage employee pay slip requests"
+              >
+                <PaySlipRequests />
+              </DashboardLayout>
+            </ProtectedAdminRoute>
+          }
+        />
         <Route
           path="/master-ter"
           element={
@@ -396,7 +414,8 @@ export default function AppRoutes() {
             <Route path="about-company" element={<AboutCompany />} />
 
             <Route path="profile" element={<EmployeeProfile />} />
-
+            <Route path="pay-slip" element={<PaySlip />} />
+            <Route path="account-bank" element={<AccountBank />} />
             <Route path="edit-profile" element={<EditProfile />} />
 
             <Route path="overtime" element={<Overtime />} />

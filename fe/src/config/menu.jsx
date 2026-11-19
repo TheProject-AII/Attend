@@ -1,9 +1,7 @@
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import GroupsIcon from "@mui/icons-material/Groups";
-import BarChartIcon from "@mui/icons-material/BarChart";
 import SettingsIcon from "@mui/icons-material/Settings";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
@@ -11,6 +9,7 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import PercentIcon from "@mui/icons-material/Percent";
 import FlightTakeoffIcon from "@mui/icons-material/FlightTakeoff";
+import DescriptionIcon from "@mui/icons-material/Description";
 
 const menu = [
   {
@@ -42,11 +41,24 @@ const menu = [
     section: "management",
   },
   {
-    title: "Leave & Permission",
-    translationKey: "menu.leaveHistory",
+    title: "Request",
+    translationKey: "menu.request",
     icon: <AssignmentIndIcon />,
-    path: "/admin/leave-history",
     section: "management",
+    children: [
+      {
+        title: "Leave",
+        translationKey: "menu.leave",
+        icon: <CalendarMonthIcon />,
+        path: "/admin/leave-history",
+      },
+      {
+        title: "Pay Slip",
+        translationKey: "menu.paySlip",
+        icon: <DescriptionIcon />,
+        path: "/admin/pay-slip-requests",
+      },
+    ],
   },
   {
     title: "Business Trip",

@@ -15,22 +15,40 @@ router.get("/periods", payrollController.getPeriods);
 router.post("/periods", payrollController.createPeriod);
 router.post("/periods/:periodId/generate", payrollController.generatePayroll);
 router.get("/periods/:periodId/details", payrollController.getPayrollDetails);
-
 router.put(
   "/periods/:periodId/details/:detailId",
   payrollController.updatePayrollDetails,
 );
 
-// Approval HR -> Finance
+// Approval HR -> Finance -> Director
 router.post(
   "/periods/:periodId/submit",
   payrollController.submitPayrollApproval,
 );
-
-// Approval Finance -> Director -> Final
 router.post("/periods/:periodId/approve", payrollController.approvePayroll);
-
-// Reject Finance / Director
 router.post("/periods/:periodId/reject", payrollController.rejectPayroll);
+
+// Pay Slip Request - Employee
+router.get(
+  "/pay-slip/available-periods",
+  payrollController.getAvailablePaySlipPeriods,
+);
+router.get("/pay-slip/my-requests", payrollController.getMyPaySlipRequests);
+router.post("/pay-slip/requests", payrollController.createPaySlipRequest);
+router.get(
+  "/pay-slip/requests/:requestId/download",
+  payrollController.downloadPaySlip,
+);
+
+// Pay Slip Request - HR
+router.get("/pay-slip/requests", payrollController.getAllPaySlipRequests);
+router.patch(
+  "/pay-slip/requests/:requestId",
+  payrollController.updatePaySlipRequest,
+);
+router.post(
+  "/pay-slip/requests/:requestId/send",
+  payrollController.sendPaySlip,
+);
 
 module.exports = router;

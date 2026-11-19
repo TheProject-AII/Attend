@@ -1241,3 +1241,615 @@ exports.updatePayrollDetails = async (req, res) => {
     client.release();
   }
 };
+
+// =====================================================
+// PAY SLIP REQUEST - EMPLOYEE
+// =====================================================
+
+// GET: Periode payroll yang sudah disetujui dan belum diminta
+exports.getAvailablePaySlipPeriods = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         pp.id,
+         pp.period_name,
+         TO_CHAR(pp.start_date, 'YYYY-MM-DD') AS start_date,
+         TO_CHAR(pp.end_date, 'YYYY-MM-DD') AS end_date,
+         TO_CHAR(pp.payment_date, 'YYYY-MM-DD') AS payment_date
+       FROM payroll_periods pp
+       INNER JOIN payroll_details pd
+         ON pd.payroll_period_id = pp.id
+        AND pd.user_id = $1
+       LEFT JOIN pay_slip_requests psr
+         ON psr.payroll_period_id = pp.id
+        AND psr.user_id = $1
+       WHERE pp.status = 'APPROVED'
+         AND psr.id IS NULL
+       ORDER BY pp.start_date DESC`,
+      [req.user.id],
+    );
+
+    return res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error("GET AVAILABLE PAY SLIP PERIODS:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil periode slip gaji.",
+    });
+  }
+};
+
+// GET: Riwayat permintaan slip gaji milik karyawan
+exports.getMyPaySlipRequests = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         psr.id,
+         psr.status,
+         psr.reason,
+         psr.admin_note,
+         psr.created_at,
+         psr.handled_at,
+         (psr.file_data IS NOT NULL) AS has_file,
+         pp.id AS payroll_period_id,
+         pp.period_name,
+         TO_CHAR(pp.payment_date, 'YYYY-MM-DD') AS payment_date,
+         handler.name AS handled_by_name
+       FROM pay_slip_requests psr
+       JOIN payroll_periods pp
+         ON pp.id = psr.payroll_period_id
+       LEFT JOIN users handler
+         ON handler.id = psr.handled_by
+       WHERE psr.user_id = $1
+       ORDER BY psr.created_at DESC`,
+      [req.user.id],
+    );
+
+    return res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error("GET MY PAY SLIP REQUESTS:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil riwayat permintaan slip gaji.",
+    });
+  }
+};
+
+// POST: Karyawan mengajukan permintaan slip gaji
+exports.createPaySlipRequest = async (req, res) => {
+  const userId = req.user.id;
+  const { payroll_period_id, reason } = req.body;
+
+  if (!payroll_period_id) {
+    return res.status(400).json({
+      success: false,
+      message: "Periode payroll wajib dipilih.",
+    });
+  }
+
+  try {
+    const period = await pool.query(
+      `SELECT pp.id
+       FROM payroll_periods pp
+       JOIN payroll_details pd
+         ON pd.payroll_period_id = pp.id
+        AND pd.user_id = $1
+       WHERE pp.id = $2
+         AND pp.status = 'APPROVED'`,
+      [userId, payroll_period_id],
+    );
+
+    if (!period.rowCount) {
+      return res.status(400).json({
+        success: false,
+        message: "Periode payroll tidak tersedia untuk pengajuan slip gaji.",
+      });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO pay_slip_requests
+         (user_id, payroll_period_id, reason)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [userId, payroll_period_id, reason?.trim() || null],
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Permintaan slip gaji berhasil diajukan.",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    if (error.code === "23505") {
+      return res.status(409).json({
+        success: false,
+        message: "Anda sudah pernah mengajukan slip gaji untuk periode ini.",
+      });
+    }
+
+    console.error("CREATE PAY SLIP REQUEST:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengajukan permintaan slip gaji.",
+    });
+  }
+};
+
+// =====================================================
+// PAY SLIP REQUEST - HR
+// =====================================================
+
+// GET: HR melihat seluruh permintaan slip gaji
+exports.getAllPaySlipRequests = async (req, res) => {
+  if (!hasRole(req, PRIDE_ROLES.HR, PRIDE_ROLES.ADMIN_HR)) {
+    return res.status(403).json({
+      success: false,
+      message: "Hanya HR yang dapat melihat permintaan slip gaji.",
+    });
+  }
+
+  try {
+    const status = req.query.status || null;
+
+    const result = await pool.query(
+      `SELECT
+         psr.id,
+         psr.user_id,
+         psr.payroll_period_id,
+         psr.reason,
+         psr.status,
+         psr.admin_note,
+         psr.created_at,
+         psr.handled_at,
+         (psr.file_data IS NOT NULL) AS has_file,
+         u.name AS employee_name,
+         u.nik,
+         u.nip,
+         u.department,
+         u.position,
+         pp.period_name,
+         TO_CHAR(pp.payment_date, 'YYYY-MM-DD') AS payment_date,
+         handler.name AS handled_by_name
+       FROM pay_slip_requests psr
+       JOIN users u ON u.id = psr.user_id
+       JOIN payroll_periods pp ON pp.id = psr.payroll_period_id
+       LEFT JOIN users handler ON handler.id = psr.handled_by
+       WHERE ($1::varchar IS NULL OR psr.status = $1)
+       ORDER BY psr.created_at DESC`,
+      [status],
+    );
+
+    return res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error("GET ALL PAY SLIP REQUESTS:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil daftar permintaan slip gaji.",
+    });
+  }
+};
+
+// PATCH: HR memperbarui status permintaan
+exports.updatePaySlipRequest = async (req, res) => {
+  if (!hasRole(req, PRIDE_ROLES.HR, PRIDE_ROLES.ADMIN_HR)) {
+    return res.status(403).json({
+      success: false,
+      message: "Hanya HR yang dapat memproses permintaan slip gaji.",
+    });
+  }
+
+  const { requestId } = req.params;
+  const { status, admin_note } = req.body;
+
+  const allowedStatuses = ["PROCESSING", "COMPLETED", "REJECTED"];
+
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: "Status permintaan tidak valid.",
+    });
+  }
+
+  if (status === "REJECTED" && !String(admin_note || "").trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "Alasan penolakan wajib diisi.",
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE pay_slip_requests
+       SET status = $1,
+           admin_note = $2,
+           handled_by = $3,
+           handled_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $4
+       RETURNING *`,
+      [status, String(admin_note || "").trim() || null, req.user.id, requestId],
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({
+        success: false,
+        message: "Permintaan slip gaji tidak ditemukan.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Status permintaan slip gaji berhasil diperbarui.",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("UPDATE PAY SLIP REQUEST:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Gagal memperbarui permintaan slip gaji.",
+    });
+  }
+};
+
+// =====================================================
+// PAY SLIP PDF - GENERATE, STORE, DOWNLOAD
+// =====================================================
+
+const PDFDocument = require("pdfkit");
+const { randomBytes } = require("crypto");
+
+const formatSlipDate = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  }).format(date);
+};
+
+const formatSlipMoney = (value) =>
+  `Rp ${Math.round(Number(value || 0)).toLocaleString("id-ID")}`;
+
+const buildEncryptedPaySlip = (data) =>
+  new Promise((resolve, reject) => {
+    const nik = String(data.nik || "").trim();
+    if (!nik) {
+      reject(new Error("NIK KTP karyawan belum tersedia."));
+      return;
+    }
+
+    const ownerPassword = process.env.PAYSLIP_OWNER_PASSWORD;
+    if (!ownerPassword) {
+      reject(new Error("PAYSLIP_OWNER_PASSWORD belum diatur di environment."));
+      return;
+    }
+
+    const doc = new PDFDocument({
+      size: "A4",
+      margins: { top: 42, bottom: 42, left: 48, right: 48 },
+      info: {
+        Title: `Slip Gaji ${data.employee_name} - ${data.period_name}`,
+        Author: "PRIDE HRIS",
+        Subject: "Dokumen Slip Gaji Rahasia",
+      },
+      userPassword: nik,
+      ownerPassword,
+      pdfVersion: "1.7ext3",
+      permissions: {
+        printing: "highResolution",
+        modifying: false,
+        copying: false,
+        annotating: false,
+        fillingForms: false,
+        documentAssembly: false,
+      },
+    });
+
+    const chunks = [];
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("error", reject);
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+
+    const left = 48;
+    const right = 547;
+    const width = right - left;
+    const drawLine = (y) =>
+      doc
+        .moveTo(left, y)
+        .lineTo(right, y)
+        .lineWidth(0.7)
+        .strokeColor("#D7DEE7")
+        .stroke();
+
+    const row = (label, value, y, bold = false) => {
+      doc
+        .font(bold ? "Helvetica-Bold" : "Helvetica")
+        .fontSize(9.5)
+        .fillColor("#344054")
+        .text(label, left + 8, y, { width: 250 });
+      doc
+        .font(bold ? "Helvetica-Bold" : "Helvetica")
+        .fontSize(9.5)
+        .fillColor("#101828")
+        .text(String(value ?? "-"), left + 260, y, {
+          width: width - 270,
+          align: "right",
+        });
+    };
+
+    doc
+      .fillColor("#123B2A")
+      .font("Helvetica-Bold")
+      .fontSize(19)
+      .text(data.company_name || "COMPANY", left, 42, { width });
+    doc
+      .fillColor("#667085")
+      .font("Helvetica")
+      .fontSize(9)
+      .text("PAY SLIP / SLIP GAJI", left, 68);
+    doc.moveDown(0.5);
+    drawLine(90);
+
+    doc
+      .fillColor("#101828")
+      .font("Helvetica-Bold")
+      .fontSize(15)
+      .text(data.period_name || "Payroll Period", left, 106);
+    doc
+      .fillColor("#667085")
+      .font("Helvetica")
+      .fontSize(9)
+      .text(
+        `Tanggal pembayaran: ${formatSlipDate(data.payment_date)}`,
+        left,
+        128,
+      );
+
+    doc.roundedRect(left, 153, width, 78, 7).fill("#F3F6F4");
+    doc
+      .fillColor("#101828")
+      .font("Helvetica-Bold")
+      .fontSize(11)
+      .text(data.employee_name || "-", left + 14, 166);
+    doc
+      .fillColor("#475467")
+      .font("Helvetica")
+      .fontSize(9)
+      .text(`NIP: ${data.nip || "-"}`, left + 14, 185)
+      .text(`Jabatan: ${data.position || "-"}`, left + 14, 200)
+      .text(`Departemen: ${data.department || "-"}`, left + 275, 185)
+      .text(`NIK: ${data.nik || "-"}`, left + 275, 200);
+
+    let y = 252;
+    doc
+      .fillColor("#123B2A")
+      .font("Helvetica-Bold")
+      .fontSize(10)
+      .text("PENDAPATAN", left, y);
+    y += 22;
+    const incomeRows = [
+      ["Gaji Pokok", data.basic_salary],
+      ["Tunjangan Jabatan", data.position_allowance],
+      ["Tunjangan Transport", data.transport_allowance],
+      ["Tunjangan Makan", data.meal_allowance],
+    ];
+    for (const [label, amount] of incomeRows) {
+      row(label, formatSlipMoney(amount), y);
+      drawLine(y + 17);
+      y += 25;
+    }
+    row(
+      "Total Pendapatan (Bruto)",
+      formatSlipMoney(data.gross_salary),
+      y,
+      true,
+    );
+    y += 36;
+
+    doc
+      .fillColor("#123B2A")
+      .font("Helvetica-Bold")
+      .fontSize(10)
+      .text("POTONGAN", left, y);
+    y += 22;
+    const deductionRows = [
+      [
+        "Potongan Absensi",
+        Number(data.basic_salary_deduction || 0) +
+          Number(data.transport_deduction || 0) +
+          Number(data.meal_deduction || 0),
+      ],
+      ["BPJS JHT + JP", data.bpjs_tk_deduction],
+      ["BPJS Kesehatan", data.bpjs_health_deduction],
+      ["PPh 21", data.pph21_deduction],
+    ];
+    for (const [label, amount] of deductionRows) {
+      row(label, formatSlipMoney(amount), y);
+      drawLine(y + 17);
+      y += 25;
+    }
+    row("Total Potongan", formatSlipMoney(data.total_deduction), y, true);
+    y += 36;
+
+    doc.roundedRect(left, y, width, 58, 7).fill("#EAF4EE");
+    doc
+      .fillColor("#123B2A")
+      .font("Helvetica-Bold")
+      .fontSize(11)
+      .text("TAKE HOME PAY", left + 14, y + 12);
+    doc.fontSize(17).text(formatSlipMoney(data.net_salary), left + 14, y + 29, {
+      width: width - 28,
+      align: "right",
+    });
+
+    y += 86;
+    doc
+      .fillColor("#667085")
+      .font("Helvetica")
+      .fontSize(8)
+      .text(
+        "Dokumen ini dibuat secara elektronik oleh PRIDE HRIS. " +
+          "Password untuk membuka PDF adalah NIK KTP karyawan.",
+        left,
+        y,
+        { width, align: "center" },
+      );
+
+    doc.end();
+  });
+
+// POST: HR generate PDF terenkripsi dan mengirimkannya ke menu Pay Slip karyawan.
+exports.sendPaySlip = async (req, res) => {
+  if (!hasRole(req, PRIDE_ROLES.HR, PRIDE_ROLES.ADMIN_HR)) {
+    return res.status(403).json({
+      success: false,
+      message: "Hanya HR yang dapat mengirim slip gaji.",
+    });
+  }
+
+  const { requestId } = req.params;
+
+  try {
+    const found = await pool.query(
+      `SELECT
+         psr.id AS request_id,
+         psr.user_id,
+         psr.payroll_period_id,
+         psr.status AS request_status,
+         u.name AS employee_name,
+         u.nik,
+         u.nip,
+         u.department,
+         u.position,
+         pp.period_name,
+         pp.payment_date,
+         c.name AS company_name,
+         pd.basic_salary,
+         pd.position_allowance,
+         pd.transport_allowance,
+         pd.meal_allowance,
+         pd.basic_salary_deduction,
+         pd.transport_deduction,
+         pd.meal_deduction,
+         pd.bpjs_tk_deduction,
+         pd.bpjs_health_deduction,
+         pd.pph21_deduction,
+         pd.gross_salary,
+         pd.total_deduction,
+         pd.net_salary
+       FROM pay_slip_requests psr
+       JOIN users u ON u.id = psr.user_id
+       JOIN payroll_periods pp ON pp.id = psr.payroll_period_id
+       JOIN payroll_details pd
+         ON pd.payroll_period_id = psr.payroll_period_id
+        AND pd.user_id = psr.user_id
+       LEFT JOIN companies c ON c.id = u.company_id
+       WHERE psr.id = $1
+         AND pp.status = 'APPROVED'
+       LIMIT 1`,
+      [requestId],
+    );
+
+    if (!found.rowCount) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Permintaan atau data payroll yang sudah disetujui tidak ditemukan.",
+      });
+    }
+
+    const data = found.rows[0];
+    if (!String(data.nik || "").trim()) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "NIK KTP karyawan belum tersedia. Lengkapi NIK sebelum mengirim slip.",
+      });
+    }
+
+    const pdfBuffer = await buildEncryptedPaySlip(data);
+    const fileName = `Slip-Gaji-${String(data.period_name || "Payroll").replace(
+      /[^a-zA-Z0-9_-]/g,
+      "-",
+    )}-${data.user_id}.pdf`;
+
+    await pool.query(
+      `UPDATE pay_slip_requests
+       SET file_data = $1,
+           file_name = $2,
+           status = 'COMPLETED',
+           admin_note = NULL,
+           handled_by = $3,
+           handled_at = NOW(),
+           sent_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $4`,
+      [pdfBuffer, fileName, req.user.id, requestId],
+    );
+
+    return res.json({
+      success: true,
+      message: `Slip gaji ${data.employee_name} berhasil dikirim.`,
+      data: {
+        request_id: Number(requestId),
+        user_id: Number(data.user_id),
+        file_name: fileName,
+        status: "COMPLETED",
+      },
+    });
+  } catch (error) {
+    console.error("SEND PAY SLIP ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Gagal membuat atau mengirim slip gaji.",
+      detail: error.message,
+    });
+  }
+};
+
+// GET: Karyawan hanya dapat mengunduh slip miliknya; HR/Admin HR dapat membantu.
+exports.downloadPaySlip = async (req, res) => {
+  const { requestId } = req.params;
+  const isHr = hasRole(req, PRIDE_ROLES.HR, PRIDE_ROLES.ADMIN_HR);
+
+  try {
+    const result = await pool.query(
+      `SELECT user_id, file_data, file_name
+       FROM pay_slip_requests
+       WHERE id = $1`,
+      [requestId],
+    );
+
+    if (!result.rowCount || !result.rows[0].file_data) {
+      return res.status(404).json({
+        success: false,
+        message: "File slip gaji belum tersedia.",
+      });
+    }
+
+    const file = result.rows[0];
+    if (!isHr && Number(file.user_id) !== Number(req.user.id)) {
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki akses ke slip gaji ini.",
+      });
+    }
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${String(file.file_name || "slip-gaji.pdf").replace(/["\\]/g, "")}"`,
+    );
+    res.setHeader("Cache-Control", "private, no-store, max-age=0");
+    return res.send(file.file_data);
+  } catch (error) {
+    console.error("DOWNLOAD PAY SLIP ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengunduh slip gaji.",
+    });
+  }
+};

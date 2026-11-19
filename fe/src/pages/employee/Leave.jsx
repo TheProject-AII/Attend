@@ -1,10 +1,13 @@
 import { useEffect, useState, useMemo } from "react";
 
 import leaveService from "../../services/leaveService";
+import paySlipService from "../../services/paySlipService";
+import PaySlipRequestDialog from "../../components/attendance/PaySlipRequestDialog";
 import LeaveDialog from "../../components/attendance/LeaveDialog";
 import LeaveDetailDialog from "../../components/layout/LeaveDetailDialog";
 import LeaveCard from "../../components/layout/LeaveCard";
 import {
+  Alert,
   Box,
   Card,
   CardContent,
@@ -13,9 +16,11 @@ import {
   Fab,
   Stack,
   Skeleton,
+  Button,
 } from "@mui/material";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import Swal from "sweetalert2";
 import notificationService from "../../services/notificationService";
 import overtimeService from "../../services/overtimeService";
@@ -80,6 +85,13 @@ export default function Leave() {
   const [reason, setReason] = useState("");
   const [attachment, setAttachment] = useState(null);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [paySlipDialogOpen, setPaySlipDialogOpen] = useState(false);
+  const [paySlipPeriods, setPaySlipPeriods] = useState([]);
+  const [paySlipRequests, setPaySlipRequests] = useState([]);
+  const [selectedPaySlipPeriod, setSelectedPaySlipPeriod] = useState("");
+  const [paySlipReason, setPaySlipReason] = useState("");
+  const [paySlipLoading, setPaySlipLoading] = useState(false);
+  const [paySlipError, setPaySlipError] = useState("");
   const [selectedLeave, setSelectedLeave] = useState(null);
   const [cutiType, setCutiType] = useState("TAHUNAN");
   const [leaveTypes, setLeaveTypes] = useState([]);
@@ -238,10 +250,94 @@ export default function Leave() {
     [history],
   );
 
+  const loadPaySlipData = async () => {
+    try {
+      const [periodResponse, requestResponse] = await Promise.all([
+        paySlipService.getAvailablePeriods(),
+        paySlipService.getMyRequests(),
+      ]);
+
+      const periods = periodResponse.data?.data || [];
+      const requests = requestResponse.data?.data || [];
+
+      setPaySlipPeriods(periods);
+      setPaySlipRequests(requests);
+    } catch (err) {
+      console.error("LOAD PAY SLIP DATA ERROR:", err);
+    }
+  };
+
+  const handlePaySlipSubmit = async () => {
+    if (!selectedPaySlipPeriod) {
+      setPaySlipError("Pilih periode payroll terlebih dahulu.");
+      return;
+    }
+
+    try {
+      setPaySlipLoading(true);
+      setPaySlipError("");
+
+      await paySlipService.createRequest({
+        payroll_period_id: Number(selectedPaySlipPeriod),
+        reason: paySlipReason.trim() || null,
+      });
+
+      setPaySlipDialogOpen(false);
+      setSelectedPaySlipPeriod("");
+      setPaySlipReason("");
+
+      await loadPaySlipData();
+
+      await Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Pay slip request submitted successfully.",
+      });
+    } catch (err) {
+      const message =
+        err.response?.data?.message ||
+        "Failed to submit pay slip request.";
+
+      setPaySlipError(message);
+
+      if (err.response?.status !== 409) {
+        console.error("PAY SLIP REQUEST ERROR:", err);
+      }
+    } finally {
+      setPaySlipLoading(false);
+    }
+  };
+
+  const handleDownloadPaySlip = async (requestId) => {
+    try {
+      const response = await paySlipService.downloadSlip(requestId);
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Pay-Slip-${requestId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("DOWNLOAD PAY SLIP ERROR:", error);
+      Swal.fire("Gagal", error?.response?.data?.message || "Pay Slip belum tersedia atau gagal diunduh.", "error");
+    }
+  };
+
+  const paySlipStatusLabel = {
+    PENDING: "Pending",
+    PROCESSING: "Processing",
+    COMPLETED: "Completed",
+    REJECTED: "Rejected",
+  };
+
   useEffect(() => {
     loadHistory();
     loadLeaveTypes();
     loadBusinessTripContext();
+    loadPaySlipData();
 
     const markNotificationsAsRead = async () => {
       try {
@@ -906,6 +1002,124 @@ export default function Leave() {
             );
           })
         )}
+        <Card sx={{ mb: 2, borderRadius: 3 }}>
+          <CardContent>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              spacing={2}
+            >
+              <Box>
+                <Typography fontWeight={700}>Pay Slip Requests</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Track your payslip requests here.
+                </Typography>
+              </Box>
+              <Button
+                variant="outlined"
+                startIcon={<DescriptionRoundedIcon />}
+                onClick={() => {
+                  setPaySlipError("");
+                  setPaySlipDialogOpen(true);
+                }}
+              >
+                Request Pay Slip
+              </Button>
+            </Stack>
+
+            {paySlipRequests.length === 0 ? (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 2 }}
+              >
+                No pay slip requests yet.
+              </Typography>
+            ) : (
+              <Stack spacing={1.5} sx={{ mt: 2 }}>
+                {paySlipRequests.map((item) => {
+                  const statusColor =
+                    item.status === "COMPLETED"
+                      ? "success"
+                      : item.status === "REJECTED"
+                        ? "error"
+                        : item.status === "PROCESSING"
+                          ? "info"
+                          : "warning";
+
+                  return (
+                    <Box
+                      key={item.id}
+                      sx={{
+                        p: 1.5,
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        spacing={1}
+                      >
+                        <Typography fontWeight={600}>
+                          {item.period_name}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          color={statusColor}
+                          label={paySlipStatusLabel[item.status] || item.status}
+                        />
+                      </Stack>
+                      {item.reason && (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mt: 0.5 }}
+                        >
+                          Reason: {item.reason}
+                        </Typography>
+                      )}
+                      {item.admin_note && (
+                        <Alert
+                          severity={item.status === "REJECTED" ? "error" : "info"}
+                          sx={{ mt: 1 }}
+                        >
+                          {item.admin_note}
+                        </Alert>
+                      )}
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                        sx={{ mt: 0.5 }}
+                      >
+                        Submitted:{" "}
+                        {item.created_at
+                          ? new Date(item.created_at).toLocaleDateString("id-ID")
+                          : "-"}
+                      </Typography>
+                      {item.status === "COMPLETED" && item.has_file && (
+                        <Button
+                          fullWidth
+                          size="small"
+                          variant="contained"
+                          startIcon={<DescriptionRoundedIcon />}
+                          sx={{ mt: 1.25, textTransform: "none" }}
+                          onClick={() => handleDownloadPaySlip(item.id)}
+                        >
+                          Download Slip Gaji
+                        </Button>
+                      )}
+                    </Box>
+                  );
+                })}
+              </Stack>
+            )}
+          </CardContent>
+        </Card>
+
         <BusinessTripDetailDialog
           open={openBusinessTripDetail}
           onClose={() => setOpenBusinessTripDetail(false)}
@@ -982,6 +1196,24 @@ export default function Leave() {
         businessTrip={businessTrip}
         setBusinessTrip={setBusinessTrip}
         businessTripContext={businessTripContext}
+      />
+      <PaySlipRequestDialog
+        open={paySlipDialogOpen}
+        onClose={() => {
+          if (paySlipLoading) return;
+          setPaySlipDialogOpen(false);
+          setSelectedPaySlipPeriod("");
+          setPaySlipReason("");
+          setPaySlipError("");
+        }}
+        periods={paySlipPeriods}
+        selectedPeriod={selectedPaySlipPeriod}
+        setSelectedPeriod={setSelectedPaySlipPeriod}
+        reason={paySlipReason}
+        setReason={setPaySlipReason}
+        loading={paySlipLoading}
+        error={paySlipError}
+        onSubmit={handlePaySlipSubmit}
       />
       <LeaveDetailDialog
         open={openDetail}
