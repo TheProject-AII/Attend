@@ -46,6 +46,9 @@ import BusinessTripApprovalDetail from "../pages/business-trip/BusinessTripAppro
 import AndroidUpdatePrompt from "../components/AndroidUpdatePrompt";
 import BusinessTripHRDetail from "../pages/business-trip/BusinessTripHRDetail";
 import BusinessTripHR from "../pages/business-trip/BusinessTripHR";
+import BusinessTripFinance from "../pages/business-trip/BusinessTripFinance";
+import BusinessTripDirector from "../pages/business-trip/BusinessTripDirector";
+import BusinessTripDirectorDetail from "../pages/business-trip/BusinessTripDirectorDetail";
 
 export default function AppRoutes() {
   const token = localStorage.getItem("token");
@@ -199,6 +202,46 @@ export default function AppRoutes() {
                 subtitle="Manage employee business trips"
               >
                 <BusinessTripHRDetail />
+              </DashboardLayout>
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/business-trip/director"
+          element={
+            <ProtectedAdminRoute>
+              <DashboardLayout
+                title="Business Trip Approval"
+                subtitle="Review pengajuan perjalanan dinas"
+              >
+                <BusinessTripDirector />
+              </DashboardLayout>
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/business-trip/director/:id"
+          element={
+            <ProtectedAdminRoute>
+              <DashboardLayout
+                title="Detail Business Trip"
+                subtitle="Persetujuan perjalanan dinas oleh Direktur"
+              >
+                <BusinessTripDirectorDetail />
+              </DashboardLayout>
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/business-trip/finance"
+          element={
+            <ProtectedAdminRoute>
+              <DashboardLayout
+                title="Business Trip Approval"
+                subtitle="Review kebutuhan dana perjalanan dinas"
+              >
+                <BusinessTripFinance />
               </DashboardLayout>
             </ProtectedAdminRoute>
           }

@@ -13,6 +13,7 @@ const attachmentController = require("../controllers/businessTripAttachmentContr
 const balanceController = require("../controllers/businessTripBalanceController");
 const cancellationController = require("../controllers/businessTripCancellationController");
 const dashboardController = require("../controllers/businessTripDashboardController");
+const letterController = require("../controllers/businessTripLetterController");
 
 // ======================================
 // EMPLOYEE
@@ -51,7 +52,11 @@ router.get(
   auth,
   administrativeApprovalController.getHRApprovals,
 );
-
+router.get(
+  "/hr/all",
+  auth,
+  administrativeApprovalController.getAllBusinessTripsHR,
+);
 router.post(
   "/approvals/:id/hr-action",
   auth,
@@ -73,6 +78,12 @@ router.post(
   auth,
   administrativeApprovalController.directorAction,
 );
+
+// ======================================
+// BUSINESS TRIP - SURAT PERJALANAN DINAS
+// ======================================
+
+router.get("/:id/letter/pdf", auth, letterController.downloadSPD);
 
 // ======================================
 // APPROVAL DETAIL
