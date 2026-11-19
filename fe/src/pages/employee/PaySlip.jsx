@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+
 import {
   Alert,
   Box,
@@ -19,15 +20,22 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+
 import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
+
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+
 import paySlipService from "../../services/paySlipService";
 
 const statusMeta = {
   PENDING: { label: "Pending", color: "warning" },
+
   PROCESSING: { label: "Processing", color: "info" },
+
   COMPLETED: { label: "Completed", color: "success" },
+
   REJECTED: { label: "Rejected", color: "error" },
 };
 
@@ -38,11 +46,13 @@ const getDownloadFilename = (response, item) => {
 
   if (disposition) {
     const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+
     if (utf8Match?.[1]) {
       return decodeURIComponent(utf8Match[1].replace(/["']/g, ""));
     }
 
     const filenameMatch = disposition.match(/filename="?([^";]+)"?/i);
+
     if (filenameMatch?.[1]) {
       return filenameMatch[1].trim();
     }
@@ -53,15 +63,25 @@ const getDownloadFilename = (response, item) => {
 
 export default function PaySlip() {
   const [periods, setPeriods] = useState([]);
+
   const [requests, setRequests] = useState([]);
+
   const [loading, setLoading] = useState(true);
+
   const [submitting, setSubmitting] = useState(false);
+
   const [downloading, setDownloading] = useState(null);
+
   const [open, setOpen] = useState(false);
+
   const [selectedPeriod, setSelectedPeriod] = useState("");
+
   const [reason, setReason] = useState("");
+
   const [error, setError] = useState("");
+
   const [success, setSuccess] = useState("");
+
   useEffect(() => {
     if (!success) return;
 
@@ -71,17 +91,21 @@ export default function PaySlip() {
 
     return () => clearTimeout(timer);
   }, [success]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
+
     setError("");
 
     try {
       const [periodRes, requestRes] = await Promise.all([
         paySlipService.getAvailablePeriods(),
+
         paySlipService.getMyRequests(),
       ]);
 
       setPeriods(periodRes.data?.data || []);
+
       setRequests(requestRes.data?.data || []);
     } catch (err) {
       setError(err.response?.data?.message || "Gagal memuat data slip gaji.");
@@ -98,17 +122,22 @@ export default function PaySlip() {
     if (!selectedPeriod) return;
 
     setSubmitting(true);
+
     setError("");
 
     try {
       await paySlipService.createRequest({
         payroll_period_id: Number(selectedPeriod),
+
         reason: reason.trim() || null,
       });
 
       setOpen(false);
+
       setSelectedPeriod("");
+
       setReason("");
+
       setSuccess("Permintaan slip gaji berhasil diajukan.");
 
       await loadData();
@@ -121,20 +150,28 @@ export default function PaySlip() {
 
   const downloadSlip = async (item) => {
     setDownloading(item.id);
+
     setError("");
+
     setSuccess("");
 
     let objectUrl = null;
 
     try {
       const response = await paySlipService.downloadSlip(item.id);
+
       console.log("DOWNLOAD RESPONSE:", {
         status: response.status,
+
         data: response.data,
+
         isBlob: response.data instanceof Blob,
+
         size: response.data?.size,
+
         type: response.data?.type,
       });
+
       const blob =
         response.data instanceof Blob
           ? response.data
@@ -145,6 +182,7 @@ export default function PaySlip() {
       }
 
       // Pastikan response benar-benar PDF.
+
       if (
         blob.type &&
         !blob.type.toLowerCase().includes("pdf") &&
@@ -158,17 +196,27 @@ export default function PaySlip() {
       objectUrl = window.URL.createObjectURL(blob);
 
       const link = document.createElement("a");
+
       link.href = objectUrl;
+
       link.download = filename;
+
       link.style.display = "none";
 
       document.body.appendChild(link);
+
       link.click();
+
       console.log("Download anchor clicked");
+
       console.log("Blob URL:", objectUrl);
+
       console.log("Download filename:", filename);
+
       console.log("Anchor connected:", link.isConnected);
+
       // Jangan hapus URL terlalu cepat.
+
       setTimeout(() => {
         link.remove();
 
@@ -177,7 +225,9 @@ export default function PaySlip() {
         }
       }, 1500);
 
-      setSuccess(`Download ${filename} berhasil dimulai.`);
+      setSuccess(
+        `Download ${filename} berhasil dimulai. Password PDF: tanggal lahir format YYYYMMDD (contoh: 19960507).`,
+      );
     } catch (err) {
       if (objectUrl) {
         window.URL.revokeObjectURL(objectUrl);
@@ -230,6 +280,7 @@ export default function PaySlip() {
               startIcon={<DescriptionRoundedIcon />}
               onClick={() => {
                 setError("");
+
                 setOpen(true);
               }}
               disabled={!periods.length}
@@ -275,6 +326,7 @@ export default function PaySlip() {
               {requests.map((item) => {
                 const meta = statusMeta[item.status] || {
                   label: item.status,
+
                   color: "default",
                 };
 
@@ -283,8 +335,11 @@ export default function PaySlip() {
                     key={item.id}
                     sx={{
                       border: "1px solid",
+
                       borderColor: "divider",
+
                       borderRadius: 2,
+
                       p: 2,
                     }}
                   >
@@ -410,3 +465,12 @@ export default function PaySlip() {
     </Box>
   );
 }
+<Alert severity="info" sx={{ mb: 2 }}>
+  <Typography variant="body2" fontWeight={700}>
+    Password untuk membuka file PDF adalah tanggal lahir Anda.
+  </Typography>
+  <Typography variant="body2">
+    Masukkan dengan format <strong>YYYYMMDD</strong> (tahun-bulan-tanggal),
+    tanpa tanda hubung. Contoh: 7 Mei 1996 = <strong>19960507</strong>.
+  </Typography>
+</Alert>;

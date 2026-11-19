@@ -1515,9 +1515,10 @@ const formatSlipMoney = (value) =>
 
 const buildEncryptedPaySlip = (data) =>
   new Promise((resolve, reject) => {
-    const nik = String(data.nik || "").trim();
-    if (!nik) {
-      reject(new Error("NIK KTP karyawan belum tersedia."));
+    const pdfPassword = String(data.pdf_password || "").trim();
+
+    if (!/^\d{8}$/.test(pdfPassword)) {
+      reject(new Error("Tanggal lahir karyawan tidak valid."));
       return;
     }
 
@@ -1535,7 +1536,7 @@ const buildEncryptedPaySlip = (data) =>
         Author: "PRIDE HRIS",
         Subject: "Dokumen Slip Gaji Rahasia",
       },
-      userPassword: nik,
+      userPassword: pdfPassword,
       ownerPassword,
       pdfVersion: "1.7ext3",
       permissions: {
@@ -1692,7 +1693,8 @@ const buildEncryptedPaySlip = (data) =>
       .fontSize(8)
       .text(
         "Dokumen ini dibuat secara elektronik oleh PRIDE HRIS. " +
-          "Password untuk membuka PDF adalah NIK KTP karyawan.",
+          "Password untuk membuka PDF adalah tanggal lahir Anda " +
+          "dengan format YYYYMMDD (contoh: 18880230).",
         left,
         y,
         { width, align: "center" },
@@ -1721,6 +1723,8 @@ exports.sendPaySlip = async (req, res) => {
          psr.status AS request_status,
          u.name AS employee_name,
          u.nik,
+         u.date_of_birth,
+         TO_CHAR(u.date_of_birth, 'YYYYMMDD') AS pdf_password,
          u.nip,
          u.department,
          u.position,
@@ -1762,11 +1766,11 @@ exports.sendPaySlip = async (req, res) => {
     }
 
     const data = found.rows[0];
-    if (!String(data.nik || "").trim()) {
+    if (!/^\d{8}$/.test(String(data.pdf_password || ""))) {
       return res.status(400).json({
         success: false,
         message:
-          "NIK KTP karyawan belum tersedia. Lengkapi NIK sebelum mengirim slip.",
+          "Tanggal lahir karyawan belum tersedia atau tidak valid. Lengkapi date_of_birth dengan format tanggal yang benar.",
       });
     }
 
