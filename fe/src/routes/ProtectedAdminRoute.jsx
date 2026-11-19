@@ -29,7 +29,11 @@ export default function ProtectedAdminRoute({ children }) {
   // Finance hanya boleh membuka Payroll dan Payroll Details.
   const isFinance = Number(user.role_id) === 6 || role === "FINANCE";
 
-  const financeAllowedPaths = ["/payroll", "/payroll/details"];
+  const financeAllowedPaths = [
+    "/payroll",
+    "/payroll/details",
+    "/business-trip/finance",
+  ];
 
   if (isFinance && !financeAllowedPaths.includes(location.pathname)) {
     return <Navigate to="/payroll" replace />;

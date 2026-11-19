@@ -56,6 +56,13 @@ const menu = [
     section: "management",
   },
   {
+    title: "Business Trip Approval",
+    translationKey: "menu.businessTripApproval",
+    icon: <FlightTakeoffIcon />,
+    path: "/business-trip/finance",
+    section: "management",
+  },
+  {
     title: "Payroll",
     translationKey: "menu.payroll",
     icon: <AccountBalanceWalletIcon />,

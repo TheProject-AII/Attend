@@ -12,8 +12,6 @@ import {
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import SystemUpdateAltRoundedIcon from "@mui/icons-material/SystemUpdateAltRounded";
 
-import { App } from "@capacitor/app";
-import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 
 import api from "../services/api";
@@ -25,48 +23,78 @@ export default function AndroidUpdatePrompt() {
   const [checking, setChecking] = useState(false);
   const [opening, setOpening] = useState(false);
 
-  const checkUpdate = async () => {
-    if (!Capacitor.isNativePlatform()) return;
-
-    try {
-      setChecking(true);
-
-      const [installed, response] = await Promise.all([
-        App.getInfo(),
-        api.get("/app-version/android"),
-      ]);
-
-      const latest = response.data;
-
-      if (!latest?.success) return;
-
-      const installedCode = Number(installed.build || 0);
-      const latestCode = Number(latest.versionCode || 0);
-
-      if (latestCode > installedCode) {
-        setUpdate({
-          version: latest.version,
-          versionCode: latestCode,
-          forceUpdate: Boolean(latest.forceUpdate),
-          releaseNotes: latest.releaseNotes,
-        });
-      } else {
-        setUpdate(null);
-      }
-    } catch (error) {
-      console.error("Android update check failed:", error);
-    } finally {
-      setChecking(false);
-    }
-  };
-
   useEffect(() => {
+    let mounted = true;
+
+    const checkUpdate = async () => {
+      // Jangan jalankan pengecekan versi di browser/desktop.
+      if (!Capacitor.isNativePlatform()) {
+        return;
+      }
+
+      try {
+        if (mounted) setChecking(true);
+
+        // Import hanya saat aplikasi native berjalan.
+        const { App } = await import("@capacitor/app");
+
+        const [installed, response] = await Promise.all([
+          App.getInfo(),
+          api.get("/app-version/android"),
+        ]);
+
+        if (!mounted) return;
+
+        const latest = response.data;
+
+        if (!latest?.success) {
+          setUpdate(null);
+          return;
+        }
+
+        const installedCode = Number(installed.build || 0);
+        const latestCode = Number(latest.versionCode || 0);
+
+        console.log("ANDROID VERSION CHECK:", {
+          installedVersion: installed.version,
+          installedCode,
+          latestVersion: latest.version,
+          latestCode,
+        });
+
+        if (latestCode > installedCode) {
+          setUpdate({
+            version: latest.version,
+            versionCode: latestCode,
+            forceUpdate: Boolean(latest.forceUpdate),
+            releaseNotes: latest.releaseNotes || "",
+          });
+        } else {
+          setUpdate(null);
+        }
+      } catch (error) {
+        console.error("Android update check failed:", error);
+
+        if (mounted) {
+          setUpdate(null);
+        }
+      } finally {
+        if (mounted) setChecking(false);
+      }
+    };
+
     checkUpdate();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleUpdate = async () => {
     try {
       setOpening(true);
+
+      const { Browser } = await import("@capacitor/browser");
 
       await Browser.open({
         url: APP_DROPPER_URL,
@@ -74,6 +102,7 @@ export default function AndroidUpdatePrompt() {
       });
     } catch (error) {
       console.error("Failed to open App Dropper:", error);
+
       window.open(APP_DROPPER_URL, "_blank");
     } finally {
       setOpening(false);
@@ -86,6 +115,7 @@ export default function AndroidUpdatePrompt() {
     }
   };
 
+  // Komponen hanya berlaku untuk aplikasi native.
   if (!Capacitor.isNativePlatform() || !update) {
     return null;
   }
