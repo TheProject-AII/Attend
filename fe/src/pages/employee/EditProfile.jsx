@@ -6,25 +6,54 @@ import {
   Typography,
   TextField,
   Button,
-  Grid,
   MenuItem,
   Avatar,
   CircularProgress,
   Divider,
+  Snackbar,
+  Alert,
+  IconButton,
 } from "@mui/material";
+
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
+
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import authService from "../../services/authService";
+
+const formatDateForInput = (value) => {
+  if (!value) return "";
+
+  // Hindari pergeseran tanggal akibat timezone.
+  const datePart = String(value).split("T")[0];
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    return datePart;
+  }
+
+  const date = new Date(value);
+
+  if (isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
 
 export default function EditProfile() {
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
 
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+
+  const [alert, setAlert] = useState({
+    open: false,
+    severity: "success",
+    message: "",
+  });
 
   const [form, setForm] = useState({
     name: "",
@@ -44,9 +73,7 @@ export default function EditProfile() {
         phone: user.phone || "",
         address: user.address || "",
         place_of_birth: user.place_of_birth || "",
-        date_of_birth: user.date_of_birth
-          ? String(user.date_of_birth).slice(0, 10)
-          : "",
+        date_of_birth: formatDateForInput(user.date_of_birth),
         gender: user.gender || "",
       });
     }
@@ -61,10 +88,21 @@ export default function EditProfile() {
     }));
   };
 
+  const handleCloseAlert = (_, reason) => {
+    if (reason === "clickaway") return;
+
+    setAlert((prev) => ({
+      ...prev,
+      open: false,
+    }));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (saving) return;
+
     setSaving(true);
-    setMessage("");
 
     try {
       const result = await authService.updateProfile(form);
@@ -76,17 +114,25 @@ export default function EditProfile() {
         }));
       }
 
-      setMessage("Profil berhasil diperbarui.");
+      setAlert({
+        open: true,
+        severity: "success",
+        message: "Profil berhasil diperbarui!",
+      });
 
       setTimeout(() => {
         navigate("/profile");
-      }, 1000);
+      }, 1500);
     } catch (error) {
       console.error("UPDATE PROFILE ERROR:", error);
-      setMessage(
-        error.response?.data?.message ||
+
+      setAlert({
+        open: true,
+        severity: "error",
+        message:
+          error.response?.data?.message ||
           "Gagal memperbarui profil. Silakan coba lagi.",
-      );
+      });
     } finally {
       setSaving(false);
     }
@@ -101,27 +147,107 @@ export default function EditProfile() {
   }
 
   return (
-    <Box sx={{ p: 2, pb: 4 }}>
-      <Box display="flex" alignItems="center" gap={1} mb={2}>
-        <Button
-          onClick={() => navigate(-1)}
-          startIcon={<ArrowBackRoundedIcon />}
-          sx={{ minWidth: 0 }}
+    <Box
+      sx={{
+        p: 2,
+        pb: 4,
+        minHeight: "100%",
+        bgcolor: "background.default",
+      }}
+    >
+      {/* NOTIFICATION */}
+      <Snackbar
+        open={alert.open}
+        autoHideDuration={3000}
+        onClose={handleCloseAlert}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "center",
+        }}
+        sx={{ mb: 2 }}
+      >
+        <Alert
+          onClose={handleCloseAlert}
+          severity={alert.severity}
+          variant="filled"
+          elevation={6}
+          sx={{
+            width: "100%",
+            minWidth: { xs: "auto", sm: 350 },
+            borderRadius: 2,
+            fontWeight: 600,
+            alignItems: "center",
+          }}
         >
-          Kembali
-        </Button>
+          {alert.message}
+        </Alert>
+      </Snackbar>
+
+      {/* HEADER */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1.5,
+          px: 1.5,
+          py: 1.5,
+          mb: 2,
+          bgcolor: "background.paper",
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 1,
+        }}
+      >
+        <IconButton
+          onClick={() => navigate(-1)}
+          aria-label="Kembali"
+          size="small"
+          sx={{
+            width: 38,
+            height: 38,
+            flexShrink: 0,
+            bgcolor: "action.hover",
+            color: "text.primary",
+            "&:hover": {
+              bgcolor: "action.selected",
+            },
+          }}
+        >
+          <ArrowBackRoundedIcon />
+        </IconButton>
+
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            fontSize={16}
+            fontWeight={700}
+            color="text.primary"
+            lineHeight={1.4}
+          >
+            Edit Profile
+          </Typography>
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              display: "block",
+              lineHeight: 1.4,
+            }}
+          >
+            Update employee personal information.
+          </Typography>
+        </Box>
       </Box>
 
-      <Typography variant="h6" fontWeight={700} mb={0.5}>
-        Edit Profile
-      </Typography>
-
-      <Typography variant="body2" color="text.secondary" mb={2}>
-        Update employee personal information.
-      </Typography>
-
-      <Card sx={{ borderRadius: 2 }}>
+      {/* PROFILE CARD */}
+      <Card
+        sx={{
+          borderRadius: 1,
+          boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
+        }}
+      >
         <CardContent sx={{ p: 2 }}>
+          {/* PROFILE INFORMATION */}
           <Box
             sx={{
               width: "100%",
@@ -140,7 +266,6 @@ export default function EditProfile() {
                 width: 80,
                 height: 80,
                 fontSize: 28,
-                mx: "auto",
                 mb: 1,
               }}
             >
@@ -153,7 +278,7 @@ export default function EditProfile() {
                 width: "100%",
                 textAlign: "center",
                 fontSize: 16,
-                fontWeight: "700 !important",
+                fontWeight: 700,
               }}
             >
               {user.name}
@@ -170,6 +295,7 @@ export default function EditProfile() {
 
           <Divider sx={{ mb: 2 }} />
 
+          {/* EDIT FORM */}
           <Box component="form" onSubmit={handleSubmit}>
             <Box
               sx={{
@@ -181,7 +307,6 @@ export default function EditProfile() {
             >
               <TextField
                 fullWidth
-                size="medium"
                 label="Nama Lengkap"
                 name="name"
                 value={form.name}
@@ -230,20 +355,9 @@ export default function EditProfile() {
                 label="Tanggal Lahir"
                 name="date_of_birth"
                 type="date"
-                value={form.date_of_birth || ""}
+                value={form.date_of_birth}
                 onChange={handleChange}
-                InputLabelProps={{
-                  shrink: true,
-                }}
-                sx={{
-                  "& .MuiInputLabel-root": {
-                    backgroundColor: "background.paper",
-                    px: 0.5,
-                  },
-                  "& .MuiInputLabel-shrink": {
-                    transform: "translate(14px, -9px) scale(0.75)",
-                  },
-                }}
+                InputLabelProps={{ shrink: true }}
               />
 
               <TextField
@@ -259,11 +373,14 @@ export default function EditProfile() {
                 <MenuItem value="Perempuan">Perempuan</MenuItem>
               </TextField>
             </Box>
+
             <Divider sx={{ mt: 3, mb: 3 }} />
 
-            <Typography fontWeight={700} fontSize={15} sx={{ mb: 2.5 }}>
+            {/* EMPLOYEE INFORMATION */}
+            <Typography fontWeight={700} fontSize={15} sx={{ mb: 2 }}>
               Informasi Kepegawaian
             </Typography>
+
             <Box
               sx={{
                 display: "flex",
@@ -300,16 +417,7 @@ export default function EditProfile() {
               />
             </Box>
 
-            {message && (
-              <Typography
-                color={message.includes("berhasil") ? "success.main" : "error"}
-                variant="body2"
-                mt={2}
-              >
-                {message}
-              </Typography>
-            )}
-
+            {/* SAVE BUTTON */}
             <Button
               type="submit"
               fullWidth
@@ -322,7 +430,13 @@ export default function EditProfile() {
                 )
               }
               disabled={saving}
-              sx={{ mt: 3, py: 1.2, borderRadius: 2 }}
+              sx={{
+                mt: 3,
+                py: 1.3,
+                borderRadius: 2,
+                fontWeight: 700,
+                textTransform: "none",
+              }}
             >
               {saving ? "Menyimpan..." : "Simpan Perubahan"}
             </Button>

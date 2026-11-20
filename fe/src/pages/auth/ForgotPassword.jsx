@@ -10,20 +10,30 @@ import {
   Typography,
 } from "@mui/material";
 
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import { useNavigate, useLocation } from "react-router-dom";
 import authService from "../../services/authService";
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [nikLast4, setNikLast4] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const location = useLocation();
 
   const fromProfile = location.state?.fromProfile === true;
+
+  const handleCancel = () => {
+    if (fromProfile) {
+      navigate(location.state?.returnPath || "/employee/profile", {
+        replace: true,
+      });
+    } else {
+      navigate("/login", { replace: true });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -85,10 +95,17 @@ export default function ForgotPassword() {
         sx={{
           width: "100%",
           maxWidth: 420,
-          borderRadius: 4,
+          borderRadius: 1,
         }}
       >
-        <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
+        <CardContent
+          sx={{
+            p: { xs: 3, sm: 5 },
+            "&:last-child": {
+              pb: { xs: 3, sm: 5 },
+            },
+          }}
+        >
           <Typography variant="h5" fontWeight={700} textAlign="center">
             Forgot Password?
           </Typography>
@@ -96,7 +113,10 @@ export default function ForgotPassword() {
           <Typography
             color="text.secondary"
             textAlign="center"
-            sx={{ mt: 1, mb: 4 }}
+            sx={{
+              mt: 1,
+              mb: 4,
+            }}
           >
             Verify your account using your email and the last 4 digits of your
             KTP number.
@@ -109,7 +129,7 @@ export default function ForgotPassword() {
           )}
 
           <Box component="form" onSubmit={handleSubmit}>
-            <Stack spacing={3}>
+            <Stack spacing={2.5}>
               <TextField
                 label="Email terdaftar"
                 type="email"
@@ -135,7 +155,7 @@ export default function ForgotPassword() {
                   maxLength: 4,
                   pattern: "[0-9]{4}",
                 }}
-                helperText="Insert the last 4 numbers of your NIK.."
+                helperText="Insert the last 4 numbers of your NIK."
                 disabled={loading}
               />
 
@@ -147,21 +167,39 @@ export default function ForgotPassword() {
                 disabled={loading}
                 sx={{
                   height: 50,
-                  borderRadius: 3,
+                  borderRadius: 1,
                   textTransform: "none",
                   fontWeight: 600,
                   bgcolor: "#102E67",
-                  "&:hover": { bgcolor: "#638ef2" },
+                  "&:hover": {
+                    bgcolor: "#638ef2",
+                  },
                 }}
               >
                 {loading ? "Memverifikasi..." : "Verifikasi Akun"}
               </Button>
 
-              {!fromProfile && (
-                <Button onClick={() => navigate("/login")}>
-                  Back to Sign In
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outlined"
+                fullWidth
+                disabled={loading}
+                onClick={handleCancel}
+                sx={{
+                  height: 44,
+                  borderRadius: 1,
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderColor: "divider",
+                  color: "text.secondary",
+                  "&:hover": {
+                    borderColor: "text.secondary",
+                    bgcolor: "action.hover",
+                  },
+                }}
+              >
+                Cancel
+              </Button>
             </Stack>
           </Box>
         </CardContent>

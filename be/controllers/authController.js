@@ -225,6 +225,14 @@ exports.me = async (req, res) => {
         u.role_id,
         r.name AS role,
         u.nik,
+        u.personal_email,
+        u.phone,
+        u.address,
+        u.place_of_birth,
+        u.date_of_birth,
+        u.gender,
+        u.bank_name,
+        u.bank_account_number,
         u.name,
         u.email,
         u.department,
@@ -1732,8 +1740,6 @@ exports.updateProfile = async (req, res) => {
       place_of_birth,
       date_of_birth,
       gender,
-      bank_name,
-      bank_account_number,
     } = req.body;
 
     const cleanName = name?.trim();
@@ -1741,13 +1747,14 @@ exports.updateProfile = async (req, res) => {
     if (!cleanName) {
       return res.status(400).json({
         success: false,
-        message: "Nama lengkap wajib diisi",
+        message: "Nama wajib diisi",
       });
     }
 
     const cleanEmail = personal_email?.trim() || null;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    if (cleanEmail && !emailRegex.test(cleanEmail)) {
       return res.status(400).json({
         success: false,
         message: "Format email pribadi tidak valid",
@@ -1764,36 +1771,32 @@ exports.updateProfile = async (req, res) => {
     }
 
     const result = await pool.query(
-      `
-      UPDATE users
-      SET
-        name = $1,
-        personal_email = $2,
-        phone = $3,
-        address = $4,
-        place_of_birth = $5,
-        date_of_birth = $6,
-        gender = $7,
-        bank_name = $8,
-        bank_account_number = $9
-      WHERE id = $10
-      RETURNING
-        id,
-        nik,
-        name,
-        email,
-        personal_email,
-        phone,
-        address,
-        place_of_birth,
-        date_of_birth,
-        gender,
-        department,
-        position,
-        photo,
-        bank_name,
-        bank_account_number
-      `,
+      `UPDATE users
+       SET
+         name = $1,
+         personal_email = $2,
+         phone = $3,
+         address = $4,
+         place_of_birth = $5,
+         date_of_birth = $6,
+         gender = $7
+       WHERE id = $8
+       RETURNING
+         id,
+         nik,
+         name,
+         email,
+         personal_email,
+         phone,
+         address,
+         place_of_birth,
+         date_of_birth,
+         gender,
+         department,
+         position,
+         photo,
+         bank_name,
+         bank_account_number`,
       [
         cleanName,
         cleanEmail,
@@ -1802,8 +1805,6 @@ exports.updateProfile = async (req, res) => {
         place_of_birth?.trim() || null,
         date_of_birth || null,
         gender || null,
-        bank_name?.trim() || null,
-        bank_account_number?.trim() || null,
         req.user.id,
       ],
     );
@@ -1811,7 +1812,7 @@ exports.updateProfile = async (req, res) => {
     if (!result.rows.length) {
       return res.status(404).json({
         success: false,
-        message: "User tidak ditemukan",
+        message: "Data pengguna tidak ditemukan",
       });
     }
 
@@ -1826,6 +1827,7 @@ exports.updateProfile = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Gagal memperbarui profil",
+      error: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
   }
 };

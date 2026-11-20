@@ -1766,6 +1766,16 @@ exports.sendPaySlip = async (req, res) => {
     }
 
     const data = found.rows[0];
+
+    // Validasi NIP
+    if (!data.nip || !String(data.nip).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "NIP karyawan belum tersedia.",
+      });
+    }
+
+    // Validasi password PDF berdasarkan tanggal lahir
     if (!/^\d{8}$/.test(String(data.pdf_password || ""))) {
       return res.status(400).json({
         success: false,
@@ -1774,12 +1784,22 @@ exports.sendPaySlip = async (req, res) => {
       });
     }
 
+    // Generate PDF terenkripsi
     const pdfBuffer = await buildEncryptedPaySlip(data);
-    const fileName = `Slip-Gaji-${String(data.period_name || "Payroll").replace(
-      /[^a-zA-Z0-9_-]/g,
-      "-",
-    )}-${data.user_id}.pdf`;
 
+    // Format nama file: NIP-Periode.pdf
+    const cleanNip = String(data.nip)
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, "");
+
+    const cleanPeriod = String(data.period_name || "Payroll")
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-zA-Z0-9_-]/g, "-");
+
+    const fileName = `${cleanNip}-${cleanPeriod}.pdf`;
+
+    // Simpan PDF dan nama file ke database
     await pool.query(
       `UPDATE pay_slip_requests
        SET file_data = $1,
@@ -1800,12 +1820,14 @@ exports.sendPaySlip = async (req, res) => {
       data: {
         request_id: Number(requestId),
         user_id: Number(data.user_id),
+        nip: data.nip,
         file_name: fileName,
         status: "COMPLETED",
       },
     });
   } catch (error) {
     console.error("SEND PAY SLIP ERROR:", error);
+
     return res.status(500).json({
       success: false,
       message: "Gagal membuat atau mengirim slip gaji.",
@@ -1821,7 +1843,10 @@ exports.downloadPaySlip = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT user_id, file_data, file_name
+      `SELECT
+         user_id,
+         file_data,
+         file_name
        FROM pay_slip_requests
        WHERE id = $1`,
       [requestId],
@@ -1835,6 +1860,8 @@ exports.downloadPaySlip = async (req, res) => {
     }
 
     const file = result.rows[0];
+
+    // Validasi kepemilikan file
     if (!isHr && Number(file.user_id) !== Number(req.user.id)) {
       return res.status(403).json({
         success: false,
@@ -1842,15 +1869,25 @@ exports.downloadPaySlip = async (req, res) => {
       });
     }
 
+    // Nama file yang tersimpan di database digunakan saat download
+    const safeFileName = String(file.file_name || "slip-gaji.pdf").replace(
+      /["\\]/g,
+      "",
+    );
+
     res.setHeader("Content-Type", "application/pdf");
+
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${String(file.file_name || "slip-gaji.pdf").replace(/["\\]/g, "")}"`,
+      `attachment; filename="${safeFileName}"`,
     );
+
     res.setHeader("Cache-Control", "private, no-store, max-age=0");
+
     return res.send(file.file_data);
   } catch (error) {
     console.error("DOWNLOAD PAY SLIP ERROR:", error);
+
     return res.status(500).json({
       success: false,
       message: "Gagal mengunduh slip gaji.",
