@@ -17,6 +17,7 @@ import {
   MenuItem,
   Select,
   Stack,
+  IconButton,
   TextField,
   Typography,
 } from "@mui/material";
@@ -28,6 +29,10 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 
 import paySlipService from "../../services/paySlipService";
+import authService from "../../services/authService";
+import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import { useNavigate } from "react-router-dom";
 
 const statusMeta = {
   PENDING: { label: "Pending", color: "warning" },
@@ -44,24 +49,32 @@ const getDownloadFilename = (response, item) => {
     response.headers?.["content-disposition"] ||
     response.headers?.["Content-Disposition"];
 
-  if (disposition) {
-    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  // Ambil NIP dari data request jika tersedia
+  const nip = item.nip || item.employee_nip || "NIP";
 
-    if (utf8Match?.[1]) {
-      return decodeURIComponent(utf8Match[1].replace(/["']/g, ""));
-    }
+  const period = (item.period_name || "Periode")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[<>:"/\\|?*]/g, "");
 
-    const filenameMatch = disposition.match(/filename="?([^";]+)"?/i);
+  return `${nip}-${period}.pdf`;
+};
 
-    if (filenameMatch?.[1]) {
-      return filenameMatch[1].trim();
-    }
+const maskAccountNumber = (accountNumber) => {
+  if (!accountNumber) return "-";
+
+  const value = String(accountNumber);
+
+  if (value.length <= 6) {
+    return "X".repeat(value.length);
   }
 
-  return item.file_name || `Slip-Gaji-${item.period_name || item.id}.pdf`;
+  return value.slice(0, 8) + "X".repeat(value.length - 8);
 };
 
 export default function PaySlip() {
+  const navigate = useNavigate();
+
   const [periods, setPeriods] = useState([]);
 
   const [requests, setRequests] = useState([]);
@@ -81,32 +94,35 @@ export default function PaySlip() {
   const [error, setError] = useState("");
 
   const [success, setSuccess] = useState("");
-
+  const [bankData, setBankData] = useState(null);
   useEffect(() => {
     if (!success) return;
 
     const timer = setTimeout(() => {
       setSuccess("");
-    }, 2500);
+    }, 6000);
 
     return () => clearTimeout(timer);
   }, [success]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-
     setError("");
 
     try {
-      const [periodRes, requestRes] = await Promise.all([
-        paySlipService.getAvailablePeriods(),
+      const token = localStorage.getItem("token");
 
+      const [periodRes, requestRes, meRes] = await Promise.all([
+        paySlipService.getAvailablePeriods(),
         paySlipService.getMyRequests(),
+        authService.getMe(token),
       ]);
 
       setPeriods(periodRes.data?.data || []);
-
       setRequests(requestRes.data?.data || []);
+
+      // Data rekening user yang sedang login
+      setBankData(meRes?.user || null);
     } catch (err) {
       setError(err.response?.data?.message || "Gagal memuat data slip gaji.");
     } finally {
@@ -226,7 +242,7 @@ export default function PaySlip() {
       }, 1500);
 
       setSuccess(
-        `Download ${filename} berhasil dimulai. Password PDF: tanggal lahir format YYYYMMDD (contoh: 19960507).`,
+        `Slip is currently being downloaded.\nPassword PDF: tanggal lahir format YYYYMMDD.`,
       );
     } catch (err) {
       if (objectUrl) {
@@ -254,11 +270,102 @@ export default function PaySlip() {
       )}
 
       {success && (
-        <Alert severity="success" onClose={() => setSuccess("")} sx={{ mb: 2 }}>
+        <Alert
+          severity="success"
+          onClose={() => setSuccess("")}
+          sx={{ mb: 2, whiteSpace: "pre-line" }}
+        >
           {success}
         </Alert>
       )}
+      {/* HEADER */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1.5,
+          px: 1.5,
+          py: 1.5,
+          mb: 2,
+          bgcolor: "background.paper",
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 1,
+        }}
+      >
+        <IconButton
+          onClick={() => navigate(-1)}
+          aria-label="Kembali"
+          size="small"
+          sx={{
+            width: 38,
+            height: 38,
+            flexShrink: 0,
+            bgcolor: "action.hover",
+            color: "text.primary",
+            "&:hover": {
+              bgcolor: "action.selected",
+            },
+          }}
+        >
+          <ArrowBackRoundedIcon />
+        </IconButton>
 
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            fontSize={16}
+            fontWeight={700}
+            color="text.primary"
+            lineHeight={1.4}
+          >
+            Pay Slip
+          </Typography>
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              display: "block",
+              lineHeight: 1.4,
+            }}
+          >
+            Payroll Bank & Request Pay Slip
+          </Typography>
+        </Box>
+      </Box>
+      <Card
+        sx={{
+          borderRadius: 1,
+          mb: 1.5,
+          border: "1px solid",
+          borderColor: "divider",
+          boxShadow: "none",
+        }}
+      >
+        <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+          <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+            <Typography sx={{ fontWeight: 750 }}>Account Bank</Typography>
+          </Stack>
+
+          {loading ? (
+            <CircularProgress size={18} />
+          ) : (
+            <>
+              <Typography fontWeight={700} fontSize={14}>
+                {bankData?.name || "-"}
+              </Typography>
+
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 650, color: "#0f50ab" }}
+              >
+                {bankData?.bank_name || "Bank belum diatur"} -{" "}
+                {maskAccountNumber(bankData?.bank_account_number)}
+              </Typography>
+            </>
+          )}
+        </CardContent>
+      </Card>
       <Card sx={{ borderRadius: 1, mb: 2 }}>
         <CardContent>
           <Stack
@@ -322,78 +429,70 @@ export default function PaySlip() {
               Belum ada permintaan slip gaji.
             </Typography>
           ) : (
-            <Stack spacing={1.5}>
+            <Stack spacing={1}>
               {requests.map((item) => {
-                const meta = statusMeta[item.status] || {
-                  label: item.status,
-
-                  color: "default",
-                };
+                const isCompleted = item.status === "COMPLETED";
+                const isRejected = item.status === "REJECTED";
+                const isProcessing = item.status === "PROCESSING";
 
                 return (
                   <Box
                     key={item.id}
                     sx={{
-                      border: "1px solid",
-
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      py: 1,
+                      borderBottom: "1px solid",
                       borderColor: "divider",
-
-                      borderRadius: 2,
-
-                      p: 2,
                     }}
                   >
-                    <Stack
-                      direction="row"
-                      alignItems="center"
-                      justifyContent="space-between"
-                      spacing={1}
-                    >
-                      <Typography fontWeight={700}>
-                        {item.period_name || "Payroll Period"}
-                      </Typography>
+                    <Typography fontSize={13} fontWeight={700}>
+                      Slip - {item.period_name || "Payroll Period"}
+                    </Typography>
 
-                      <Chip
-                        size="small"
-                        color={meta.color}
-                        label={meta.label}
-                      />
-                    </Stack>
-
-                    {item.reason && (
-                      <Typography variant="body2" color="text.secondary" mt={1}>
-                        Alasan: {item.reason}
-                      </Typography>
-                    )}
-
-                    {item.admin_note && (
-                      <Alert
-                        severity={item.status === "REJECTED" ? "error" : "info"}
-                        sx={{ mt: 1 }}
-                      >
-                        {item.admin_note}
-                      </Alert>
-                    )}
-
-                    {item.status === "COMPLETED" && (
+                    {isCompleted ? (
                       <Button
-                        sx={{ mt: 1 }}
-                        variant="outlined"
                         size="small"
+                        variant="contained"
+                        color="success"
                         startIcon={
                           downloading === item.id ? (
-                            <CircularProgress size={16} />
+                            <CircularProgress size={14} color="inherit" />
                           ) : (
                             <DownloadRoundedIcon />
                           )
                         }
                         disabled={downloading === item.id}
                         onClick={() => downloadSlip(item)}
+                        sx={{
+                          textTransform: "none",
+                          fontSize: 11,
+                          minWidth: 0,
+                          whiteSpace: "nowrap",
+                        }}
                       >
-                        {downloading === item.id
-                          ? "Mengunduh..."
-                          : "Download Slip Gaji"}
+                        {downloading === item.id ? "Mengunduh..." : "Download"}
                       </Button>
+                    ) : (
+                      <Chip
+                        size="small"
+                        color={
+                          isRejected
+                            ? "error"
+                            : isProcessing
+                              ? "info"
+                              : "warning"
+                        }
+                        label={
+                          isRejected
+                            ? "Rejected"
+                            : isProcessing
+                              ? "Processing"
+                              : "Pending"
+                        }
+                        sx={{ fontSize: 10, height: 23 }}
+                      />
                     )}
                   </Box>
                 );
