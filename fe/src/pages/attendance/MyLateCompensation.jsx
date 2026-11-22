@@ -311,15 +311,42 @@ export default function MyLateCompensation() {
     return () => controller.abort();
   }, [loadData, refreshKey]);
 
+  // ==========================================
+  // LATE COMPENSATION SUMMARY
+  // ==========================================
+
   const totalLate = Number(summary?.total_late_minutes || 0);
-
   const totalPaid = Number(summary?.total_paid_minutes || 0);
-
   const outstanding = Number(summary?.outstanding_minutes || 0);
 
   const progress =
     totalLate > 0
       ? Math.min(100, Math.round((totalPaid / totalLate) * 100))
+      : 0;
+
+  // ==========================================
+  // COMPANY CREDIT SUMMARY
+  // ==========================================
+
+  const companyCreditEarned = Number(summary?.total_company_credit_earned || 0);
+
+  const companyCreditUsed = Number(summary?.total_company_credit_used || 0);
+
+  const companyCreditBalance = Math.max(
+    0,
+    Number(
+      summary?.company_credit_balance ??
+        companyCreditEarned - companyCreditUsed,
+    ) || 0,
+  );
+
+  // Persentase saldo yang masih tersedia dari total kredit earned.
+  const companyCreditProgress =
+    companyCreditEarned > 0
+      ? Math.min(
+          100,
+          Math.round((companyCreditBalance / companyCreditEarned) * 100),
+        )
       : 0;
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -336,11 +363,8 @@ export default function MyLateCompensation() {
       }}
     >
       <Stack spacing={2.5}>
+        {/* PAGE HEADER */}
         <Box>
-          <Typography fontSize={21} fontWeight={800} color="#1E293B">
-            Time Compensation
-          </Typography>
-
           <Typography fontSize={12} color="text.secondary" mt={0.5}>
             Track late arrivals and make-up work time.
           </Typography>
@@ -354,6 +378,9 @@ export default function MyLateCompensation() {
           </Box>
         ) : (
           <>
+            {/* ================================== */}
+            {/* TIME COMPENSATION CARD             */}
+            {/* ================================== */}
             <Card
               elevation={0}
               sx={{
@@ -364,6 +391,7 @@ export default function MyLateCompensation() {
             >
               <CardContent sx={{ p: 2.5 }}>
                 <Stack spacing={2}>
+                  {/* REMAINING LATE TIME */}
                   <Stack
                     direction="row"
                     justifyContent="space-between"
@@ -382,8 +410,13 @@ export default function MyLateCompensation() {
 
                   <Divider />
 
+                  {/* ================================== */}
+                  {/* GREEN: LATE COMPENSATION PROGRESS */}
+                  {/* ================================== */}
                   <Stack direction="row" justifyContent="space-between">
-                    <Typography fontSize={12}>Compensation Progress</Typography>
+                    <Typography fontSize={12}>
+                      Late Compensation Progress
+                    </Typography>
 
                     <Typography fontSize={12} fontWeight={800}>
                       {progress}%
@@ -413,10 +446,67 @@ export default function MyLateCompensation() {
                             totalLate,
                           )} has been made up.`}
                   </Typography>
+
+                  <Divider />
+
+                  {/* ================================== */}
+                  {/* BLUE: AVAILABLE COMPANY CREDIT    */}
+                  {/* ================================== */}
+                  <Stack spacing={1.1}>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      spacing={1}
+                    >
+                      <Typography
+                        fontSize={12}
+                        fontWeight={700}
+                        color="#1D4ED8"
+                      >
+                        Available Company Credit
+                      </Typography>
+
+                      <Typography
+                        fontSize={12}
+                        fontWeight={800}
+                        color="#1D4ED8"
+                      >
+                        {companyCreditProgress}%
+                      </Typography>
+                    </Stack>
+
+                    <Typography fontSize={25} fontWeight={800} color="#1E40AF">
+                      {formatMinutes(companyCreditBalance)}
+                    </Typography>
+
+                    <LinearProgress
+                      variant="determinate"
+                      value={companyCreditProgress}
+                      sx={{
+                        height: 9,
+                        borderRadius: 1,
+                        bgcolor: "#DBEAFE",
+                        "& .MuiLinearProgress-bar": {
+                          bgcolor: "#2563EB",
+                          borderRadius: 1,
+                        },
+                      }}
+                    />
+
+                    <Typography fontSize={12} color="text.secondary">
+                      {companyCreditEarned > 0
+                        ? `${formatMinutes(companyCreditBalance)} available from ${formatMinutes(companyCreditEarned)} earned. ${formatMinutes(companyCreditUsed)} has been used.`
+                        : "No Company Credit has been earned yet."}
+                    </Typography>
+                  </Stack>
                 </Stack>
               </CardContent>
             </Card>
 
+            {/* ================================== */}
+            {/* MINI STATISTICS                   */}
+            {/* ================================== */}
             <Box
               sx={{
                 display: "grid",
@@ -439,6 +529,9 @@ export default function MyLateCompensation() {
               />
             </Box>
 
+            {/* ================================== */}
+            {/* COMPENSATION HISTORY              */}
+            {/* ================================== */}
             <Box>
               <Stack
                 direction="row"
@@ -498,6 +591,7 @@ export default function MyLateCompensation() {
               )}
             </Box>
 
+            {/* PAGINATION */}
             {totalPages > 1 && (
               <Stack alignItems="center" pt={1}>
                 <Pagination

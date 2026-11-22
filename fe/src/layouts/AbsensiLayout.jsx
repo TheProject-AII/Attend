@@ -14,12 +14,19 @@ export default function AbsensiLayout() {
         display: "flex",
         flexDirection: "column",
         bgcolor: "#F5F7FA",
+        overflow: "hidden",
+        overscrollBehavior: "none",
       }}
     >
       <Box
         sx={{
           flex: 1,
+          minHeight: 0,
           overflowY: "auto",
+          overflowX: "hidden",
+          overscrollBehaviorY: "none",
+          WebkitOverflowScrolling: "touch",
+          bgcolor: "#F5F7FA",
           pb: isFaceEnrollment ? 0 : 10,
         }}
       >

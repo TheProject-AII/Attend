@@ -295,8 +295,7 @@ export default function Leave() {
       });
     } catch (err) {
       const message =
-        err.response?.data?.message ||
-        "Failed to submit pay slip request.";
+        err.response?.data?.message || "Failed to submit pay slip request.";
 
       setPaySlipError(message);
 
@@ -322,7 +321,12 @@ export default function Leave() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("DOWNLOAD PAY SLIP ERROR:", error);
-      Swal.fire("Gagal", error?.response?.data?.message || "Pay Slip belum tersedia atau gagal diunduh.", "error");
+      Swal.fire(
+        "Gagal",
+        error?.response?.data?.message ||
+          "Pay Slip belum tersedia atau gagal diunduh.",
+        "error",
+      );
     }
   };
 
@@ -1029,11 +1033,7 @@ export default function Leave() {
             </Stack>
 
             {paySlipRequests.length === 0 ? (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 2 }}
-              >
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                 No pay slip requests yet.
               </Typography>
             ) : (
@@ -1083,7 +1083,9 @@ export default function Leave() {
                       )}
                       {item.admin_note && (
                         <Alert
-                          severity={item.status === "REJECTED" ? "error" : "info"}
+                          severity={
+                            item.status === "REJECTED" ? "error" : "info"
+                          }
                           sx={{ mt: 1 }}
                         >
                           {item.admin_note}
@@ -1097,7 +1099,9 @@ export default function Leave() {
                       >
                         Submitted:{" "}
                         {item.created_at
-                          ? new Date(item.created_at).toLocaleDateString("id-ID")
+                          ? new Date(item.created_at).toLocaleDateString(
+                              "id-ID",
+                            )
                           : "-"}
                       </Typography>
                       {item.status === "COMPLETED" && item.has_file && (
@@ -1131,9 +1135,15 @@ export default function Leave() {
         onClick={() => setOpenDialog(true)}
         sx={{
           position: "fixed",
-          bottom: 85,
+
+          // Posisi mengikuti Bottom Navigation + Safe Area iOS
+          bottom: "calc(12px + env(safe-area-inset-bottom, 0px) + 68px + 16px)",
+
           right: 20,
           bgcolor: "#0d439a",
+
+          // Pastikan FAB berada di atas Bottom Navigation
+          zIndex: 1301,
 
           "&:hover": {
             bgcolor: "#0d439a",

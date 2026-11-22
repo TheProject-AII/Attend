@@ -3,11 +3,15 @@ const pool = require("../config/db");
 /**
  * Mengambil riwayat kompensasi beserta saldo berjalan.
  *
- * Saldo dihitung berdasarkan:
- * - utang baru pada hari absensi
- * - pembayaran yang dilakukan pada hari absensi
+ * Saldo utang:
+ * - late_minutes menambah utang.
+ * - paid_today mengurangi utang.
  *
- * Query hanya mengambil absensi yang sudah diproses.
+ * Company Time Credit:
+ * - EARNED menambah saldo kredit.
+ * - USED mengurangi saldo kredit.
+ *
+ * Saldo berjalan tidak di-reset berdasarkan periode payroll.
  */
 async function getEmployeeLateHistory(userId) {
   const result = await pool.query(
@@ -20,25 +24,31 @@ async function getEmployeeLateHistory(userId) {
         a.check_out,
         a.attendance_type,
 
-        COALESCE(
-          d.late_minutes, 0
-        )::integer AS late_minutes,
+        COALESCE(d.late_minutes, 0)::integer
+          AS late_minutes,
 
-        COALESCE(
-          p.paid_today, 0
-        )::integer AS paid_today,
+        COALESCE(p.paid_today, 0)::integer
+          AS paid_today,
 
-        COALESCE(
-          d.paid_minutes, 0
-        )::integer AS debt_paid_minutes,
+        COALESCE(d.paid_minutes, 0)::integer
+          AS debt_paid_minutes,
 
-        COALESCE(
-          d.remaining_minutes, 0
-        )::integer AS debt_remaining_minutes,
+        COALESCE(d.remaining_minutes, 0)::integer
+          AS debt_remaining_minutes,
 
-        COALESCE(
-          d.status, 'NO_DEBT'
-        ) AS debt_status
+        COALESCE(d.status, 'NO_DEBT')
+          AS debt_status,
+
+        COALESCE(c.company_credit_earned, 0)::integer
+          AS company_credit_earned,
+
+        COALESCE(c.company_credit_used, 0)::integer
+          AS company_credit_used,
+
+        (
+          COALESCE(c.company_credit_earned, 0)
+          - COALESCE(c.company_credit_used, 0)
+        )::integer AS company_credit_net
 
       FROM attendance a
 
@@ -50,12 +60,30 @@ async function getEmployeeLateHistory(userId) {
 
       LEFT JOIN LATERAL (
         SELECT
-          COALESCE(
-            SUM(lp.paid_minutes), 0
-          )::integer AS paid_today
+          COALESCE(SUM(lp.paid_minutes), 0)::integer
+            AS paid_today
         FROM attendance_late_payments lp
         WHERE lp.attendance_id = a.id
       ) p ON TRUE
+
+      LEFT JOIN LATERAL (
+        SELECT
+          COALESCE(
+            SUM(cl.minutes) FILTER (
+              WHERE cl.transaction_type = 'EARNED'
+            ), 0
+          )::integer AS company_credit_earned,
+
+          COALESCE(
+            SUM(cl.minutes) FILTER (
+              WHERE cl.transaction_type = 'USED'
+            ), 0
+          )::integer AS company_credit_used
+
+        FROM attendance_company_credit_ledger cl
+        WHERE cl.attendance_id = a.id
+          AND cl.user_id = a.user_id
+      ) c ON TRUE
 
       WHERE a.user_id = $1
     ),
@@ -69,31 +97,52 @@ async function getEmployeeLateHistory(userId) {
           OVER (
             ORDER BY
               attendance_date ASC,
-              check_in ASC,
+              check_in ASC NULLS FIRST,
               attendance_id ASC
             ROWS BETWEEN
               UNBOUNDED PRECEDING
               AND CURRENT ROW
           ),
           0
-        )::integer AS closing_balance
+        )::integer AS closing_balance,
+
+        COALESCE(
+          SUM(company_credit_net)
+          OVER (
+            ORDER BY
+              attendance_date ASC,
+              check_in ASC NULLS FIRST,
+              attendance_id ASC
+            ROWS BETWEEN
+              UNBOUNDED PRECEDING
+              AND CURRENT ROW
+          ),
+          0
+        )::integer AS closing_company_credit_balance
 
       FROM daily
     )
 
     SELECT
       *,
+
       (
         closing_balance
         - late_minutes
         + paid_today
-      )::integer AS opening_balance
+      )::integer AS opening_balance,
+
+      (
+        closing_company_credit_balance
+        - company_credit_earned
+        + company_credit_used
+      )::integer AS opening_company_credit_balance
 
     FROM running
 
     ORDER BY
       attendance_date DESC,
-      check_in DESC,
+      check_in DESC NULLS LAST,
       attendance_id DESC
     `,
     [userId],

@@ -136,94 +136,131 @@ exports.history = async (req, res) => {
 
     const result = await pool.query(
       `
-          SELECT
-    a.id,
-    a.id AS attendance_id,
-    a.attendance_date,
+      SELECT
+        a.id,
+        a.id AS attendance_id,
+        a.attendance_date,
 
-    a.check_in AT TIME ZONE 'Asia/Jakarta' AS check_in,
-    a.check_out AT TIME ZONE 'Asia/Jakarta' AS check_out,
+        a.check_in AT TIME ZONE 'Asia/Jakarta' AS check_in,
+        a.check_out AT TIME ZONE 'Asia/Jakarta' AS check_out,
 
-    a.status,
-    a.attendance_type,
-    a.notes,
-    u.name,
-    u.department,
+        a.status,
+        a.attendance_type,
+        a.notes,
+        u.name,
+        u.department,
 
-    a.photo_path,
-    a.check_out_photo_path,
+        a.photo_path,
+        a.check_out_photo_path,
 
-    a.check_in_lat,
-    a.check_in_lng,
-    a.check_out_lat,
-    a.check_out_lng,
+        a.check_in_lat,
+        a.check_in_lng,
+        a.check_out_lat,
+        a.check_out_lng,
 
-    ac.auto_checkout_time AT TIME ZONE 'Asia/Jakarta'
-        AS auto_checkout_time,
-    ac.latitude AS auto_checkout_lat,
-    ac.longitude AS auto_checkout_lng,
-    ac.location_accuracy AS auto_checkout_accuracy,
-    ac.gps_captured_at,
+        ac.auto_checkout_time AT TIME ZONE 'Asia/Jakarta'
+          AS auto_checkout_time,
+        ac.latitude AS auto_checkout_lat,
+        ac.longitude AS auto_checkout_lng,
+        ac.location_accuracy AS auto_checkout_accuracy,
+        ac.gps_captured_at,
 
-    aer.id AS edit_request_id,
-    aer.status AS edit_request_status,
-    aer.reason AS edit_request_reason,
-    aer.new_check_in AS edit_new_check_in,
-    aer.new_check_out AS edit_new_check_out,
-    aer.rejection_reason AS edit_rejection_reason,
+        aer.id AS edit_request_id,
+        aer.status AS edit_request_status,
+        aer.reason AS edit_request_reason,
+        aer.new_check_in AS edit_new_check_in,
+        aer.new_check_out AS edit_new_check_out,
+        aer.rejection_reason AS edit_rejection_reason,
 
-    CASE
-        WHEN (a.check_in AT TIME ZONE 'Asia/Jakarta')::time
-             <= TIME '08:00:00'
-        THEN 'Tepat Waktu'
-        ELSE 'Terlambat'
-    END AS attendance_status,
+        schedule.office_start_time,
+        schedule.office_end_time,
+        schedule.work_days,
 
-    CASE
-        WHEN (a.check_in AT TIME ZONE 'Asia/Jakarta')::time
-             > TIME '08:00:00'
-        THEN FLOOR(
+        workday.is_working_day,
+
+        CASE
+          WHEN a.check_in IS NULL THEN 'Belum Check In'
+          WHEN workday.is_working_day = TRUE
+            AND schedule.office_start_time IS NOT NULL
+            AND a.check_in::time > schedule.office_start_time
+          THEN 'Terlambat'
+          ELSE 'Tepat Waktu'
+        END AS attendance_status,
+
+        CASE
+          WHEN a.check_in IS NOT NULL
+            AND workday.is_working_day = TRUE
+            AND schedule.office_start_time IS NOT NULL
+            AND a.check_in::time > schedule.office_start_time
+          THEN CEIL(
             EXTRACT(
-                EPOCH FROM (
-                    (a.check_in AT TIME ZONE 'Asia/Jakarta')::time
-                    - TIME '08:00:00'
-                )
+              EPOCH FROM (
+                a.check_in::time - schedule.office_start_time
+              )
             ) / 60
-        )::int
-        ELSE 0
-    END AS late_minutes,
+          )::integer
+          ELSE 0
+        END AS late_minutes,
 
-    CASE
-        WHEN a.check_out IS NOT NULL
-        THEN CONCAT(
+        CASE
+          WHEN a.check_out IS NOT NULL THEN CONCAT(
             EXTRACT(HOUR FROM (a.check_out - a.check_in))::int,
             'j ',
             EXTRACT(MINUTE FROM (a.check_out - a.check_in))::int,
             'm'
-        )
-        ELSE '-'
-    END AS working_hours
+          )
+          ELSE '-'
+        END AS working_hours
 
-FROM attendance a
+      FROM attendance a
 
-JOIN users u ON u.id = a.user_id
+      JOIN users u ON u.id = a.user_id
 
-LEFT JOIN attendance_auto_checkouts ac
-    ON ac.attendance_id = a.id
+      LEFT JOIN attendance_auto_checkouts ac
+        ON ac.attendance_id = a.id
 
-LEFT JOIN LATERAL (
-    SELECT aer.*
-    FROM attendance_edit_requests aer
-    WHERE aer.attendance_id = a.id
-      AND aer.user_id = a.user_id
-    ORDER BY aer.created_at DESC
-    LIMIT 1
-) aer ON true
+      LEFT JOIN LATERAL (
+        SELECT aer.*
+        FROM attendance_edit_requests aer
+        WHERE aer.attendance_id = a.id
+          AND aer.user_id = a.user_id
+        ORDER BY aer.created_at DESC
+        LIMIT 1
+      ) aer ON TRUE
 
-WHERE a.user_id = $1
+      LEFT JOIN LATERAL (
+        SELECT
+          whs.office_start_time,
+          whs.office_end_time,
+          whs.work_days
+        FROM employee_work_schedule_history h
+        JOIN working_hours_settings whs
+          ON whs.id = h.working_hours_setting_id
+        WHERE h.user_id = a.user_id
+          AND h.effective_from <= a.attendance_date
+          AND (
+            h.effective_until IS NULL
+            OR h.effective_until >= a.attendance_date
+          )
+        ORDER BY h.effective_from DESC, h.id DESC
+        LIMIT 1
+      ) schedule ON TRUE
 
-ORDER BY a.attendance_date DESC
-            `,
+      LEFT JOIN LATERAL (
+        SELECT
+          CASE
+            WHEN schedule.work_days IS NOT NULL
+            THEN schedule.work_days ? INITCAP(
+    TRIM(TO_CHAR(a.attendance_date, 'FMDay'))
+)
+            ELSE FALSE
+          END AS is_working_day
+      ) workday ON TRUE
+
+      WHERE a.user_id = $1
+
+      ORDER BY a.attendance_date DESC
+      `,
       [userId],
     );
 
@@ -232,7 +269,7 @@ ORDER BY a.attendance_date DESC
       data: result.rows,
     });
   } catch (err) {
-    console.error(err);
+    console.error("ATTENDANCE HISTORY ERROR:", err);
 
     return res.status(500).json({
       success: false,
@@ -240,6 +277,7 @@ ORDER BY a.attendance_date DESC
     });
   }
 };
+
 /*
 |--------------------------------------------------------------------------
 | CHART
@@ -444,61 +482,122 @@ exports.checkIn = async (req, res) => {
     );
 
     const insertStart = performance.now();
+
     const result = await pool.query(
       `
   WITH jakarta_clock AS (
     SELECT
       NOW() AT TIME ZONE 'Asia/Jakarta' AS jakarta_now
-  )
-  INSERT INTO attendance (
-  user_id,
-  attendance_date,
-  check_in,
-  check_in_lat,
-  check_in_lng,
-  photo_path,
-  attendance_type,
-  notes,
-  status,
-  is_late,
-  late_minutes
-)
-SELECT
-  $1,
-  jakarta_now::date,
-  jakarta_now,
-  $2,
-  $3,
-  $4,
-  $5::text,
-  $6,
-  'Hadir',
-  CASE
-    WHEN $5::text = 'OFFICE'
-    THEN jakarta_now::time > TIME '08:00'
-    ELSE FALSE
-  END,
-  CASE
-    WHEN $5::text = 'OFFICE'
-    THEN GREATEST(
-      0,
-      CEIL(
-        EXTRACT(
-          EPOCH FROM (
-            jakarta_now::time - TIME '08:00'
+  ),
+  employee_schedule AS (
+    SELECT
+      whs.office_start_time,
+      whs.work_days
+    FROM users u
+
+    LEFT JOIN LATERAL (
+      SELECT
+        h.working_hours_setting_id
+      FROM employee_work_schedule_history h
+      WHERE h.user_id = u.id
+        AND h.effective_from <= (
+          SELECT jakarta_now::date FROM jakarta_clock
+        )
+        AND (
+          h.effective_until IS NULL
+          OR h.effective_until >= (
+            SELECT jakarta_now::date FROM jakarta_clock
           )
-        ) / 60
+        )
+      ORDER BY h.effective_from DESC, h.id DESC
+      LIMIT 1
+    ) history ON TRUE
+
+    LEFT JOIN working_hours_settings whs
+      ON whs.id = COALESCE(
+        history.working_hours_setting_id,
+        u.working_hours_setting_id
       )
-    )::integer
-    ELSE 0
-  END
-FROM jakarta_clock
-RETURNING
-  id,
-  attendance_date,
-  check_in,
-  is_late,
-  late_minutes
+
+    WHERE u.id = $1
+  ),
+  attendance_rule AS (
+    SELECT
+      jc.jakarta_now,
+      es.office_start_time,
+      es.work_days,
+
+      CASE
+        WHEN es.work_days IS NOT NULL
+          THEN es.work_days ? TO_CHAR(
+            jc.jakarta_now::date,
+            'FMDay'
+          )
+        ELSE FALSE
+      END AS is_working_day
+
+    FROM jakarta_clock jc
+    LEFT JOIN employee_schedule es ON TRUE
+  )
+
+  INSERT INTO attendance (
+    user_id,
+    attendance_date,
+    check_in,
+    check_in_lat,
+    check_in_lng,
+    photo_path,
+    attendance_type,
+    notes,
+    status,
+    is_late,
+    late_minutes
+  )
+
+  SELECT
+    $1,
+    ar.jakarta_now::date,
+    ar.jakarta_now,
+    $2,
+    $3,
+    $4,
+    $5::text,
+    $6,
+    'Hadir',
+
+    CASE
+      WHEN $5::text = 'OFFICE'
+        AND ar.is_working_day
+        AND ar.office_start_time IS NOT NULL
+      THEN ar.jakarta_now::time > ar.office_start_time
+      ELSE FALSE
+    END,
+
+    CASE
+      WHEN $5::text = 'OFFICE'
+        AND ar.is_working_day
+        AND ar.office_start_time IS NOT NULL
+      THEN GREATEST(
+        0,
+        CEIL(
+          EXTRACT(
+            EPOCH FROM (
+              ar.jakarta_now::time - ar.office_start_time
+            )
+          ) / 60
+        )
+      )::integer
+      ELSE 0
+    END
+
+  FROM attendance_rule ar
+
+  RETURNING
+    id,
+    attendance_date,
+    check_in,
+    is_late,
+    late_minutes
   `,
       [userId, lat, lng, uploadedPhotoKey, normalizedType, notes],
     );

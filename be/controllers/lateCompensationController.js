@@ -27,52 +27,105 @@ const parsePagination = (query) => {
 };
 
 // ==================================================
-// GET /api/late-compensation/my-summary
-// Ringkasan keterlambatan karyawan sendiri
+// COMPANY CREDIT SUMMARY
 // ==================================================
+
+async function getCompanyCreditSummary(userId = null) {
+  const result = await pool.query(
+    `
+    SELECT
+      COALESCE(
+        SUM(minutes) FILTER (
+          WHERE transaction_type = 'EARNED'
+        ), 0
+      )::integer AS total_company_credit_earned,
+
+      COALESCE(
+        SUM(minutes) FILTER (
+          WHERE transaction_type = 'USED'
+        ), 0
+      )::integer AS total_company_credit_used,
+
+      COALESCE(
+        SUM(
+          CASE
+            WHEN transaction_type = 'EARNED' THEN minutes
+            WHEN transaction_type = 'USED' THEN -minutes
+            ELSE 0
+          END
+        ), 0
+      )::integer AS company_credit_balance
+
+    FROM attendance_company_credit_ledger
+    WHERE ($1::integer IS NULL OR user_id = $1)
+    `,
+    [userId],
+  );
+
+  return result.rows[0];
+}
+
+// ==================================================
+// GET /api/late-compensation/my-summary
+// Ringkasan kompensasi karyawan sendiri
+// ==================================================
+
 exports.mySummary = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = Number(req.user.id);
 
-    const result = await pool.query(
-      `
-      SELECT
-        COALESCE(SUM(late_minutes), 0)::integer
-          AS total_late_minutes,
-        COALESCE(SUM(paid_minutes), 0)::integer
-          AS total_paid_minutes,
-        COALESCE(SUM(remaining_minutes), 0)::integer
-          AS outstanding_minutes,
-        COUNT(*)::integer AS total_late_days,
-        COUNT(*) FILTER (
-          WHERE status = 'PAID'
-        )::integer AS paid_days,
-        COUNT(*) FILTER (
-          WHERE remaining_minutes > 0
-        )::integer AS unpaid_days
-      FROM attendance_late_debts
-      WHERE user_id = $1
-      `,
-      [userId],
-    );
+    const [debtResult, creditSummary] = await Promise.all([
+      pool.query(
+        `
+        SELECT
+          COALESCE(SUM(late_minutes), 0)::integer
+            AS total_late_minutes,
+
+          COALESCE(SUM(paid_minutes), 0)::integer
+            AS total_paid_minutes,
+
+          COALESCE(SUM(remaining_minutes), 0)::integer
+            AS outstanding_minutes,
+
+          COUNT(*)::integer AS total_late_days,
+
+          COUNT(*) FILTER (
+            WHERE status = 'PAID'
+          )::integer AS paid_days,
+
+          COUNT(*) FILTER (
+            WHERE remaining_minutes > 0
+          )::integer AS unpaid_days
+
+        FROM attendance_late_debts
+        WHERE user_id = $1
+        `,
+        [userId],
+      ),
+
+      getCompanyCreditSummary(userId),
+    ]);
 
     return res.json({
       success: true,
-      data: result.rows[0],
+      data: {
+        ...debtResult.rows[0],
+        ...creditSummary,
+      },
     });
   } catch (error) {
     console.error("MY LATE SUMMARY ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Gagal mengambil ringkasan keterlambatan.",
+      message: "Gagal mengambil ringkasan kompensasi.",
     });
   }
 };
 
 // ==================================================
 // GET /api/late-compensation/my-history
-// Riwayat utang dan pembayaran karyawan
+// Riwayat kompensasi karyawan sendiri
 // ==================================================
 
 exports.myHistory = async (req, res) => {
@@ -125,20 +178,19 @@ exports.employees = async (req, res) => {
       });
     }
 
-    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
 
     const limit = Math.min(
       100,
-      Math.max(1, parseInt(req.query.limit, 10) || 10),
+      Math.max(1, Number.parseInt(req.query.limit, 10) || 10),
     );
 
     const offset = (page - 1) * limit;
 
     const search = String(req.query.search || "").trim();
-
     const status = String(req.query.status || "ALL").toUpperCase();
 
-    if (!["ALL", "DEBT", "PAID"].includes(status)) {
+    if (!["ALL", "DEBT", "PAID", "CREDIT"].includes(status)) {
       return res.status(400).json({
         success: false,
         message: "Filter status tidak valid.",
@@ -146,7 +198,54 @@ exports.employees = async (req, res) => {
     }
 
     const baseQuery = `
-      WITH employee_summary AS (
+      WITH debt_summary AS (
+        SELECT
+          user_id,
+
+          COALESCE(SUM(late_minutes), 0)::integer
+            AS total_late_minutes,
+
+          COALESCE(SUM(paid_minutes), 0)::integer
+            AS total_paid_minutes,
+
+          COALESCE(SUM(remaining_minutes), 0)::integer
+            AS outstanding_minutes
+
+        FROM attendance_late_debts
+        GROUP BY user_id
+      ),
+
+      credit_summary AS (
+        SELECT
+          user_id,
+
+          COALESCE(
+            SUM(minutes) FILTER (
+              WHERE transaction_type = 'EARNED'
+            ), 0
+          )::integer AS total_company_credit_earned,
+
+          COALESCE(
+            SUM(minutes) FILTER (
+              WHERE transaction_type = 'USED'
+            ), 0
+          )::integer AS total_company_credit_used,
+
+          COALESCE(
+            SUM(
+              CASE
+                WHEN transaction_type = 'EARNED' THEN minutes
+                WHEN transaction_type = 'USED' THEN -minutes
+                ELSE 0
+              END
+            ), 0
+          )::integer AS company_credit_balance
+
+        FROM attendance_company_credit_ledger
+        GROUP BY user_id
+      ),
+
+      employee_summary AS (
         SELECT
           u.id,
           u.name,
@@ -154,29 +253,31 @@ exports.employees = async (req, res) => {
           u.company_email,
           u.department,
 
-          COALESCE(
-            SUM(d.late_minutes), 0
-          )::integer AS total_late_minutes,
+          COALESCE(d.total_late_minutes, 0)::integer
+            AS total_late_minutes,
 
-          COALESCE(
-            SUM(d.paid_minutes), 0
-          )::integer AS total_paid_minutes,
+          COALESCE(d.total_paid_minutes, 0)::integer
+            AS total_paid_minutes,
 
-          COALESCE(
-            SUM(d.remaining_minutes), 0
-          )::integer AS outstanding_minutes
+          COALESCE(d.outstanding_minutes, 0)::integer
+            AS outstanding_minutes,
+
+          COALESCE(c.total_company_credit_earned, 0)::integer
+            AS total_company_credit_earned,
+
+          COALESCE(c.total_company_credit_used, 0)::integer
+            AS total_company_credit_used,
+
+          COALESCE(c.company_credit_balance, 0)::integer
+            AS company_credit_balance
 
         FROM users u
 
-        INNER JOIN attendance_late_debts d
+        LEFT JOIN debt_summary d
           ON d.user_id = u.id
 
-        GROUP BY
-          u.id,
-          u.name,
-          u.email,
-          u.company_email,
-          u.department
+        LEFT JOIN credit_summary c
+          ON c.user_id = u.id
       ),
 
       filtered_employees AS (
@@ -199,29 +300,34 @@ exports.employees = async (req, res) => {
               $2 = 'PAID'
               AND outstanding_minutes = 0
             )
+            OR (
+              $2 = 'CREDIT'
+              AND company_credit_balance > 0
+            )
           )
       )
     `;
 
     const countResult = await pool.query(
       `
-        ${baseQuery}
-        SELECT COUNT(*)::integer AS total
-        FROM filtered_employees
+      ${baseQuery}
+      SELECT COUNT(*)::integer AS total
+      FROM filtered_employees
       `,
       [search, status],
     );
 
     const dataResult = await pool.query(
       `
-        ${baseQuery}
-        SELECT *
-        FROM filtered_employees
-        ORDER BY
-          outstanding_minutes DESC,
-          name ASC,
-          id ASC
-        LIMIT $3 OFFSET $4
+      ${baseQuery}
+      SELECT *
+      FROM filtered_employees
+      ORDER BY
+        outstanding_minutes DESC,
+        company_credit_balance DESC,
+        name ASC,
+        id ASC
+      LIMIT $3 OFFSET $4
       `,
       [search, status, limit, offset],
     );
@@ -252,6 +358,7 @@ exports.employees = async (req, res) => {
 // GET /api/late-compensation/employees/:id
 // Detail saldo karyawan (Admin/HR)
 // ==================================================
+
 exports.employeeDetail = async (req, res) => {
   try {
     if (!isAdmin(req.user)) {
@@ -291,33 +398,37 @@ exports.employeeDetail = async (req, res) => {
       });
     }
 
-    const summaryResult = await pool.query(
-      `
-      SELECT
-        COALESCE(SUM(late_minutes), 0)::integer
-          AS total_late_minutes,
+    const [summaryResult, creditSummary, history] = await Promise.all([
+      pool.query(
+        `
+        SELECT
+          COALESCE(SUM(late_minutes), 0)::integer
+            AS total_late_minutes,
 
-        COALESCE(SUM(paid_minutes), 0)::integer
-          AS total_paid_minutes,
+          COALESCE(SUM(paid_minutes), 0)::integer
+            AS total_paid_minutes,
 
-        COALESCE(SUM(remaining_minutes), 0)::integer
-          AS outstanding_minutes
+          COALESCE(SUM(remaining_minutes), 0)::integer
+            AS outstanding_minutes
 
-      FROM attendance_late_debts
-      WHERE user_id = $1
-      `,
-      [userId],
-    );
+        FROM attendance_late_debts
+        WHERE user_id = $1
+        `,
+        [userId],
+      ),
 
-    // STEP 11:
-    // Gunakan service history yang sama
-    // dengan Employee App.
-    const history = await getEmployeeLateHistory(userId);
+      getCompanyCreditSummary(userId),
+
+      getEmployeeLateHistory(userId),
+    ]);
 
     return res.json({
       success: true,
       employee: employeeResult.rows[0],
-      summary: summaryResult.rows[0],
+      summary: {
+        ...summaryResult.rows[0],
+        ...creditSummary,
+      },
       history,
     });
   } catch (error) {
@@ -325,15 +436,16 @@ exports.employeeDetail = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Gagal mengambil detail keterlambatan.",
+      message: "Gagal mengambil detail kompensasi karyawan.",
     });
   }
 };
 
 // ==================================================
 // GET /api/late-compensation/payments
-// Riwayat cicilan lintas karyawan (Admin/HR)
+// Riwayat pembayaran FIFO (Admin/HR)
 // ==================================================
+
 exports.payments = async (req, res) => {
   try {
     if (!isAdmin(req.user)) {
@@ -344,7 +456,6 @@ exports.payments = async (req, res) => {
     }
 
     const { page, limit, offset } = parsePagination(req.query);
-
     const { start_date, end_date } = req.query;
 
     if (
@@ -402,7 +513,7 @@ exports.payments = async (req, res) => {
       [start_date || null, end_date || null, limit, offset],
     );
 
-    const total = countResult.rows[0].total;
+    const total = Number(countResult.rows[0]?.total || 0);
 
     return res.json({
       success: true,
@@ -424,6 +535,11 @@ exports.payments = async (req, res) => {
   }
 };
 
+// ==================================================
+// GET /api/late-compensation/global-summary
+// Ringkasan kompensasi seluruh perusahaan
+// ==================================================
+
 exports.globalSummary = async (req, res) => {
   try {
     if (!isAdmin(req.user)) {
@@ -433,30 +549,38 @@ exports.globalSummary = async (req, res) => {
       });
     }
 
-    const result = await pool.query(`
-      SELECT
-        COUNT(DISTINCT user_id)::integer
-          AS total_employees_with_late,
+    const [debtResult, creditSummary] = await Promise.all([
+      pool.query(`
+        SELECT
+          COUNT(DISTINCT user_id)::integer
+            AS total_employees_with_late,
 
-        COUNT(DISTINCT user_id)
-          FILTER (WHERE remaining_minutes > 0)::integer
-          AS employees_with_debt,
+          COUNT(DISTINCT user_id)
+            FILTER (
+              WHERE remaining_minutes > 0
+            )::integer AS employees_with_debt,
 
-        COALESCE(SUM(late_minutes), 0)::integer
-          AS total_late_minutes,
+          COALESCE(SUM(late_minutes), 0)::integer
+            AS total_late_minutes,
 
-        COALESCE(SUM(paid_minutes), 0)::integer
-          AS total_paid_minutes,
+          COALESCE(SUM(paid_minutes), 0)::integer
+            AS total_paid_minutes,
 
-        COALESCE(SUM(remaining_minutes), 0)::integer
-          AS outstanding_minutes
+          COALESCE(SUM(remaining_minutes), 0)::integer
+            AS outstanding_minutes
 
-      FROM attendance_late_debts
-    `);
+        FROM attendance_late_debts
+      `),
+
+      getCompanyCreditSummary(),
+    ]);
 
     return res.json({
       success: true,
-      data: result.rows[0],
+      data: {
+        ...debtResult.rows[0],
+        ...creditSummary,
+      },
     });
   } catch (error) {
     console.error("GLOBAL LATE SUMMARY ERROR:", error);
