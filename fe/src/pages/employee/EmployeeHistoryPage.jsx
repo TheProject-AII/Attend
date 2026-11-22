@@ -18,7 +18,6 @@ export default function EmployeeHistoryPage() {
     <Box
       sx={{
         width: "100%",
-        pb: "100px",
       }}
     >
       <Paper
@@ -26,7 +25,7 @@ export default function EmployeeHistoryPage() {
         sx={{
           position: "sticky",
           top: 0,
-          zIndex: 10,
+          zIndex: 30,
           borderBottom: "1px solid #E5E7EB",
           borderRadius: 0,
           bgcolor: "#fff",
@@ -38,6 +37,7 @@ export default function EmployeeHistoryPage() {
           variant="fullWidth"
           textColor="inherit"
           sx={{
+            minHeight: 42,
             "& .MuiTabs-indicator": {
               bgcolor: "#16A34A",
               height: 3,
@@ -45,18 +45,25 @@ export default function EmployeeHistoryPage() {
             "& .Mui-selected": {
               color: "#16A34A",
             },
+            "& .MuiTab-root": {
+              minHeight: 42,
+              py: 0.5,
+              fontSize: 13,
+            },
           }}
         >
           <Tab
             icon={<HistoryRoundedIcon />}
             iconPosition="start"
             label="Attendance"
+            sx={{ minHeight: 42 }}
           />
 
           <Tab
             icon={<AccessTimeRoundedIcon />}
             iconPosition="start"
             label="Compensation"
+            sx={{ minHeight: 42 }}
           />
         </Tabs>
       </Paper>

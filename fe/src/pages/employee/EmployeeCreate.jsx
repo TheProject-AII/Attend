@@ -124,6 +124,7 @@ export default function EmployeeCreate({
     join_date: "",
     address: "",
     working_hours_setting_id: "",
+    effective_date: dayjs().format("YYYY-MM-DD"),
     job_description: "", // TAMBAHAN
     employee_type: "TETAP",
 
@@ -291,6 +292,7 @@ export default function EmployeeCreate({
         working_hours_setting_id: employee.working_hours_setting_id
           ? String(employee.working_hours_setting_id)
           : "",
+        effective_date: dayjs().format("YYYY-MM-DD"),
         company_id: employee.company_id || "",
 
         leader_id: employee.leader_id || "",
@@ -387,6 +389,9 @@ export default function EmployeeCreate({
         "working_hours_setting_id",
         form.working_hours_setting_id,
       );
+      if (mode === "edit") {
+        formData.append("effective_date", form.effective_date);
+      }
       if (form.employee_type !== "TETAP") {
         formData.append("contract_start_date", form.contract_start_date);
         formData.append("contract_end_date", form.contract_end_date);
@@ -861,7 +866,7 @@ export default function EmployeeCreate({
                 fullWidth
                 required
                 select
-                label="Working Hours"
+                label="Working Schedule"
                 name="working_hours_setting_id"
                 value={String(form.working_hours_setting_id || "")}
                 onChange={handleChange}
@@ -877,6 +882,31 @@ export default function EmployeeCreate({
                   ))}
               </TextField>
             </Grid>
+            {mode === "edit" && (
+              <Grid size={{ xs: 12, md: 6 }}>
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                  <DatePicker
+                    label="Schedule Effective Date"
+                    value={
+                      form.effective_date ? dayjs(form.effective_date) : null
+                    }
+                    onChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        effective_date: value ? value.format("YYYY-MM-DD") : "",
+                      }))
+                    }
+                    format="DD/MM/YYYY"
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        helperText: "The start date of the new work schedule.",
+                      },
+                    }}
+                  />
+                </LocalizationProvider>
+              </Grid>
+            )}
             {/* ADDRESS */}
             <Grid size={{ xs: 12 }}>
               <TextField

@@ -395,7 +395,7 @@ export default function History() {
       <Box
         sx={{
           position: "sticky",
-          top: 0,
+          top: "48px",
           zIndex: 10,
           bgcolor: "#F5F7FA",
           px: 2,

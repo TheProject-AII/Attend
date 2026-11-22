@@ -1,7 +1,19 @@
 import React, { useCallback, useEffect, useState } from "react";
+
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
+
 import Swal from "sweetalert2";
 import api from "../../services/api";
+
 import {
   Alert,
   Box,
@@ -29,16 +41,7 @@ import {
   Typography,
 } from "@mui/material";
 
-import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
-import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
-import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 const rawApiUrl = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
-
 const API_BASE = rawApiUrl.endsWith("/api") ? rawApiUrl : `${rawApiUrl}/api`;
 
 function getToken() {
@@ -173,8 +176,10 @@ function DetailDialog({ employeeId, open, onClose }) {
     return () => controller.abort();
   }, [employeeId, open]);
 
+  const summary = data?.summary || {};
+
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xl">
       <DialogTitle
         sx={{
           display: "flex",
@@ -188,12 +193,7 @@ function DetailDialog({ employeeId, open, onClose }) {
           Compensation Details
         </Typography>
 
-        <IconButton
-          onClick={onClose}
-          aria-label="Close dialog"
-          size="small"
-          sx={{ ml: "auto" }}
-        >
+        <IconButton onClick={onClose} aria-label="Close dialog" size="small">
           <CloseRoundedIcon />
         </IconButton>
       </DialogTitle>
@@ -228,52 +228,74 @@ function DetailDialog({ employeeId, open, onClose }) {
                 display: "grid",
                 gridTemplateColumns: {
                   xs: "1fr",
-                  sm: "repeat(3, 1fr)",
+                  sm: "repeat(2, 1fr)",
+                  lg: "repeat(3, 1fr)",
                 },
                 gap: 1.5,
               }}
             >
               <SummaryCard
                 label="Total Late Time"
-                value={formatMinutes(data.summary?.total_late_minutes)}
+                value={formatMinutes(summary.total_late_minutes)}
                 icon={<AccessTimeRoundedIcon />}
                 color="#EA580C"
               />
 
               <SummaryCard
                 label="Time Compensated"
-                value={formatMinutes(data.summary?.total_paid_minutes)}
+                value={formatMinutes(summary.total_paid_minutes)}
                 icon={<CheckCircleRoundedIcon />}
                 color="#16A34A"
               />
 
               <SummaryCard
                 label="Outstanding Time"
-                value={formatMinutes(data.summary?.outstanding_minutes)}
+                value={formatMinutes(summary.outstanding_minutes)}
                 icon={<WarningAmberRoundedIcon />}
                 color="#D97706"
+              />
+
+              <SummaryCard
+                label="Company Credit Earned"
+                value={formatMinutes(summary.total_company_credit_earned)}
+                icon={<AccountBalanceWalletRoundedIcon />}
+                color="#2563EB"
+              />
+
+              <SummaryCard
+                label="Company Credit Used"
+                value={formatMinutes(summary.total_company_credit_used)}
+                icon={<CheckCircleRoundedIcon />}
+                color="#7C3AED"
+              />
+
+              <SummaryCard
+                label="Available Company Credit"
+                value={formatMinutes(summary.company_credit_balance)}
+                icon={<AccountBalanceWalletRoundedIcon />}
+                color="#0891B2"
               />
             </Box>
 
             <Divider />
 
-            <Typography fontWeight={800}>Compensation History</Typography>
+            <Typography fontWeight={800}>
+              Compensation & Company Credit History
+            </Typography>
 
-            <TableContainer
-              component={Paper}
-              variant="outlined"
-              sx={{ borderRadius: 2 }}
-            >
-              <Table size="small">
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small" sx={{ minWidth: 1050 }}>
                 <TableHead>
                   <TableRow>
                     <TableCell>Date</TableCell>
                     <TableCell>Check In</TableCell>
                     <TableCell>Check Out</TableCell>
                     <TableCell align="right">Late</TableCell>
-                    <TableCell align="right">Compensated</TableCell>
-                    <TableCell align="right">Opening Balance</TableCell>
-                    <TableCell align="right">Closing Balance</TableCell>
+                    <TableCell align="right">Debt Paid</TableCell>
+                    <TableCell align="right">Debt Balance</TableCell>
+                    <TableCell align="right">Credit Earned</TableCell>
+                    <TableCell align="right">Credit Used</TableCell>
+                    <TableCell align="right">Credit Balance</TableCell>
                   </TableRow>
                 </TableHead>
 
@@ -295,10 +317,6 @@ function DetailDialog({ employeeId, open, onClose }) {
                       </TableCell>
 
                       <TableCell align="right">
-                        {formatMinutes(row.opening_balance)}
-                      </TableCell>
-
-                      <TableCell align="right">
                         <Typography
                           fontWeight={700}
                           color={
@@ -310,12 +328,33 @@ function DetailDialog({ employeeId, open, onClose }) {
                           {formatMinutes(row.closing_balance)}
                         </Typography>
                       </TableCell>
+
+                      <TableCell align="right">
+                        {formatMinutes(row.company_credit_earned)}
+                      </TableCell>
+
+                      <TableCell align="right">
+                        {formatMinutes(row.company_credit_used)}
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography
+                          fontWeight={700}
+                          color={
+                            Number(row.closing_company_credit_balance) > 0
+                              ? "info.main"
+                              : "text.primary"
+                          }
+                        >
+                          {formatMinutes(row.closing_company_credit_balance)}
+                        </Typography>
+                      </TableCell>
                     </TableRow>
                   ))}
 
                   {!data.history?.length && (
                     <TableRow>
-                      <TableCell colSpan={7} align="center">
+                      <TableCell colSpan={9} align="center">
                         No history yet.
                       </TableCell>
                     </TableRow>
@@ -454,13 +493,11 @@ export default function AttendanceLateCompensation() {
       <Stack spacing={3}>
         {error && <Alert severity="error">{error}</Alert>}
 
+        {/* SUMMARY CARDS */}
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: {
-              xs: "repeat(2, minmax(0, 1fr))",
-              lg: "repeat(4, minmax(0, 1fr))",
-            },
+            gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
             gap: 2,
           }}
         >
@@ -491,6 +528,20 @@ export default function AttendanceLateCompensation() {
             icon={<WarningAmberRoundedIcon />}
             color="#D97706"
           />
+
+          <SummaryCard
+            label="Company Credit Earned"
+            value={formatMinutes(summary?.total_company_credit_earned)}
+            icon={<AccountBalanceWalletRoundedIcon />}
+            color="#2563EB"
+          />
+
+          <SummaryCard
+            label="Available Company Credit"
+            value={formatMinutes(summary?.company_credit_balance)}
+            icon={<AccountBalanceWalletRoundedIcon />}
+            color="#0891B2"
+          />
         </Box>
 
         <Paper
@@ -517,22 +568,25 @@ export default function AttendanceLateCompensation() {
                 Employee Compensation
               </Typography>
 
-              <Button
-                variant="outlined"
-                startIcon={<RefreshRoundedIcon />}
-                onClick={() => setRefreshKey((prev) => prev + 1)}
-              >
-                Refresh
-              </Button>
-              <Button
-                variant="outlined"
-                color="success"
-                startIcon={<FileDownloadIcon />}
-                onClick={handleExportExcel}
-                disabled={exporting}
-              >
-                {exporting ? "Exporting..." : "Export Excel"}
-              </Button>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshRoundedIcon />}
+                  onClick={() => setRefreshKey((prev) => prev + 1)}
+                >
+                  Refresh
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  color="success"
+                  startIcon={<FileDownloadIcon />}
+                  onClick={handleExportExcel}
+                  disabled={exporting || filter === "CREDIT"}
+                >
+                  {exporting ? "Exporting..." : "Export Excel"}
+                </Button>
+              </Stack>
             </Stack>
 
             <Stack
@@ -569,6 +623,7 @@ export default function AttendanceLateCompensation() {
                 <MenuItem value="ALL">All Statuses</MenuItem>
                 <MenuItem value="DEBT">Outstanding</MenuItem>
                 <MenuItem value="PAID">Paid in Full</MenuItem>
+                <MenuItem value="CREDIT">Has Company Credit</MenuItem>
               </Select>
             </Stack>
 
@@ -581,6 +636,7 @@ export default function AttendanceLateCompensation() {
                     <TableCell align="right">Late</TableCell>
                     <TableCell align="right">Compensated</TableCell>
                     <TableCell align="right">Outstanding</TableCell>
+                    <TableCell align="right">Company Credit</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell align="center">Detail</TableCell>
                   </TableRow>
@@ -589,13 +645,13 @@ export default function AttendanceLateCompensation() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
+                      <TableCell colSpan={8} align="center" sx={{ py: 5 }}>
                         <CircularProgress size={28} />
                       </TableCell>
                     </TableRow>
                   ) : employees.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
+                      <TableCell colSpan={8} align="center" sx={{ py: 5 }}>
                         No employee data available.
                       </TableCell>
                     </TableRow>
@@ -603,6 +659,10 @@ export default function AttendanceLateCompensation() {
                     employees.map((employee) => {
                       const outstanding = Number(
                         employee.outstanding_minutes || 0,
+                      );
+
+                      const credit = Number(
+                        employee.company_credit_balance || 0,
                       );
 
                       return (
@@ -636,13 +696,38 @@ export default function AttendanceLateCompensation() {
                             </Typography>
                           </TableCell>
 
+                          <TableCell align="right">
+                            <Typography
+                              fontWeight={700}
+                              color={credit > 0 ? "info.main" : "text.primary"}
+                            >
+                              {formatMinutes(credit)}
+                            </Typography>
+                          </TableCell>
+
                           <TableCell>
-                            <Chip
-                              size="small"
-                              label={outstanding > 0 ? "Ada Utang" : "Lunas"}
-                              color={outstanding > 0 ? "warning" : "success"}
-                              variant="outlined"
-                            />
+                            {outstanding > 0 ? (
+                              <Chip
+                                size="small"
+                                label="Ada Utang"
+                                color="warning"
+                                variant="outlined"
+                              />
+                            ) : credit > 0 ? (
+                              <Chip
+                                size="small"
+                                label="Credit"
+                                color="info"
+                                variant="outlined"
+                              />
+                            ) : (
+                              <Chip
+                                size="small"
+                                label="Lunas"
+                                color="success"
+                                variant="outlined"
+                              />
+                            )}
                           </TableCell>
 
                           <TableCell align="center">

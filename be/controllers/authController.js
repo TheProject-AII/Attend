@@ -848,6 +848,7 @@ exports.updateEmployee = async (req, res) => {
       role_id,
       job_description,
       working_hours_setting_id,
+      effective_date,
       join_date,
       address,
       employee_type,
@@ -959,118 +960,287 @@ exports.updateEmployee = async (req, res) => {
     ];
 
     const isContract = contractTypes.includes(employee_type);
+    const scheduleEffectiveDate =
+      effective_date ||
+      new Date().toLocaleDateString("en-CA", {
+        timeZone: "Asia/Jakarta",
+      });
 
-    // UPDATE EMPLOYEE
-    const result = await pool.query(
-      `
-      UPDATE users
-      SET
-        nik = $1,
-        name = $2,
-        email = $3,
-        phone = $4,
-
-        -- Department
-        department = $5,
-        department_id = $6,
-
-        -- Position
-        position = $7,
-        role_id = $8,
-
-        -- Employee Information
-        join_date = $9,
-        address = $10,
-        employee_type = $11,
-
-        contract_start_date = $12,
-        contract_end_date = $13,
-
-        company_id = $14,
-        leader_id = $15,
-
-        job_description = $16,
-
-        -- Working Hours
-        working_hours_setting_id = $17,
-
-        -- Employee Photo
-        photo = COALESCE($18, photo),
-
-        face_embedding = CASE
-          WHEN $18 IS NOT NULL THEN NULL
-          ELSE face_embedding
-        END,
-
-        face_enrolled_at = CASE
-          WHEN $18 IS NOT NULL THEN NULL
-          ELSE face_enrolled_at
-        END,
-
-        -- Documents
-        ktp = COALESCE($19, ktp),
-        npwp = COALESCE($20, npwp),
-        bpjs_kesehatan = COALESCE($21, bpjs_kesehatan),
-        bpjs_tk = COALESCE($22, bpjs_tk),
-        kk = COALESCE($23, kk),
-
-        -- Bank Account
-        bank_name = $24,
-        bank_account_number = $25,
-
-        updated_at = NOW()
-
-      WHERE id = $26
-
-      RETURNING *
-      `,
-      [
-        nik,
-        name,
-        email,
-        phone,
-
-        departmentName,
-        department_id,
-
-        roleName,
-        role_id,
-
-        join_date || null,
-        address || null,
-        employee_type,
-
-        isContract ? contract_start_date || null : null,
-        isContract ? contract_end_date || null : null,
-
-        company_id || null,
-        leader_id || null,
-
-        job_description || null,
-
-        effectiveWorkingHoursId,
-
-        paths.photo || null,
-        paths.ktp || null,
-        paths.npwp || null,
-        paths.bpjs_kesehatan || null,
-        paths.bpjs_tk || null,
-        paths.kk || null,
-
-        bank_name?.trim() || null,
-        bank_account_number?.trim() || null,
-
-        id,
-      ],
-    );
-
-    if (result.rows.length === 0) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduleEffectiveDate)) {
       await cleanupUploadedDocuments(uploadedKeys);
 
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
-        message: "Employee Not Found",
+        message: "Tanggal efektif jadwal tidak valid.",
       });
+    }
+    // ============================================
+    // UPDATE EMPLOYEE + WORK SCHEDULE HISTORY
+    // ============================================
+
+    const client = await pool.connect();
+
+    let transactionStarted = false;
+
+    try {
+      await client.query("BEGIN");
+      transactionStarted = true;
+
+      // Lock employee supaya tidak bentrok dengan proses attendance
+      await client.query("SELECT pg_advisory_xact_lock(17001, $1::integer)", [
+        id,
+      ]);
+
+      const employeeLock = await client.query(
+        `
+    SELECT id, working_hours_setting_id
+    FROM users
+    WHERE id = $1
+    FOR UPDATE
+    `,
+        [id],
+      );
+
+      if (!employeeLock.rows.length) {
+        throw new Error("Employee Not Found");
+      }
+
+      const oldScheduleId = employeeLock.rows[0].working_hours_setting_id;
+
+      // Validasi jadwal baru
+      const newScheduleCheck = await client.query(
+        `
+    SELECT id
+    FROM working_hours_settings
+    WHERE id = $1
+      AND is_active = TRUE
+    LIMIT 1
+    `,
+        [effectiveWorkingHoursId],
+      );
+
+      if (!newScheduleCheck.rows.length) {
+        throw new Error("Jadwal kerja baru tidak valid atau tidak aktif.");
+      }
+
+      // Seed jadwal lama jika belum memiliki history
+      const historyExists = await client.query(
+        `
+    SELECT id
+    FROM employee_work_schedule_history
+    WHERE user_id = $1
+    LIMIT 1
+    `,
+        [id],
+      );
+
+      if (historyExists.rows.length === 0 && oldScheduleId) {
+        const oldSchedule = await client.query(
+          `
+      SELECT effective_date
+      FROM working_hours_settings
+      WHERE id = $1
+      `,
+          [oldScheduleId],
+        );
+
+        if (!oldSchedule.rows.length) {
+          throw new Error("Jadwal kerja lama tidak ditemukan.");
+        }
+
+        const oldEffectiveDate = oldSchedule.rows[0].effective_date;
+
+        const seedResult = await client.query(
+          `
+      INSERT INTO employee_work_schedule_history (
+        user_id,
+        working_hours_setting_id,
+        effective_from,
+        created_by
+      )
+      VALUES (
+        $1,
+        $2,
+        $3::date,
+        $4
+      )
+      `,
+          [id, oldScheduleId, oldEffectiveDate, req.user.id],
+        );
+      }
+
+      // Update history hanya jika jadwal memang berubah
+      if (Number(oldScheduleId) !== Number(effectiveWorkingHoursId)) {
+        // Pastikan tidak ada jadwal lain pada atau setelah tanggal efektif
+        const futureHistory = await client.query(
+          `
+          SELECT id, effective_from
+          FROM employee_work_schedule_history
+          WHERE user_id = $1
+            AND effective_from >= $2::date
+          ORDER BY effective_from ASC
+          LIMIT 1
+          `,
+          [id, scheduleEffectiveDate],
+        );
+
+        if (futureHistory.rows.length > 0) {
+          throw new Error(
+            "Sudah ada riwayat jadwal pada atau setelah tanggal efektif tersebut. Periksa tanggal efektif.",
+          );
+        }
+
+        // Tutup jadwal sebelumnya pada H-1
+        await client.query(
+          `
+          UPDATE employee_work_schedule_history
+          SET effective_until = $2::date - 1
+          WHERE user_id = $1
+            AND effective_from < $2::date
+            AND (
+              effective_until IS NULL
+              OR effective_until >= $2::date
+            )
+          `,
+          [id, scheduleEffectiveDate],
+        );
+
+        // Simpan jadwal baru
+        await client.query(
+          `
+          INSERT INTO employee_work_schedule_history (
+            user_id,
+            working_hours_setting_id,
+            effective_from,
+            created_by
+          )
+          VALUES ($1, $2, $3::date, $4)
+          `,
+          [id, effectiveWorkingHoursId, scheduleEffectiveDate, req.user.id],
+        );
+      }
+
+      // Update seluruh data karyawan
+      const result = await client.query(
+        `
+    UPDATE users
+    SET
+      nik = $1,
+      name = $2,
+      email = $3,
+      phone = $4,
+
+      department = $5,
+      department_id = $6,
+
+      position = $7,
+      role_id = $8,
+
+      join_date = $9,
+      address = $10,
+      employee_type = $11,
+
+      contract_start_date = $12,
+      contract_end_date = $13,
+
+      company_id = $14,
+      leader_id = $15,
+
+      job_description = $16,
+      working_hours_setting_id = $17,
+
+      photo = COALESCE($18, photo),
+
+      face_embedding = CASE
+        WHEN $18 IS NOT NULL THEN NULL
+        ELSE face_embedding
+      END,
+
+      face_enrolled_at = CASE
+        WHEN $18 IS NOT NULL THEN NULL
+        ELSE face_enrolled_at
+      END,
+
+      ktp = COALESCE($19, ktp),
+      npwp = COALESCE($20, npwp),
+      bpjs_kesehatan = COALESCE($21, bpjs_kesehatan),
+      bpjs_tk = COALESCE($22, bpjs_tk),
+      kk = COALESCE($23, kk),
+
+      bank_name = $24,
+      bank_account_number = $25,
+
+      updated_at = NOW()
+
+    WHERE id = $26
+
+    RETURNING *
+    `,
+        [
+          nik,
+          name,
+          email,
+          phone,
+
+          departmentName,
+          department_id,
+
+          roleName,
+          role_id,
+
+          join_date || null,
+          address || null,
+          employee_type,
+
+          isContract ? contract_start_date || null : null,
+          isContract ? contract_end_date || null : null,
+
+          company_id || null,
+          leader_id || null,
+
+          job_description || null,
+          effectiveWorkingHoursId,
+
+          paths.photo || null,
+          paths.ktp || null,
+          paths.npwp || null,
+          paths.bpjs_kesehatan || null,
+          paths.bpjs_tk || null,
+          paths.kk || null,
+
+          bank_name?.trim() || null,
+          bank_account_number?.trim() || null,
+
+          id,
+        ],
+      );
+
+      if (!result.rows.length) {
+        throw new Error("Employee Not Found");
+      }
+
+      await client.query("COMMIT");
+      transactionStarted = false;
+
+      // INVALIDATE PHOTO CACHE
+      if (paths.photo) {
+        invalidateEmployeePhotoCache(oldPhoto);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Data karyawan berhasil diperbarui.",
+        data: result.rows[0],
+      });
+    } catch (error) {
+      if (transactionStarted) {
+        await client.query("ROLLBACK");
+        transactionStarted = false;
+      }
+
+      throw error;
+    } finally {
+      client.release();
     }
 
     // INVALIDATE PHOTO CACHE
