@@ -6,9 +6,22 @@ SOURCE=/home/ganbaru/hris-github
 PROD=/home/ganbaru/hris
 PROJECT=hris
 BACKUP="/home/ganbaru/hris-backup/deploy-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$BACKUP"
 
+mkdir -p "$BACKUP"
 cd "$PROD"
+
+APP_VERSION="${APP_VERSION:?APP_VERSION tidak dikirim dari GitHub Actions}"
+APP_VERSION_CODE="${APP_VERSION_CODE:?APP_VERSION_CODE tidak dikirim dari GitHub Actions}"
+APP_BUILD_NUMBER="${APP_BUILD_NUMBER:-1}"
+
+if ! [[ "$APP_VERSION_CODE" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: Android version code tidak valid"
+  exit 1
+fi
+
+echo "===== RELEASE VERSION ====="
+echo "Android Version: $APP_VERSION"
+echo "Android Code: $APP_VERSION_CODE"
 
 echo "===== SAVE CURRENT IMAGES ====="
 for service in hris-backend hris-frontend hris-face; do
@@ -17,19 +30,25 @@ for service in hris-backend hris-frontend hris-face; do
   docker inspect "$id" --format '{{.Image}}' > "$BACKUP/$service-image"
 done
 
-echo "===== BACKUP SOURCE ====="
+echo "===== BACKUP SOURCE AND CONFIG ====="
 rsync -a be/ "$BACKUP/be/" --exclude=node_modules --exclude=uploads --exclude='.env*'
 rsync -a fe/ "$BACKUP/fe/" --exclude=node_modules --exclude=dist --exclude='.env*'
 rsync -a face-service/ "$BACKUP/face-service/" \
   --exclude='.venv' --exclude='__pycache__' --exclude='.env*'
 
+cp "$PROD/config/backend.env" "$BACKUP/backend.env"
+
 restore_source() {
   rsync -a --delete "$BACKUP/be/" "$PROD/be/" \
     --exclude=node_modules --exclude=uploads --exclude='.env*'
+
   rsync -a --delete "$BACKUP/fe/" "$PROD/fe/" \
     --exclude=node_modules --exclude=dist --exclude='.env*'
+
   rsync -a --delete "$BACKUP/face-service/" "$PROD/face-service/" \
     --exclude='.venv' --exclude='__pycache__' --exclude='.env*'
+
+  cp "$BACKUP/backend.env" "$PROD/config/backend.env"
 }
 
 rollback() {
@@ -61,42 +80,68 @@ rsync -a "$SOURCE/face-service/" "$PROD/face-service/" \
   --exclude='.env*' --exclude='.venv' \
   --exclude='__pycache__' --exclude='.deepface'
 
+echo "===== UPDATE ANDROID VERSION ====="
+
+python3 - "$PROD/config/backend.env" "$APP_VERSION" "$APP_VERSION_CODE" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+version = sys.argv[2]
+code = sys.argv[3]
+
+values = {
+    "ANDROID_VERSION": version,
+    "ANDROID_VERSION_CODE": code,
+    "ANDROID_FORCE_UPDATE": "false",
+    "ANDROID_RELEASE_NOTES": "Perbaikan fitur dan peningkatan performa HRIS.",
+}
+
+lines = path.read_text().splitlines()
+
+for key, value in values.items():
+    prefix = key + "="
+    for index, line in enumerate(lines):
+        if line.startswith(prefix):
+            lines[index] = prefix + value
+            break
+    else:
+        lines.append(prefix + value)
+
+path.write_text("\n".join(lines) + "\n")
+PY
+
+echo "Android backend version: $APP_VERSION ($APP_VERSION_CODE)"
 
 echo "===== BUILD ====="
 
-# Ambil versi utama dari package.json frontend
-APP_VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' \
+APP_VERSION_PWA=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' \
   "$PROD/fe/package.json" | head -n 1)
 
-APP_BUILD_NUMBER="${APP_BUILD_NUMBER:-1}"
-
-if [[ -z "$APP_VERSION" ]]; then
-  echo "ERROR: PWA version not found in fe/package.json"
+if [[ -z "$APP_VERSION_PWA" ]]; then
+  echo "ERROR: PWA version not found"
   rollback
   exit 1
 fi
 
-echo "PWA Version: $APP_VERSION"
+echo "PWA Version: $APP_VERSION_PWA"
 echo "PWA Build: $APP_BUILD_NUMBER"
 
-# Build backend dan face service
-if ! docker compose -p "$PROJECT" build \
-  hris-backend hris-face; then
+if ! docker compose -p "$PROJECT" build hris-backend hris-face; then
   rollback
   exit 1
 fi
 
-# Build frontend dengan versi otomatis
 if ! docker compose -p "$PROJECT" build \
-  --build-arg "VITE_APP_VERSION=$APP_VERSION" \
+  --build-arg "VITE_APP_VERSION=$APP_VERSION_PWA" \
   --build-arg "VITE_APP_BUILD=$APP_BUILD_NUMBER" \
   hris-frontend; then
   rollback
   exit 1
 fi
 
-
 echo "===== DEPLOY ====="
+
 if ! docker compose -p "$PROJECT" up -d --no-deps \
   hris-backend hris-frontend hris-face; then
   rollback
@@ -104,6 +149,7 @@ if ! docker compose -p "$PROJECT" up -d --no-deps \
 fi
 
 echo "===== HEALTH CHECK ====="
+
 healthy=false
 
 for i in $(seq 1 40); do
@@ -115,6 +161,7 @@ for i in $(seq 1 40); do
     healthy=true
     break
   fi
+
   sleep 3
 done
 
@@ -122,6 +169,11 @@ if [[ "$healthy" != true ]]; then
   rollback
   exit 1
 fi
+
+echo "===== VERIFY ANDROID VERSION ====="
+
+ANDROID_RESULT=$(curl -fsS https://hris.so-mak.com/api/app-version/android)
+echo "$ANDROID_RESULT"
 
 echo "===== DEPLOY SUCCESS ====="
 docker compose -p "$PROJECT" ps
