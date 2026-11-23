@@ -684,7 +684,7 @@ export default function EmployeeDetail({ open, employee, onClose }) {
                     sx={{
                       p: { xs: 2, md: 2.5 },
                       borderRadius: 2,
-                      height: { xs: "auto", lg: "calc(90vh - 180px)" },
+                      height: "auto",
                       minHeight: 400,
                       display: "flex",
                       flexDirection: "column",
@@ -708,9 +708,10 @@ export default function EmployeeDetail({ open, employee, onClose }) {
 
                     <Box
                       sx={{
+                        mt: 1,
                         p: 2,
                         mb: 2,
-                        borderRadius: 2,
+                        borderRadius: 1,
                         bgcolor: "action.hover",
                       }}
                     >
@@ -750,30 +751,53 @@ export default function EmployeeDetail({ open, employee, onClose }) {
                       </Typography>
                     </Box>
 
-                    <TableContainer sx={{ flex: 1, overflowY: "auto" }}>
-                      <Table size="small">
+                    <TableContainer
+                      sx={{
+                        width: "100%",
+                        maxWidth: "100%",
+                        minWidth: 0,
+                        overflowX: "hidden !important",
+                        overflowY: "visible",
+                        flex: "0 0 auto",
+                      }}
+                    >
+                      <Table
+                        size="small"
+                        sx={{
+                          width: "100% !important",
+                          minWidth: "0 !important",
+                          maxWidth: "100%",
+                          tableLayout: "fixed",
+                          "& th, & td": {
+                            padding: "8px 6px !important",
+                            fontSize: "0.75rem",
+                            whiteSpace: "nowrap",
+                            boxSizing: "border-box",
+                          },
+                        }}
+                      >
+                        <colgroup>
+                          <col style={{ width: "45%" }} />
+                          <col style={{ width: "30%" }} />
+                          <col style={{ width: "25%" }} />
+                        </colgroup>
+
                         <TableHead>
                           <TableRow>
-                            <TableCell sx={{ px: 0.5 }}>Category</TableCell>
-                            <TableCell align="right" sx={{ px: 0.5 }}>
-                              Minutes
-                            </TableCell>
-                            <TableCell align="right" sx={{ px: 0.5 }}>
-                              Hours
-                            </TableCell>
+                            <TableCell>Category</TableCell>
+                            <TableCell align="right">Minutes</TableCell>
+                            <TableCell align="right">Hours</TableCell>
                           </TableRow>
                         </TableHead>
 
                         <TableBody>
                           {averageDailyRows.map((item) => (
                             <TableRow key={item.key}>
-                              <TableCell sx={{ px: 0.5 }}>
-                                {item.description}
-                              </TableCell>
-                              <TableCell align="right" sx={{ px: 0.5 }}>
+                              <TableCell>{item.description}</TableCell>
+                              <TableCell align="right">
                                 {formatDecimal(item.dailyMinutes, 1)}
                               </TableCell>
-                              <TableCell align="right" sx={{ px: 0.5 }}>
+                              <TableCell align="right">
                                 {formatDecimal(item.dailyHours)}
                               </TableCell>
                             </TableRow>
@@ -784,7 +808,6 @@ export default function EmployeeDetail({ open, employee, onClose }) {
                               "& td": {
                                 fontWeight: 700,
                                 borderTop: 2,
-                                px: 0.5,
                               },
                             }}
                           >

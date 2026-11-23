@@ -35,6 +35,11 @@ router.get(
 );
 router.get("/pay-slip/my-requests", payrollController.getMyPaySlipRequests);
 router.post("/pay-slip/requests", payrollController.createPaySlipRequest);
+// TEMPORARY: khusus perbaikan PDF request ID 1
+router.post(
+  "/pay-slip/requests/:requestId/repair-pdf",
+  payrollController.repairPaySlipPdf,
+);
 router.get(
   "/pay-slip/requests/:requestId/download",
   payrollController.downloadPaySlip,

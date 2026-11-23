@@ -1284,24 +1284,27 @@ exports.getMyPaySlipRequests = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT
-         psr.id,
-         psr.status,
-         psr.reason,
-         psr.admin_note,
-         psr.created_at,
-         psr.handled_at,
-         (psr.file_data IS NOT NULL) AS has_file,
-         pp.id AS payroll_period_id,
-         pp.period_name,
-         TO_CHAR(pp.payment_date, 'YYYY-MM-DD') AS payment_date,
-         handler.name AS handled_by_name
-       FROM pay_slip_requests psr
-       JOIN payroll_periods pp
-         ON pp.id = psr.payroll_period_id
-       LEFT JOIN users handler
-         ON handler.id = psr.handled_by
-       WHERE psr.user_id = $1
-       ORDER BY psr.created_at DESC`,
+     psr.id,
+     psr.status,
+     psr.reason,
+     psr.admin_note,
+     psr.created_at,
+     psr.handled_at,
+     (psr.file_data IS NOT NULL) AS has_file,
+     pp.id AS payroll_period_id,
+     pp.period_name,
+     TO_CHAR(pp.payment_date, 'YYYY-MM-DD') AS payment_date,
+     u.nip,
+     handler.name AS handled_by_name
+   FROM pay_slip_requests psr
+   JOIN payroll_periods pp
+     ON pp.id = psr.payroll_period_id
+   JOIN users u
+     ON u.id = psr.user_id
+   LEFT JOIN users handler
+     ON handler.id = psr.handled_by
+   WHERE psr.user_id = $1
+   ORDER BY psr.created_at DESC`,
       [req.user.id],
     );
 
@@ -1833,6 +1836,149 @@ exports.sendPaySlip = async (req, res) => {
       message: "Gagal membuat atau mengirim slip gaji.",
       detail: error.message,
     });
+  }
+};
+
+// TEMPORARY: Perbaikan PDF Payslip lama untuk request ID 1.
+// Hapus endpoint dan fungsi ini setelah perbaikan berhasil.
+exports.repairPaySlipPdf = async (req, res) => {
+  if (!hasRole(req, PRIDE_ROLES.HR, PRIDE_ROLES.ADMIN_HR)) {
+    return res.status(403).json({
+      success: false,
+      message: "Hanya HR/Admin HR yang dapat memperbaiki PDF.",
+    });
+  }
+
+  const requestId = Number(req.params.requestId);
+
+  // Batasi khusus untuk kasus yang sedang diperbaiki.
+  if (requestId !== 1) {
+    return res.status(403).json({
+      success: false,
+      message: "Endpoint ini hanya untuk perbaikan request ID 1.",
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const found = await client.query(
+      `SELECT
+         psr.id AS request_id,
+         psr.status AS request_status,
+         psr.file_data,
+         psr.file_name,
+         psr.user_id,
+         u.name AS employee_name,
+         u.nik,
+         u.date_of_birth,
+         TO_CHAR(u.date_of_birth, 'YYYYMMDD') AS pdf_password,
+         u.nip,
+         u.department,
+         u.position,
+         u.company_id,
+         pp.period_name,
+         pp.payment_date,
+         c.name AS company_name,
+         pd.basic_salary,
+         pd.position_allowance,
+         pd.transport_allowance,
+         pd.meal_allowance,
+         pd.basic_salary_deduction,
+         pd.transport_deduction,
+         pd.meal_deduction,
+         pd.bpjs_tk_deduction,
+         pd.bpjs_health_deduction,
+         pd.pph21_deduction,
+         pd.gross_salary,
+         pd.total_deduction,
+         pd.net_salary
+       FROM pay_slip_requests psr
+       JOIN users u ON u.id = psr.user_id
+       JOIN payroll_periods pp
+         ON pp.id = psr.payroll_period_id
+       JOIN payroll_details pd
+         ON pd.payroll_period_id = psr.payroll_period_id
+        AND pd.user_id = psr.user_id
+       LEFT JOIN companies c ON c.id = u.company_id
+       WHERE psr.id = $1
+       FOR UPDATE OF psr`,
+      [requestId],
+    );
+
+    if (!found.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        success: false,
+        message: "Data Payslip tidak ditemukan.",
+      });
+    }
+
+    const data = found.rows[0];
+
+    if (data.request_status !== "COMPLETED" || !data.file_data) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        message: "Request harus COMPLETED dan memiliki file PDF.",
+      });
+    }
+
+    if (!/^\d{8}$/.test(String(data.pdf_password || ""))) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        message: "Tanggal lahir karyawan tidak valid.",
+      });
+    }
+
+    if (!data.nip || !String(data.nip).trim()) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        message: "NIP karyawan belum tersedia.",
+      });
+    }
+
+    // Generate ulang PDF menggunakan data payroll yang sama.
+    const pdfBuffer = await buildEncryptedPaySlip(data);
+
+    // Hanya mengganti file PDF.
+    // Status, sent_at, handled_at, dan handled_by tidak disentuh.
+    await client.query(
+      `UPDATE pay_slip_requests
+       SET file_data = $1,
+           updated_at = NOW()
+       WHERE id = $2
+         AND status = 'COMPLETED'`,
+      [pdfBuffer, requestId],
+    );
+
+    await client.query("COMMIT");
+
+    return res.json({
+      success: true,
+      message: "PDF Payslip berhasil diperbaiki.",
+      data: {
+        request_id: requestId,
+        status: "COMPLETED",
+        file_name: data.file_name,
+      },
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+
+    console.error("REPAIR PAYSLIP PDF ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal memperbaiki PDF Payslip.",
+      detail: error.message,
+    });
+  } finally {
+    client.release();
   }
 };
 

@@ -310,17 +310,64 @@ export default function Leave() {
   const handleDownloadPaySlip = async (requestId) => {
     try {
       const response = await paySlipService.downloadSlip(requestId);
-      const blob = new Blob([response.data], { type: "application/pdf" });
+
+      const blob = new Blob([response.data], {
+        type: "application/pdf",
+      });
+
+      const fileName = `Pay-Slip-${requestId}.pdf`;
+
+      // ANDROID / CAPACITOR
+      if (Capacitor.isNativePlatform()) {
+        const { Filesystem, Directory } = await import("@capacitor/filesystem");
+
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+
+          reader.onloadend = () => {
+            const result = reader.result;
+            resolve(result.split(",")[1]);
+          };
+
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        const savedFile = await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Documents,
+          recursive: true,
+        });
+
+        await Swal.fire({
+          icon: "success",
+          title: "Berhasil",
+          text: `Pay Slip berhasil disimpan di Documents.`,
+          confirmButtonText: "OK",
+        });
+
+        console.log("PAYSLIP SAVED:", savedFile.uri);
+        return;
+      }
+
+      // BROWSER / DESKTOP
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
+
       link.href = url;
-      link.download = `Pay-Slip-${requestId}.pdf`;
+      link.download = fileName;
+
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
     } catch (error) {
       console.error("DOWNLOAD PAY SLIP ERROR:", error);
+
       Swal.fire(
         "Gagal",
         error?.response?.data?.message ||

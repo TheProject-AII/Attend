@@ -30,9 +30,11 @@ import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 
 import paySlipService from "../../services/paySlipService";
 import authService from "../../services/authService";
-import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import { useNavigate } from "react-router-dom";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+
+const PaySlipDownload = registerPlugin("PaySlipDownload");
 
 const statusMeta = {
   PENDING: { label: "Pending", color: "warning" },
@@ -49,13 +51,26 @@ const getDownloadFilename = (response, item) => {
     response.headers?.["content-disposition"] ||
     response.headers?.["Content-Disposition"];
 
-  // Ambil NIP dari data request jika tersedia
-  const nip = item.nip || item.employee_nip || "NIP";
+  // Prioritaskan nama file dari backend
+  if (disposition) {
+    const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
 
-  const period = (item.period_name || "Periode")
+    if (match?.[1]) {
+      return decodeURIComponent(match[1].replace(/"$/, ""));
+    }
+  }
+
+  // Fallback menggunakan NIP dan periode
+  const nip = String(item.nip || item.employee_nip || "").trim();
+
+  const period = String(item.period_name || "")
     .trim()
     .replace(/\s+/g, "-")
     .replace(/[<>:"/\\|?*]/g, "");
+
+  if (!nip || !period) {
+    return "slip-gaji.pdf";
+  }
 
   return `${nip}-${period}.pdf`;
 };
@@ -166,9 +181,7 @@ export default function PaySlip() {
 
   const downloadSlip = async (item) => {
     setDownloading(item.id);
-
     setError("");
-
     setSuccess("");
 
     let objectUrl = null;
@@ -176,84 +189,79 @@ export default function PaySlip() {
     try {
       const response = await paySlipService.downloadSlip(item.id);
 
-      console.log("DOWNLOAD RESPONSE:", {
-        status: response.status,
-
-        data: response.data,
-
-        isBlob: response.data instanceof Blob,
-
-        size: response.data?.size,
-
-        type: response.data?.type,
-      });
-
       const blob =
         response.data instanceof Blob
           ? response.data
-          : new Blob([response.data], { type: "application/pdf" });
+          : new Blob([response.data], {
+              type: "application/pdf",
+            });
 
       if (!blob.size) {
         throw new Error("File PDF kosong.");
       }
 
-      // Pastikan response benar-benar PDF.
-
-      if (
-        blob.type &&
-        !blob.type.toLowerCase().includes("pdf") &&
-        blob.type !== "application/octet-stream"
-      ) {
-        throw new Error("Server tidak mengirim file PDF yang valid.");
-      }
-
       const filename = getDownloadFilename(response, item);
 
+      // ANDROID: SIMPAN KE FOLDER DOWNLOAD PUBLIK
+      if (
+        Capacitor.isNativePlatform() &&
+        Capacitor.getPlatform() === "android"
+      ) {
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+
+          reader.onload = () => {
+            const result = reader.result;
+            resolve(result.split(",")[1]);
+          };
+
+          reader.onerror = () => {
+            reject(new Error("Gagal membaca file PDF."));
+          };
+
+          reader.readAsDataURL(blob);
+        });
+
+        const savedFile = await PaySlipDownload.savePdf({
+          fileName: filename,
+          data: base64Data,
+        });
+
+        setSuccess(
+          `Payslip berhasil disimpan!\nLokasi: Download/${filename}\nPassword: tanggal lahir (YYYYMMDD).`,
+        );
+
+        return;
+      }
+
+      // BROWSER / DESKTOP
       objectUrl = window.URL.createObjectURL(blob);
 
       const link = document.createElement("a");
-
       link.href = objectUrl;
-
       link.download = filename;
-
       link.style.display = "none";
 
       document.body.appendChild(link);
-
       link.click();
-
-      console.log("Download anchor clicked");
-
-      console.log("Blob URL:", objectUrl);
-
-      console.log("Download filename:", filename);
-
-      console.log("Anchor connected:", link.isConnected);
-
-      // Jangan hapus URL terlalu cepat.
+      link.remove();
 
       setTimeout(() => {
-        link.remove();
-
         if (objectUrl) {
           window.URL.revokeObjectURL(objectUrl);
+          objectUrl = null;
         }
       }, 1500);
 
       setSuccess(
-        `Slip is currently being downloaded.\nPassword PDF: tanggal lahir format YYYYMMDD.`,
+        "Payslip sedang diunduh.\nPassword PDF: tanggal lahir format YYYYMMDD.",
       );
     } catch (err) {
-      if (objectUrl) {
-        window.URL.revokeObjectURL(objectUrl);
-      }
-
       console.error("Download Pay Slip Error:", err);
 
       setError(
-        err.response?.data?.message ||
-          err.message ||
+        err.message ||
+          err.response?.data?.message ||
           "Gagal mengunduh slip gaji.",
       );
     } finally {
