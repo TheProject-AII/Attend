@@ -20,29 +20,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Read Android Version
-        id: android
-        run: |
-          VERSION=$(sed -n 's/^VERSION_NAME=//p' fe/android/version.properties)
-          VERSION_CODE=$(sed -n 's/^VERSION_CODE=//p' fe/android/version.properties)
-
-          if [ -z "$VERSION" ] || [ -z "$VERSION_CODE" ]; then
-            echo "Android version tidak ditemukan!"
-            exit 1
-          fi
-
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
-
-          echo "Release Version: $VERSION"
-          echo "Release Code: $VERSION_CODE"
-
       - name: Deploy HRIS
         uses: appleboy/ssh-action@v1
         env:
           APP_BUILD_NUMBER: ${{ github.run_number }}
-          APP_VERSION: ${{ steps.android.outputs.version }}
-          APP_VERSION_CODE: ${{ steps.android.outputs.version_code }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -50,7 +31,7 @@ jobs:
           port: 22
           timeout: 60s
           command_timeout: 30m
-          envs: APP_BUILD_NUMBER,APP_VERSION,APP_VERSION_CODE
+          envs: APP_BUILD_NUMBER
           script: |
             set -e
 

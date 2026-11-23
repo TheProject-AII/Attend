@@ -10,18 +10,7 @@ BACKUP="/home/ganbaru/hris-backup/deploy-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BACKUP"
 cd "$PROD"
 
-APP_VERSION="${APP_VERSION:?APP_VERSION tidak dikirim dari GitHub Actions}"
-APP_VERSION_CODE="${APP_VERSION_CODE:?APP_VERSION_CODE tidak dikirim dari GitHub Actions}"
 APP_BUILD_NUMBER="${APP_BUILD_NUMBER:-1}"
-
-if ! [[ "$APP_VERSION_CODE" =~ ^[0-9]+$ ]]; then
-  echo "ERROR: Android version code tidak valid"
-  exit 1
-fi
-
-echo "===== RELEASE VERSION ====="
-echo "Android Version: $APP_VERSION"
-echo "Android Code: $APP_VERSION_CODE"
 
 echo "===== SAVE CURRENT IMAGES ====="
 for service in hris-backend hris-frontend hris-face; do
@@ -80,38 +69,7 @@ rsync -a "$SOURCE/face-service/" "$PROD/face-service/" \
   --exclude='.env*' --exclude='.venv' \
   --exclude='__pycache__' --exclude='.deepface'
 
-echo "===== UPDATE ANDROID VERSION ====="
 
-python3 - "$PROD/config/backend.env" "$APP_VERSION" "$APP_VERSION_CODE" <<'PY'
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-version = sys.argv[2]
-code = sys.argv[3]
-
-values = {
-    "ANDROID_VERSION": version,
-    "ANDROID_VERSION_CODE": code,
-    "ANDROID_FORCE_UPDATE": "false",
-    "ANDROID_RELEASE_NOTES": "Perbaikan fitur dan peningkatan performa HRIS.",
-}
-
-lines = path.read_text().splitlines()
-
-for key, value in values.items():
-    prefix = key + "="
-    for index, line in enumerate(lines):
-        if line.startswith(prefix):
-            lines[index] = prefix + value
-            break
-    else:
-        lines.append(prefix + value)
-
-path.write_text("\n".join(lines) + "\n")
-PY
-
-echo "Android backend version: $APP_VERSION ($APP_VERSION_CODE)"
 
 echo "===== BUILD ====="
 
