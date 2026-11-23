@@ -4,7 +4,7 @@ package com.hris.mui;
 import android.os.Bundle;
 import android.view.View;
 import android.graphics.Color;
-
+import com.hris.mui.PaySlipDownloadPlugin;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -18,6 +18,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
 
         registerPlugin(MockLocationPlugin.class);
+    registerPlugin(PaySlipDownloadPlugin.class);
 
         super.onCreate(savedInstanceState);
 
