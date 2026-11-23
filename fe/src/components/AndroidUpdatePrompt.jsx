@@ -54,7 +54,12 @@ export default function AndroidUpdatePrompt() {
 
         const installedCode = Number(installed.build || 0);
         const latestCode = Number(latest.versionCode || 0);
-
+        console.log("=== ANDROID UPDATE DEBUG ===");
+        console.log("Installed Version:", installed.version);
+        console.log("Installed Build:", installed.build);
+        console.log("Latest Version:", latest.version);
+        console.log("Latest Build:", latest.versionCode);
+        console.log("Force Update:", latest.forceUpdate);
         console.log("ANDROID VERSION CHECK:", {
           installedVersion: installed.version,
           installedCode,
