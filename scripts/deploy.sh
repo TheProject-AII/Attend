@@ -72,7 +72,7 @@ rsync -a "$SOURCE/face-service/" "$PROD/face-service/" \
 
 echo "===== SYNC ANDROID VERSION ====="
 
-ANDROID_VERSION_FILE="$SOURCE/android/version.properties"
+ANDROID_VERSION_FILE="$SOURCE/fe/android/version.properties"
 BACKEND_ENV="$PROD/config/backend.env"
 
 if [[ ! -f "$ANDROID_VERSION_FILE" ]]; then
