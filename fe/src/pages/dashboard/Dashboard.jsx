@@ -43,21 +43,61 @@ function AttendanceLineChart({ data = [], period, onPeriodChange, loading }) {
         0,
     );
 
-  const getLabel = (item, index) =>
-    item.label ?? item.day ?? item.date ?? item.month ?? `Data ${index + 1}`;
+  const getLabel = (item, index) => {
+    const raw = String(item.date ?? item.day ?? item.label ?? "").trim();
+
+    const months = {
+      jan: "01",
+      feb: "02",
+      mar: "03",
+      apr: "04",
+      mei: "05",
+      jun: "06",
+      jul: "07",
+      agu: "08",
+      sep: "09",
+      okt: "10",
+      nov: "11",
+      des: "12",
+    };
+
+    // Format: 26 Okt, 01 Nov, 5 Des
+    const match = raw.match(/^(\d{1,2})?\s*([a-zA-Z]{3})$/);
+
+    if (match) {
+      const month = months[match[2].toLowerCase()];
+
+      if (month && match[1]) {
+        return `${match[1].padStart(2, "0")}/${month}`;
+      }
+    }
+
+    // Format ISO: YYYY-MM-DD
+    const iso = raw.match(/^\d{4}-(\d{2})-(\d{2})/);
+
+    if (iso) {
+      return `${iso[2]}/${iso[1]}`;
+    }
+
+    return raw || `Data ${index + 1}`;
+  };
 
   const values = chartData.map(getValue);
   const maxValue = Math.max(...values, 5);
 
   const width = 600;
-  const height = 230;
+  const height = 250;
+  const bottom = 65;
   const left = 42;
   const right = 15;
   const top = 20;
-  const bottom = 35;
 
   const chartWidth = width - left - right;
   const chartHeight = height - top - bottom;
+
+  // Maksimal sekitar 10 label agar tidak bertumpuk.
+  // Semua titik data tetap ditampilkan.
+  const labelInterval = Math.max(1, Math.ceil(chartData.length / 10));
 
   const points = values.map((value, index) => {
     const x =
@@ -127,6 +167,8 @@ function AttendanceLineChart({ data = [], period, onPeriodChange, loading }) {
           <svg
             viewBox={`0 0 ${width} ${height}`}
             width="100%"
+            height="450"
+            style={{ overflow: "visible" }}
             role="img"
             aria-label="Attendance line chart"
           >
@@ -168,28 +210,34 @@ function AttendanceLineChart({ data = [], period, onPeriodChange, loading }) {
               strokeLinejoin="round"
             />
 
-            {points.map((point, index) => (
-              <g key={index}>
-                <circle
-                  cx={point.x}
-                  cy={point.y}
-                  r="5"
-                  fill="#FFFFFF"
-                  stroke="#0F766E"
-                  strokeWidth="3"
-                />
+            {points.map((point, index) => {
+              const showLabel =
+                index % labelInterval === 0 || index === points.length - 1;
 
-                <text
-                  x={point.x}
-                  y={height - 8}
-                  textAnchor="middle"
-                  fontSize="10"
-                  fill="#64748B"
-                >
-                  {getLabel(chartData[index], index)}
-                </text>
-              </g>
-            ))}
+              return (
+                <g key={index}>
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r="5"
+                    fill="#FFFFFF"
+                    stroke="#0F766E"
+                    strokeWidth="3"
+                  />
+
+                  <text
+                    x={point.x}
+                    y={height - 25}
+                    textAnchor="end"
+                    fontSize="8"
+                    fill="#64748B"
+                    transform={`rotate(-45 ${point.x} ${height - 18})`}
+                  >
+                    {getLabel(chartData[index], index)}
+                  </text>
+                </g>
+              );
+            })}
           </svg>
         </Box>
       ) : (

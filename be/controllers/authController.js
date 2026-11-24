@@ -714,6 +714,7 @@ exports.getEmployees = async (req, res) => {
         u.email,
         u.company_email,
         u.phone,
+        u.leader_id,
 
         -- Department
         u.department_id,
@@ -764,11 +765,12 @@ exports.getEmployees = async (req, res) => {
         ON u.department_id = d.id
 
       WHERE (
-        u.role_id = 3
-        OR u.nip IS NOT NULL
-        OR LOWER(TRIM(r.name)) = 'manager'
-        AND COALESCE(is_system_account, FALSE) = FALSE
-      )
+    u.role_id = 3
+    OR u.role_id = 5
+    OR u.nip IS NOT NULL
+    OR LOWER(TRIM(r.name)) = 'manager'
+)
+AND COALESCE(u.is_system_account, FALSE) = FALSE
 
       ORDER BY u.name ASC
     `);
