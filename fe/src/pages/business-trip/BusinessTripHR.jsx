@@ -26,12 +26,15 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
 
 import {
   Refresh,
+  FileDownload,
+  PictureAsPdf,
   FlightTakeoff,
   PendingActions,
   Visibility,
@@ -133,14 +136,21 @@ function SummaryCard({ title, value, subtitle, icon, color }) {
       elevation={0}
       sx={{
         height: "100%",
+        minWidth: 0,
         border: "1px solid",
         borderColor: "divider",
         borderRadius: 3,
       }}
     >
       <CardContent sx={{ p: 2.5 }}>
-        <Stack direction="row" justifyContent="space-between" spacing={2}>
-          <Box>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="flex-start"
+          spacing={1.5}
+          sx={{ minWidth: 0 }}
+        >
+          <Box sx={{ minWidth: 0 }}>
             <Typography color="text.secondary" fontSize={13}>
               {title}
             </Typography>
@@ -149,7 +159,12 @@ function SummaryCard({ title, value, subtitle, icon, color }) {
               {value}
             </Typography>
 
-            <Typography color="text.secondary" fontSize={12} mt={1}>
+            <Typography
+              color="text.secondary"
+              fontSize={12}
+              mt={1}
+              sx={{ lineHeight: 1.4, overflowWrap: "anywhere" }}
+            >
               {subtitle}
             </Typography>
           </Box>
@@ -206,7 +221,13 @@ function DetailSection({ title, icon, children }) {
   );
 }
 
-function BusinessTripDetailDialog({ open, trip, onClose }) {
+function BusinessTripDetailDialog({
+  open,
+  trip,
+  onClose,
+  onApprove,
+  onReject,
+}) {
   if (!trip) return null;
 
   const approvalHistory = Array.isArray(trip.approval_history)
@@ -555,7 +576,19 @@ function BusinessTripDetailDialog({ open, trip, onClose }) {
 
       <Divider />
 
-      <DialogActions sx={{ p: 2 }}>
+      <DialogActions sx={{ p: 2, justifyContent: "space-between" }}>
+        <Box>
+          {trip.status === "PENDING_HR" && (
+            <Stack direction="row" spacing={1}>
+              <Button variant="outlined" color="error" onClick={onReject}>
+                Reject
+              </Button>
+              <Button variant="contained" color="success" onClick={onApprove}>
+                Approve
+              </Button>
+            </Stack>
+          )}
+        </Box>
         <Button variant="outlined" onClick={onClose}>
           Tutup
         </Button>
@@ -573,6 +606,11 @@ export default function BusinessTripHR() {
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState(null);
+
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [approvalAction, setApprovalAction] = useState("");
+  const [approvalComments, setApprovalComments] = useState("");
+  const [approvalLoading, setApprovalLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -668,6 +706,7 @@ export default function BusinessTripHR() {
   ];
 
   const handleOpenDetail = (trip) => {
+    console.log("BUSINESS TRIP DETAIL:", trip);
     setSelectedTrip(trip);
     setDetailOpen(true);
   };
@@ -675,6 +714,236 @@ export default function BusinessTripHR() {
   const handleCloseDetail = () => {
     setDetailOpen(false);
     setSelectedTrip(null);
+  };
+
+  const openApprovalDialog = (action) => {
+    setApprovalAction(action);
+    setApprovalComments("");
+    setApprovalDialogOpen(true);
+  };
+
+  const handleSubmitHRApproval = async () => {
+    if (!selectedTrip?.id || !approvalAction) return;
+
+    if (approvalAction === "REJECT" && !approvalComments.trim()) {
+      window.alert("Alasan penolakan wajib diisi.");
+      return;
+    }
+
+    setApprovalLoading(true);
+
+    try {
+      await api.post(`/business-trips/approvals/${selectedTrip.id}/hr-action`, {
+        action: approvalAction,
+        comments: approvalComments.trim(),
+      });
+
+      window.alert(
+        approvalAction === "APPROVE"
+          ? "Business Trip berhasil disetujui."
+          : "Business Trip berhasil ditolak.",
+      );
+
+      setApprovalDialogOpen(false);
+      setDetailOpen(false);
+      setSelectedTrip(null);
+      setApprovalAction("");
+      setApprovalComments("");
+      await fetchData();
+    } catch (err) {
+      console.error(
+        "HR BUSINESS TRIP APPROVAL ERROR:",
+        err?.response?.data || err,
+      );
+      window.alert(
+        err?.response?.data?.message ||
+          "Gagal memproses approval Business Trip.",
+      );
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
+
+  const exportRows = filteredTrips.map((trip) => ({
+    "No. Perjalanan": trip.trip_number || "-",
+    "Nama Karyawan": trip.employee_name || "-",
+    Jabatan: trip.employee_position || "-",
+    Departemen: trip.employee_department || "-",
+    Tujuan: trip.destination || "-",
+    Keberangkatan: formatDate(trip.departure_date),
+    Kepulangan: formatDate(trip.return_date),
+    Estimasi: Number(trip.total_estimate || 0),
+    Pencairan: trip.disbursement_id ? Number(trip.disbursement_amount || 0) : 0,
+    Status: getStatusLabel(trip.status),
+    Pembayaran: trip.disbursement_id
+      ? trip.payment_method === "BANK_TRANSFER"
+        ? "Transfer"
+        : trip.payment_method === "CASH"
+          ? "Cash"
+          : trip.disbursement_status || "Tercatat"
+      : "Belum Dicairkan",
+    "Tanggal Pembayaran": formatDate(trip.payment_date),
+    "Referensi Pembayaran": trip.payment_reference || "-",
+  }));
+
+  const escapeHtml = (value) =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  const getExportFileName = (extension) => {
+    const date = new Date().toISOString().slice(0, 10);
+    const status =
+      statusFilter === "ALL" ? "semua-status" : statusFilter.toLowerCase();
+    return `business-trip-${status}-${date}.${extension}`;
+  };
+
+  const handleExportExcel = () => {
+    if (!exportRows.length) {
+      window.alert("Tidak ada data Business Trip untuk diexport.");
+      return;
+    }
+
+    const headers = Object.keys(exportRows[0]);
+    const tableRows = exportRows
+      .map(
+        (row) =>
+          `<tr>${headers
+            .map((header) => {
+              const value = row[header];
+              const displayValue =
+                typeof value === "number" &&
+                ["Estimasi", "Pencairan"].includes(header)
+                  ? escapeHtml(formatRupiah(value))
+                  : escapeHtml(value);
+              return `<td>${displayValue}</td>`;
+            })
+            .join("")}</tr>`,
+      )
+      .join("");
+
+    const excelHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:x="urn:schemas-microsoft-com:office:excel"
+            xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="UTF-8" />
+          <style>
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #999; padding: 6px; }
+            th { background: #e8f0ee; font-weight: bold; }
+            td { mso-number-format: "\\@"; }
+          </style>
+        </head>
+        <body>
+          <h2>Laporan Business Trip</h2>
+          <p>Filter status: ${escapeHtml(
+            statusFilter === "ALL"
+              ? "Semua Status"
+              : getStatusLabel(statusFilter),
+          )}</p>
+          <p>Total data: ${exportRows.length}</p>
+          <table>
+            <thead><tr>${headers
+              .map((header) => `<th>${escapeHtml(header)}</th>`)
+              .join("")}</tr></thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </body>
+      </html>`;
+
+    const blob = new Blob(["\ufeff", excelHtml], {
+      type: "application/vnd.ms-excel;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = getExportFileName("xls");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPDF = () => {
+    if (!exportRows.length) {
+      window.alert("Tidak ada data Business Trip untuk diexport.");
+      return;
+    }
+
+    const headers = Object.keys(exportRows[0]);
+    const tableRows = exportRows
+      .map(
+        (row) =>
+          `<tr>${headers
+            .map((header) => {
+              const value = row[header];
+              const displayValue =
+                typeof value === "number" &&
+                ["Estimasi", "Pencairan"].includes(header)
+                  ? escapeHtml(formatRupiah(value))
+                  : escapeHtml(value);
+              return `<td>${displayValue}</td>`;
+            })
+            .join("")}</tr>`,
+      )
+      .join("");
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      window.alert(
+        "Popup diblokir browser. Izinkan popup untuk halaman HRIS, lalu coba export PDF lagi.",
+      );
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="id">
+        <head>
+          <meta charset="UTF-8" />
+          <title>Laporan Business Trip</title>
+          <style>
+            @page { size: landscape; margin: 12mm; }
+            body { font-family: Arial, sans-serif; color: #222; }
+            h2 { margin: 0 0 6px; }
+            p { margin: 4px 0; font-size: 11px; }
+            table { border-collapse: collapse; width: 100%; margin-top: 16px; }
+            th, td { border: 1px solid #bbb; padding: 6px; font-size: 8px; text-align: left; }
+            th { background: #e8f0ee; }
+            tr { page-break-inside: avoid; }
+            @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+          </style>
+        </head>
+        <body>
+          <h2>Laporan Business Trip</h2>
+          <p>Filter status: ${escapeHtml(
+            statusFilter === "ALL"
+              ? "Semua Status"
+              : getStatusLabel(statusFilter),
+          )}</p>
+          <p>Total data: ${exportRows.length}</p>
+          <p>Dicetak: ${escapeHtml(new Date().toLocaleString("id-ID"))}</p>
+          <table>
+            <thead><tr>${headers
+              .map((header) => `<th>${escapeHtml(header)}</th>`)
+              .join("")}</tr></thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+          <script>
+            window.onload = function () {
+              window.focus();
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   return (
@@ -685,26 +954,7 @@ export default function BusinessTripHR() {
         alignItems={{ xs: "flex-start", sm: "center" }}
         spacing={2}
         mb={3}
-      >
-        <Box>
-          <Typography variant="h5" fontWeight={700}>
-            Business Trip
-          </Typography>
-
-          <Typography color="text.secondary" fontSize={14} mt={0.5}>
-            Monitoring seluruh perjalanan dinas dan status pencairan.
-          </Typography>
-        </Box>
-
-        <Button
-          variant="outlined"
-          startIcon={<Refresh />}
-          onClick={fetchData}
-          disabled={loading}
-        >
-          Refresh
-        </Button>
-      </Stack>
+      ></Stack>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
@@ -712,13 +962,26 @@ export default function BusinessTripHR() {
         </Alert>
       )}
 
-      <Grid container spacing={2} mb={3}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "repeat(2, minmax(0, 1fr))",
+            lg: "repeat(4, minmax(0, 1fr))",
+          },
+          gap: 2,
+          mb: 3,
+          width: "100%",
+          alignItems: "stretch",
+        }}
+      >
         {summaryCards.map((item) => (
-          <Grid item xs={12} sm={6} md={3} key={item.title}>
+          <Box key={item.title} sx={{ minWidth: 0 }}>
             <SummaryCard {...item} />
-          </Grid>
+          </Box>
         ))}
-      </Grid>
+      </Box>
 
       <Card
         elevation={0}
@@ -726,17 +989,18 @@ export default function BusinessTripHR() {
           border: "1px solid",
           borderColor: "divider",
           borderRadius: 3,
+          minWidth: 0,
         }}
       >
-        <CardContent sx={{ p: 2.5 }}>
+        <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
           <Stack
-            direction={{ xs: "column", md: "row" }}
+            direction={{ xs: "column", lg: "row" }}
             justifyContent="space-between"
-            alignItems={{ xs: "flex-start", md: "center" }}
+            alignItems={{ xs: "stretch", lg: "center" }}
             spacing={2}
             mb={2.5}
           >
-            <Box>
+            <Box sx={{ minWidth: 0 }}>
               <Typography variant="h6" fontWeight={700}>
                 Seluruh Data Business Trip
               </Typography>
@@ -746,17 +1010,65 @@ export default function BusinessTripHR() {
               </Typography>
             </Box>
 
-            <Stack direction="row" spacing={1} alignItems="center">
-              <FormControl size="small" sx={{ minWidth: 200 }}>
-                <InputLabel>Filter Status</InputLabel>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              justifyContent={{ xs: "flex-start", lg: "flex-end" }}
+              flexWrap="wrap"
+              useFlexGap
+              sx={{
+                flex: "1 1 auto",
+                minWidth: 0,
+                "& .MuiButton-root": {
+                  height: 40,
+                  minWidth: 124,
+                  px: 1.5,
+                  whiteSpace: "nowrap",
+                },
+                "& .MuiFormControl-root": {
+                  width: { xs: "100%", sm: 190 },
+                  minWidth: { xs: "100%", sm: 190 },
+                },
+                "& .MuiInputBase-root": {
+                  height: 40,
+                },
+                "& .MuiChip-root": {
+                  height: 32,
+                  flexShrink: 0,
+                },
+              }}
+            >
+              <Button
+                variant="outlined"
+                color="success"
+                size="small"
+                startIcon={<FileDownload />}
+                onClick={handleExportExcel}
+                disabled={loading || filteredTrips.length === 0}
+              >
+                Export Excel
+              </Button>
 
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                startIcon={<PictureAsPdf />}
+                onClick={handleExportPDF}
+                disabled={loading || filteredTrips.length === 0}
+              >
+                Export PDF
+              </Button>
+
+              <FormControl size="small">
+                <InputLabel>Filter Status</InputLabel>
                 <Select
                   value={statusFilter}
                   label="Filter Status"
                   onChange={(event) => setStatusFilter(event.target.value)}
                 >
                   <MenuItem value="ALL">Semua Status</MenuItem>
-
                   {STATUS_OPTIONS.map((status) => (
                     <MenuItem key={status} value={status}>
                       {getStatusLabel(status)}
@@ -770,6 +1082,16 @@ export default function BusinessTripHR() {
                 color="primary"
                 variant="outlined"
               />
+
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<Refresh />}
+                onClick={fetchData}
+                disabled={loading}
+              >
+                Refresh
+              </Button>
             </Stack>
           </Stack>
 
@@ -927,7 +1249,78 @@ export default function BusinessTripHR() {
         open={detailOpen}
         trip={selectedTrip}
         onClose={handleCloseDetail}
+        onApprove={() => openApprovalDialog("APPROVE")}
+        onReject={() => openApprovalDialog("REJECT")}
       />
+
+      <Dialog
+        open={approvalDialogOpen}
+        onClose={() => {
+          if (!approvalLoading) setApprovalDialogOpen(false);
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          {approvalAction === "APPROVE"
+            ? "Konfirmasi Approval HR"
+            : "Konfirmasi Penolakan HR"}
+        </DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary" fontSize={14} mb={2}>
+            {approvalAction === "APPROVE"
+              ? `Setujui pengajuan ${selectedTrip?.trip_number || "Business Trip"}?`
+              : `Tolak pengajuan ${selectedTrip?.trip_number || "Business Trip"}?`}
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            label={
+              approvalAction === "REJECT"
+                ? "Alasan penolakan (wajib)"
+                : "Catatan (opsional)"
+            }
+            value={approvalComments}
+            onChange={(event) => setApprovalComments(event.target.value)}
+            required={approvalAction === "REJECT"}
+            placeholder={
+              approvalAction === "REJECT"
+                ? "Masukkan alasan penolakan..."
+                : "Tambahkan catatan jika diperlukan..."
+            }
+            disabled={approvalLoading}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={() => setApprovalDialogOpen(false)}
+            disabled={approvalLoading}
+          >
+            Batal
+          </Button>
+          <Button
+            variant="contained"
+            color={approvalAction === "REJECT" ? "error" : "success"}
+            onClick={handleSubmitHRApproval}
+            disabled={
+              approvalLoading ||
+              (approvalAction === "REJECT" && !approvalComments.trim())
+            }
+            startIcon={
+              approvalLoading ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : null
+            }
+          >
+            {approvalLoading
+              ? "Memproses..."
+              : approvalAction === "APPROVE"
+                ? "Ya, Approve"
+                : "Ya, Reject"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
