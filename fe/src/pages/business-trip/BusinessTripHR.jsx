@@ -765,25 +765,28 @@ export default function BusinessTripHR() {
   };
 
   const exportRows = filteredTrips.map((trip) => ({
-    "No. Perjalanan": trip.trip_number || "-",
-    "Nama Karyawan": trip.employee_name || "-",
-    Jabatan: trip.employee_position || "-",
-    Departemen: trip.employee_department || "-",
-    Tujuan: trip.destination || "-",
-    Keberangkatan: formatDate(trip.departure_date),
-    Kepulangan: formatDate(trip.return_date),
-    Estimasi: Number(trip.total_estimate || 0),
-    Pencairan: trip.disbursement_id ? Number(trip.disbursement_amount || 0) : 0,
+    "Trip Number": trip.trip_number || "-",
+    Employee: trip.employee_name || "-",
+    Roles: trip.employee_position || "-",
+    Department: trip.employee_department || "-",
+    Destination: trip.destination || "-",
+    Purpose: trip.purpose || "-",
+    Departure: formatDate(trip.departure_date),
+    Return: formatDate(trip.return_date),
+    Cost: Number(trip.total_estimate || 0),
+    Disbursement: trip.disbursement_id
+      ? Number(trip.disbursement_amount || 0)
+      : 0,
     Status: getStatusLabel(trip.status),
-    Pembayaran: trip.disbursement_id
+    Payment: trip.disbursement_id
       ? trip.payment_method === "BANK_TRANSFER"
         ? "Transfer"
         : trip.payment_method === "CASH"
           ? "Cash"
           : trip.disbursement_status || "Tercatat"
-      : "Belum Dicairkan",
-    "Tanggal Pembayaran": formatDate(trip.payment_date),
-    "Referensi Pembayaran": trip.payment_reference || "-",
+      : "Unpaid",
+    "Payment Date": formatDate(trip.payment_date),
+    "Payment Reference": trip.payment_reference || "-",
   }));
 
   const escapeHtml = (value) =>
@@ -814,11 +817,12 @@ export default function BusinessTripHR() {
           `<tr>${headers
             .map((header) => {
               const value = row[header];
-              const displayValue =
-                typeof value === "number" &&
-                ["Estimasi", "Pencairan"].includes(header)
-                  ? escapeHtml(formatRupiah(value))
-                  : escapeHtml(value);
+              const isCurrencyColumn = ["Cost", "Disbursement"].includes(
+                header,
+              );
+              const displayValue = isCurrencyColumn
+                ? escapeHtml(formatRupiah(Number(value || 0)))
+                : escapeHtml(value);
               return `<td>${displayValue}</td>`;
             })
             .join("")}</tr>`,
@@ -881,11 +885,12 @@ export default function BusinessTripHR() {
           `<tr>${headers
             .map((header) => {
               const value = row[header];
-              const displayValue =
-                typeof value === "number" &&
-                ["Estimasi", "Pencairan"].includes(header)
-                  ? escapeHtml(formatRupiah(value))
-                  : escapeHtml(value);
+              const isCurrencyColumn = ["Cost", "Disbursement"].includes(
+                header,
+              );
+              const displayValue = isCurrencyColumn
+                ? escapeHtml(formatRupiah(Number(value || 0)))
+                : escapeHtml(value);
               return `<td>${displayValue}</td>`;
             })
             .join("")}</tr>`,
@@ -1099,17 +1104,17 @@ export default function BusinessTripHR() {
             <Table size="medium">
               <TableHead>
                 <TableRow sx={{ bgcolor: "action.hover" }}>
-                  <TableCell>No. Perjalanan</TableCell>
-                  <TableCell>Nama Karyawan</TableCell>
-                  <TableCell>Departemen</TableCell>
-                  <TableCell>Tujuan</TableCell>
-                  <TableCell>Keberangkatan</TableCell>
-                  <TableCell>Kepulangan</TableCell>
-                  <TableCell align="right">Estimasi</TableCell>
-                  <TableCell align="right">Pencairan</TableCell>
+                  <TableCell>Trip Number</TableCell>
+                  <TableCell>Employee Name</TableCell>
+                  <TableCell>Department</TableCell>
+                  <TableCell>Destination</TableCell>
+                  <TableCell>Departure</TableCell>
+                  <TableCell>Return</TableCell>
+                  <TableCell align="right">Cost</TableCell>
+                  <TableCell align="right">Disbursement</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell>Pembayaran</TableCell>
-                  <TableCell align="center">Aksi</TableCell>
+                  <TableCell>Payment</TableCell>
+                  <TableCell align="center">Action</TableCell>
                 </TableRow>
               </TableHead>
 
