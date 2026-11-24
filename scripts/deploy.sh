@@ -70,6 +70,42 @@ rsync -a "$SOURCE/face-service/" "$PROD/face-service/" \
   --exclude='__pycache__' --exclude='.deepface'
 
 
+echo "===== SYNC ANDROID VERSION ====="
+
+ANDROID_VERSION_FILE="$SOURCE/android/version.properties"
+BACKEND_ENV="$PROD/config/backend.env"
+
+if [[ ! -f "$ANDROID_VERSION_FILE" ]]; then
+  echo "ERROR: Android version.properties not found"
+  rollback
+  exit 1
+fi
+
+ANDROID_VERSION=$(sed -n 's/^VERSION_NAME=//p' "$ANDROID_VERSION_FILE" | tail -n 1)
+ANDROID_VERSION_CODE=$(sed -n 's/^VERSION_CODE=//p' "$ANDROID_VERSION_FILE" | tail -n 1)
+
+if [[ -z "$ANDROID_VERSION" || ! "$ANDROID_VERSION_CODE" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: Invalid Android version properties"
+  rollback
+  exit 1
+fi
+
+set_env_value() {
+  local key="$1"
+  local value="$2"
+
+  if grep -q "^${key}=" "$BACKEND_ENV"; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$BACKEND_ENV"
+  else
+    printf '%s=%s\n' "$key" "$value" >> "$BACKEND_ENV"
+  fi
+}
+
+set_env_value "ANDROID_VERSION" "$ANDROID_VERSION"
+set_env_value "ANDROID_VERSION_CODE" "$ANDROID_VERSION_CODE"
+
+echo "Android Version: $ANDROID_VERSION"
+echo "Android Version Code: $ANDROID_VERSION_CODE"
 
 echo "===== BUILD ====="
 
