@@ -26,6 +26,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   TextField,
   Tooltip,
   Typography,
@@ -98,15 +99,15 @@ const STATUS_OPTIONS = [
 
 const getStatusLabel = (status) => {
   const labels = {
-    PENDING_MANAGER: "Menunggu Manager",
-    PENDING_HR: "Menunggu HR",
-    PENDING_DIRECTOR: "Menunggu Director",
-    PENDING_FINANCE: "Menunggu Finance",
-    ON_TRIP: "Sedang Perjalanan",
-    PENDING_SETTLEMENT: "Menunggu Settlement",
-    COMPLETED: "Selesai",
-    REJECTED: "Ditolak",
-    CANCELLED: "Dibatalkan",
+    PENDING_MANAGER: "Waiting Manager",
+    PENDING_HR: "Waiting HR",
+    PENDING_DIRECTOR: "Waiting Director",
+    PENDING_FINANCE: "Waiting Finance",
+    ON_TRIP: "On Trip",
+    PENDING_SETTLEMENT: "Waiting Settlement",
+    COMPLETED: "Done",
+    REJECTED: "Reject",
+    CANCELLED: "Cancel",
   };
 
   return labels[status] || status || "-";
@@ -139,7 +140,7 @@ function SummaryCard({ title, value, subtitle, icon, color }) {
         minWidth: 0,
         border: "1px solid",
         borderColor: "divider",
-        borderRadius: 3,
+        borderRadius: 1,
       }}
     >
       <CardContent sx={{ p: 2.5 }}>
@@ -603,6 +604,9 @@ export default function BusinessTripHR() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState(null);
@@ -658,10 +662,36 @@ export default function BusinessTripHR() {
   }, [fetchData]);
 
   const filteredTrips = useMemo(() => {
-    if (statusFilter === "ALL") return trips;
+    const keyword = searchTerm.trim().toLowerCase();
 
-    return trips.filter((trip) => trip.status === statusFilter);
-  }, [trips, statusFilter]);
+    return trips.filter((trip) => {
+      const matchesStatus =
+        statusFilter === "ALL" || trip.status === statusFilter;
+
+      const searchableText = [
+        trip.trip_number,
+        trip.employee_name,
+        trip.employee_position,
+        trip.employee_department,
+        trip.destination,
+        trip.purpose,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return matchesStatus && (!keyword || searchableText.includes(keyword));
+    });
+  }, [trips, statusFilter, searchTerm]);
+
+  const paginatedTrips = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    return filteredTrips.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredTrips, page, rowsPerPage]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [statusFilter, searchTerm, rowsPerPage]);
 
   const pendingCount = trips.filter((trip) =>
     [
@@ -773,7 +803,7 @@ export default function BusinessTripHR() {
     Purpose: trip.purpose || "-",
     Departure: formatDate(trip.departure_date),
     Return: formatDate(trip.return_date),
-    Cost: Number(trip.total_estimate || 0),
+    Estimate: Number(trip.total_estimate || 0),
     Disbursement: trip.disbursement_id
       ? Number(trip.disbursement_amount || 0)
       : 0,
@@ -788,6 +818,17 @@ export default function BusinessTripHR() {
     "Payment Date": formatDate(trip.payment_date),
     "Payment Reference": trip.payment_reference || "-",
   }));
+
+  const totalEstimate = exportRows.reduce(
+    (total, row) => total + Number(row.Estimate || 0),
+    0,
+  );
+
+  const buildExportTotalRow = (headers) => {
+    const estimateIndex = headers.indexOf("Estimate");
+    const remainingColumns = headers.length - estimateIndex - 1;
+    return `<tr class="total-row"><td colspan="${estimateIndex}">TOTAL ESTIMASI</td><td>${escapeHtml(formatRupiah(totalEstimate))}</td>${remainingColumns > 0 ? `<td colspan="${remainingColumns}"></td>` : ""}</tr>`;
+  };
 
   const escapeHtml = (value) =>
     String(value ?? "")
@@ -817,7 +858,7 @@ export default function BusinessTripHR() {
           `<tr>${headers
             .map((header) => {
               const value = row[header];
-              const isCurrencyColumn = ["Cost", "Disbursement"].includes(
+              const isCurrencyColumn = ["Estimate", "Disbursement"].includes(
                 header,
               );
               const displayValue = isCurrencyColumn
@@ -855,6 +896,7 @@ export default function BusinessTripHR() {
               .map((header) => `<th>${escapeHtml(header)}</th>`)
               .join("")}</tr></thead>
             <tbody>${tableRows}</tbody>
+            <tfoot>${buildExportTotalRow(headers)}</tfoot>
           </table>
         </body>
       </html>`;
@@ -885,7 +927,7 @@ export default function BusinessTripHR() {
           `<tr>${headers
             .map((header) => {
               const value = row[header];
-              const isCurrencyColumn = ["Cost", "Disbursement"].includes(
+              const isCurrencyColumn = ["Estimate", "Disbursement"].includes(
                 header,
               );
               const displayValue = isCurrencyColumn
@@ -921,24 +963,75 @@ export default function BusinessTripHR() {
             th, td { border: 1px solid #bbb; padding: 6px; font-size: 8px; text-align: left; }
             th { background: #e8f0ee; }
             tr { page-break-inside: avoid; }
+            .total-row td { font-weight: bold; background: #f1f5f3; }
+            .document-footer {
+              margin-top: 35px;
+              padding-top: 8px;
+              text-align: center;
+              color: #666;
+              font-size: 9px;
+            }
+            .signature-section {
+              display: flex;
+              justify-content: space-between;
+              gap: 28px;
+              margin-top: 42px;
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+            .signature-box {
+              flex: 1;
+              min-width: 0;
+              text-align: center;
+              font-size: 10px;
+            }
+            .signature-title { min-height: 16px; margin-bottom: 2px; }
+            .signature-space { height: 72px; }
+            .signature-line {
+              width: 85%;
+              margin: 0 auto 4px;
+              border-bottom: 1px solid #222;
+            }
+            .signature-role { font-weight: bold; }
             @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
           </style>
         </head>
         <body>
-          <h2>Laporan Business Trip</h2>
+          <h2>Business Trip Report</h2>
           <p>Filter status: ${escapeHtml(
-            statusFilter === "ALL"
-              ? "Semua Status"
-              : getStatusLabel(statusFilter),
+            statusFilter === "ALL" ? "All" : getStatusLabel(statusFilter),
           )}</p>
-          <p>Total data: ${exportRows.length}</p>
-          <p>Dicetak: ${escapeHtml(new Date().toLocaleString("id-ID"))}</p>
+          <p>Printed: ${escapeHtml(new Date().toLocaleString("id-ID"))}</p>
           <table>
             <thead><tr>${headers
               .map((header) => `<th>${escapeHtml(header)}</th>`)
               .join("")}</tr></thead>
             <tbody>${tableRows}</tbody>
+            <tfoot>${buildExportTotalRow(headers)}</tfoot>
           </table>
+          <section class="signature-section">
+            <div class="signature-box">
+              <div class="signature-title">Dibuat oleh,</div>
+              <div class="signature-space"></div>
+              <div class="signature-line"></div>
+              <div class="signature-role">HR</div>
+            </div>
+            <div class="signature-box">
+              <div class="signature-title">Diperiksa oleh,</div>
+              <div class="signature-space"></div>
+              <div class="signature-line"></div>
+              <div class="signature-role">Finance</div>
+            </div>
+            <div class="signature-box">
+              <div class="signature-title">Disetujui oleh,</div>
+              <div class="signature-space"></div>
+              <div class="signature-line"></div>
+              <div class="signature-role">Director</div>
+            </div>
+          </section>
+          <footer class="document-footer">
+            Dicetak melalui Sistem PRIDE • Dokumen untuk keperluan administrasi internal
+          </footer>
           <script>
             window.onload = function () {
               window.focus();
@@ -993,7 +1086,7 @@ export default function BusinessTripHR() {
         sx={{
           border: "1px solid",
           borderColor: "divider",
-          borderRadius: 3,
+          borderRadius: 1,
           minWidth: 0,
         }}
       >
@@ -1066,6 +1159,18 @@ export default function BusinessTripHR() {
                 Export PDF
               </Button>
 
+              <TextField
+                size="small"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Cari nomor, karyawan, tujuan..."
+                aria-label="Cari Business Trip"
+                sx={{
+                  width: { xs: "100%", sm: 260 },
+                  minWidth: { xs: "100%", sm: 260 },
+                }}
+              />
+
               <FormControl size="small">
                 <InputLabel>Filter Status</InputLabel>
                 <Select
@@ -1081,12 +1186,6 @@ export default function BusinessTripHR() {
                   ))}
                 </Select>
               </FormControl>
-
-              <Chip
-                label={`${filteredTrips.length} Data`}
-                color="primary"
-                variant="outlined"
-              />
 
               <Button
                 variant="outlined"
@@ -1110,7 +1209,7 @@ export default function BusinessTripHR() {
                   <TableCell>Destination</TableCell>
                   <TableCell>Departure</TableCell>
                   <TableCell>Return</TableCell>
-                  <TableCell align="right">Cost</TableCell>
+                  <TableCell align="right">Estimate</TableCell>
                   <TableCell align="right">Disbursement</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Payment</TableCell>
@@ -1155,7 +1254,7 @@ export default function BusinessTripHR() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredTrips.map((trip) => (
+                  paginatedTrips.map((trip) => (
                     <TableRow hover key={trip.id}>
                       <TableCell>
                         <Typography fontWeight={600} fontSize={13}>
@@ -1247,6 +1346,31 @@ export default function BusinessTripHR() {
               </TableBody>
             </Table>
           </TableContainer>
+
+          <TablePagination
+            component="div"
+            count={filteredTrips.length}
+            page={page}
+            onPageChange={(_, newPage) => setPage(newPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(event) => {
+              setRowsPerPage(Number(event.target.value));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[10, 25, 50, 100]}
+            labelRowsPerPage="Baris per halaman:"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} dari ${count !== -1 ? count : `lebih dari ${to}`}`
+            }
+            sx={{
+              borderTop: 1,
+              borderColor: "divider",
+              ".MuiTablePagination-toolbar": {
+                minHeight: 56,
+                px: { xs: 0, sm: 2 },
+              },
+            }}
+          />
         </CardContent>
       </Card>
 
