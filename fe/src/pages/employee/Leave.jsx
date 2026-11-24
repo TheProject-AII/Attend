@@ -1,8 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 
 import leaveService from "../../services/leaveService";
-import paySlipService from "../../services/paySlipService";
-import PaySlipRequestDialog from "../../components/attendance/PaySlipRequestDialog";
 import LeaveDialog from "../../components/attendance/LeaveDialog";
 import LeaveDetailDialog from "../../components/layout/LeaveDetailDialog";
 import LeaveCard from "../../components/layout/LeaveCard";
@@ -26,7 +24,7 @@ import notificationService from "../../services/notificationService";
 import overtimeService from "../../services/overtimeService";
 import OvertimeDetailDialog from "../../components/layout/OvertimeDetailDialog";
 import businessTripService from "../../services/businessTripService";
-import BusinessTripDetailDialog from "../../components/layout/BusinessTripDetailDialog";
+import EmployeeBusinessTripDetailDialog from "../../components/layout/EmployeeBusinessTripDetailDialog";
 
 const countWorkingDays = (startDate, endDate, workDays) => {
   if (!startDate || !endDate || !Array.isArray(workDays)) {
@@ -919,7 +917,7 @@ export default function Leave() {
           })
         )}
 
-        <BusinessTripDetailDialog
+        <EmployeeBusinessTripDetailDialog
           open={openBusinessTripDetail}
           onClose={() => setOpenBusinessTripDetail(false)}
           data={selectedLeave}
