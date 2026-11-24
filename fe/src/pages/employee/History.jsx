@@ -395,12 +395,9 @@ export default function History() {
       <Box
         sx={{
           position: "sticky",
-          top: "48px",
+          top: "40px",
           zIndex: 10,
-          bgcolor: "#F5F7FA",
-          px: 2,
-          pt: 1.5,
-          pb: 1.5,
+          bgcolor: "#0D439A",
           borderBottom: "1px solid #ECEFF1",
           boxShadow: "0 2px 10px rgba(0,0,0,.05)",
         }}
@@ -408,13 +405,16 @@ export default function History() {
         <Card
           sx={{
             mb: 1.5,
-            borderRadius: 2,
+            borderRadius: 1,
             background: "#0D439A",
             color: "#FFF",
           }}
         >
           <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-            <Typography variant="h6" fontWeight={700}>
+            <Typography
+              variant="h6"
+              sx={{ textAlign: "center", fontWeight: 700 }}
+            >
               Attendance History
             </Typography>
 

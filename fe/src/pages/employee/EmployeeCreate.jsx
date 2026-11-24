@@ -264,6 +264,9 @@ export default function EmployeeCreate({
   };
   useEffect(() => {
     if (mode === "edit" && employee) {
+      console.log("EDIT EMPLOYEE DATA:", employee);
+      console.log("LEADER ID:", employee?.leader_id);
+      console.log("EMPLOYEE MANAGER LIST:", employees);
       setForm({
         nik: employee.nik || "",
         name: employee.name || "",
@@ -295,7 +298,7 @@ export default function EmployeeCreate({
         effective_date: dayjs().format("YYYY-MM-DD"),
         company_id: employee.company_id || "",
 
-        leader_id: employee.leader_id || "",
+        leader_id: employee.leader_id ? String(employee.leader_id) : "",
 
         // Existing file fields are left empty.
         photo: null,
@@ -831,6 +834,7 @@ export default function EmployeeCreate({
             </Grid>
 
             {/* DIRECT MANAGER */}
+            {/* DIRECT MANAGER */}
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
@@ -846,12 +850,10 @@ export default function EmployeeCreate({
                   .filter(
                     (item) =>
                       String(item.id) !== String(employee?.id) &&
-                      String(item.job_level || "")
-                        .trim()
-                        .toLowerCase() === "manager",
+                      Number(item.role_id) === 5,
                   )
                   .map((item) => (
-                    <MenuItem key={item.id} value={item.id}>
+                    <MenuItem key={item.id} value={String(item.id)}>
                       {item.name} (
                       {item.department_name ||
                         item.department ||

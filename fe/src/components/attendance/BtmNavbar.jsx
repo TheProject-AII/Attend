@@ -131,7 +131,7 @@ export default function BottomNav() {
 
         // Hindari navbar ikut bergeser saat keyboard muncul
         "@media (max-height: 450px)": {
-          bottom: "8px",
+          bottom: "5px",
         },
       }}
     >
