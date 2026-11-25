@@ -1,9 +1,13 @@
 const express = require("express");
 const router = express.Router();
+
 const uploadAttendance = require("../middleware/uploadAttendance");
 const authMiddleware = require("../middleware/authMiddleware");
 const adminMiddleware = require("../middleware/adminMiddleware");
+
 const attendanceController = require("../controllers/attendanceController");
+const offlineAttendanceController = require("../controllers/offlineAttendanceController");
+
 const employeeFileController = require("../controllers/employeeFileController");
 const faceEnrollmentController = require("../controllers/faceEnrollmentController");
 
@@ -11,6 +15,7 @@ router.get("/today", authMiddleware, attendanceController.today);
 router.get("/history", authMiddleware, attendanceController.history);
 router.get("/chart", authMiddleware, attendanceController.chart);
 router.get("/info", authMiddleware, attendanceController.list);
+
 router.get(
   "/summary",
   authMiddleware,
@@ -45,17 +50,28 @@ router.post(
   uploadAttendance.single("photo"),
   attendanceController.checkIn,
 );
+
 router.post(
   "/checkout",
   authMiddleware,
   uploadAttendance.single("photo"),
   attendanceController.checkOut,
 );
+
+// OFFLINE ATTENDANCE SYNC
+router.post(
+  "/sync-offline",
+  authMiddleware,
+  uploadAttendance.single("photo"),
+  offlineAttendanceController.syncOffline,
+);
+
 router.post(
   "/auto-checkout/location",
   authMiddleware,
   attendanceController.captureAutoCheckoutLocation,
 );
+
 router.post(
   "/face-enrollment",
   authMiddleware,
