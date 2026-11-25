@@ -112,7 +112,7 @@ export const saveOfflineAttendance = async (payload) => {
       retry_count,
       created_at,
       updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_SYNC', 0, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_SYNC', 0, ?, ?)
   `;
 
   const now = new Date().toISOString();
