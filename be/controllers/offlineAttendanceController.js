@@ -408,12 +408,12 @@ exports.syncOffline = async (req, res) => {
           $4,
           $5,
           $6,
-          $7,
+          $7::varchar,
           $8,
           'Hadir',
 
           CASE
-            WHEN $7 = 'OFFICE'
+            WHEN $7::varchar = 'OFFICE'
               AND rule.is_working_day
               AND rule.office_start_time IS NOT NULL
             THEN $3::timestamp::time > rule.office_start_time
@@ -421,7 +421,7 @@ exports.syncOffline = async (req, res) => {
           END,
 
           CASE
-            WHEN $7 = 'OFFICE'
+            WHEN $7::varchar = 'OFFICE'
               AND rule.is_working_day
               AND rule.office_start_time IS NOT NULL
             THEN GREATEST(
