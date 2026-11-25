@@ -57,6 +57,59 @@ export default function Attendance() {
     }
   };
 
+  // Kunci cache dipisahkan per karyawan dan tanggal Jakarta agar data
+  // absensi kemarin atau milik akun lain tidak dipakai untuk hari ini.
+  const getTodayDateKey = (date = new Date()) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date);
+
+  const getTodayCacheKey = () => {
+    const userId = getCurrentUserId();
+    if (!userId) return null;
+    return `hris_attendance_today_${userId}_${getTodayDateKey()}`;
+  };
+
+  const saveTodayCache = (data) => {
+    const key = getTodayCacheKey();
+    if (!key || !data) return;
+    try {
+      localStorage.setItem(
+        key,
+        JSON.stringify({ data, cachedAt: new Date().toISOString() }),
+      );
+    } catch (error) {
+      console.error("SAVE TODAY ATTENDANCE CACHE:", error);
+    }
+  };
+
+  const getTodayCache = () => {
+    const key = getTodayCacheKey();
+    if (!key) return null;
+    try {
+      const cached = JSON.parse(localStorage.getItem(key) || "null");
+      return cached?.data || null;
+    } catch (error) {
+      console.error("READ TODAY ATTENDANCE CACHE:", error);
+      return null;
+    }
+  };
+
+  const applyTodayData = (today) => {
+    if (!today) return;
+    setTodayData(today);
+    if (today.checkIn && !today.checkOut) {
+      setStatus("checked-in");
+    } else if (today.checkIn && today.checkOut) {
+      setStatus("checked-out");
+    } else {
+      setStatus("idle");
+    }
+  };
+
   const refreshTodayFromLocalQueue = useCallback(async () => {
     try {
       const pending = await getPendingOfflineAttendance();
@@ -64,24 +117,12 @@ export default function Attendance() {
       const ownPending = (pending || []).filter(
         (item) => !userId || Number(item.employee_id) === userId,
       );
-
-      const todayKey = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Jakarta",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date());
+      const todayKey = getTodayDateKey();
 
       const todays = ownPending.filter((item) => {
         const date = new Date(item.occurred_at);
         if (Number.isNaN(date.getTime())) return false;
-        const key = new Intl.DateTimeFormat("en-CA", {
-          timeZone: "Asia/Jakarta",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        }).format(date);
-        return key === todayKey;
+        return getTodayDateKey(date) === todayKey;
       });
 
       const checkIn = todays.find(
@@ -91,14 +132,25 @@ export default function Attendance() {
         (item) => item.attendance_action === "CHECK_OUT",
       );
 
-      if (checkIn) {
-        setTodayData((previous) => ({
-          ...(previous || {}),
-          checkIn: checkIn.occurred_at,
-          checkOut: checkOut?.occurred_at || previous?.checkOut || null,
-          offlinePending: true,
-        }));
-        setStatus(checkOut ? "checked-out" : "checked-in");
+      // Check-in online mungkin tidak ada di antrean SQLite. Karena itu,
+      // antrean lokal hanya menimpa field yang memang punya transaksi offline.
+      if (checkIn || checkOut) {
+        setTodayData((previous) => {
+          const merged = {
+            ...(previous || getTodayCache() || {}),
+            ...(checkIn ? { checkIn: checkIn.occurred_at } : {}),
+            ...(checkOut ? { checkOut: checkOut.occurred_at } : {}),
+            offlinePending: true,
+          };
+          saveTodayCache(merged);
+          return merged;
+        });
+
+        setStatus((previousStatus) => {
+          if (checkOut) return "checked-out";
+          if (checkIn) return "checked-in";
+          return previousStatus;
+        });
       }
     } catch (error) {
       console.error("OFFLINE ATTENDANCE LOCAL REFRESH:", error);
@@ -157,12 +209,20 @@ export default function Attendance() {
     return () => listener?.remove();
   }, [runOfflineSync]);
 
+  // Pulihkan status absensi dari cache dan antrean lokal tanpa menunggu
+  // API office. API office bisa gagal saat perangkat sedang offline.
   useEffect(() => {
-    if (!office) return;
-    loadLocation();
+    const cachedToday = getTodayCache();
+    if (cachedToday) applyTodayData(cachedToday);
+
     loadToday();
     refreshTodayFromLocalQueue();
-  }, [office, refreshTodayFromLocalQueue]);
+  }, [refreshTodayFromLocalQueue]);
+
+  // GPS tetap dapat dibaca perangkat meskipun API office belum tersedia.
+  useEffect(() => {
+    loadLocation();
+  }, [office]);
 
   useEffect(() => {
     if (!openDialog) return;
@@ -233,19 +293,23 @@ export default function Attendance() {
     setOpenDialog(false);
     setPhoto(null);
     if (action === "CHECK_IN") {
-      setTodayData((previous) => ({
-        ...(previous || {}),
+      const updated = {
+        ...(todayData || {}),
         checkIn: new Date().toISOString(),
         checkOut: null,
         offlinePending: true,
-      }));
+      };
+      setTodayData(updated);
+      saveTodayCache(updated);
       setStatus("checked-in");
     } else {
-      setTodayData((previous) => ({
-        ...(previous || {}),
+      const updated = {
+        ...(todayData || getTodayCache() || {}),
         checkOut: new Date().toISOString(),
         offlinePending: true,
-      }));
+      };
+      setTodayData(updated);
+      saveTodayCache(updated);
       setStatus("checked-out");
     }
 
@@ -259,13 +323,21 @@ export default function Attendance() {
   };
 
   const isNetworkError = (error) => {
+    const message = String(error?.message || "").toLowerCase();
+    const code = String(error?.code || "").toUpperCase();
+
     return (
       !navigator.onLine ||
       (!error?.response &&
-        (error?.code === "ERR_NETWORK" ||
-          error?.code === "ECONNABORTED" ||
-          error?.message === "Network Error" ||
-          error?.name === "TypeError"))
+        (code === "ERR_NETWORK" ||
+          code === "ERR_INTERNET_DISCONNECTED" ||
+          code === "ECONNABORTED" ||
+          error?.name === "TypeError" ||
+          message.includes("network error") ||
+          message.includes("failed to fetch") ||
+          message.includes("internet disconnected") ||
+          message.includes("network request failed") ||
+          message.includes("err_internet_disconnected")))
     );
   };
 
@@ -510,21 +582,34 @@ export default function Attendance() {
   };
 
   const loadToday = async () => {
+    // Pulihkan cache lebih dulu agar status Check Out langsung tampil
+    // walaupun request ke server sedang gagal/timeout.
+    const cachedToday = getTodayCache();
+    if (cachedToday) {
+      applyTodayData(cachedToday);
+    }
+
     try {
       const result = await attendanceService.getToday();
-      const today = result.data;
-      setTodayData(today);
+      const today = result?.data;
 
-      if (today.checkIn && !today.checkOut) {
-        setStatus("checked-in");
-      } else if (today.checkIn && today.checkOut) {
-        setStatus("checked-out");
-      } else {
-        setStatus("idle");
+      if (!today) {
+        throw new Error("Data absensi hari ini tidak tersedia dari server.");
       }
+
+      // Snapshot server menjadi sumber terbaru ketika koneksi tersedia.
+      saveTodayCache(today);
+      applyTodayData(today);
       return today;
     } catch (err) {
       console.error("LOAD TODAY ERROR:", err);
+
+      if (cachedToday) {
+        console.info("Memulihkan status absensi dari cache lokal hari ini.");
+        applyTodayData(cachedToday);
+        return cachedToday;
+      }
+
       return null;
     }
   };
